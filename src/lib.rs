@@ -1,6 +1,7 @@
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 mod task;
 mod urgency;
@@ -43,6 +44,7 @@ enum Msg {
     SaveSelectedTask,
     CreateTask,
     DeleteSelectedTask,
+    CompleteSelectedTask,
 }
 
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -78,7 +80,36 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::DeleteSelectedTask => {
             if let Some(task) = model.selected_task.take() {
-                model.tasks.remove(&task.uuid());
+                match task {
+                    Task::Pending(task) => {
+                        model
+                            .tasks
+                            .insert(task.uuid(), Task::Deleted(task.delete()));
+                    }
+                    Task::Completed(_task) => {}
+                    Task::Waiting(task) => {
+                        model
+                            .tasks
+                            .insert(task.uuid(), Task::Deleted(task.delete()));
+                    }
+                    Task::Deleted(task) => {
+                        model.tasks.remove(&task.uuid());
+                    }
+                }
+            }
+        }
+        Msg::CompleteSelectedTask => {
+            if let Some(task) = model.selected_task.take() {
+                match task {
+                    Task::Pending(task) => {
+                        model
+                            .tasks
+                            .insert(task.uuid(), Task::Completed(task.complete()));
+                    }
+                    Task::Deleted(_) => {}
+                    Task::Completed(_) => {}
+                    Task::Waiting(_) => {}
+                }
             }
         }
     }
@@ -122,6 +153,15 @@ fn view_titlebar() -> Node<Msg> {
 fn view_selected_task(task: &Task) -> Node<Msg> {
     div![
         C!["flex", "flex-col"],
+        div![
+            "status  ",
+            match task {
+                Task::Pending(_) => "pending",
+                Task::Deleted(_) => "deleted",
+                Task::Completed(_) => "completed",
+                Task::Waiting(_) => "waiting",
+            }
+        ],
         div![view_task_field(
             "Description",
             &task.description(),
@@ -134,6 +174,11 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         )],
         div![
             C!["flex", "justify-end"],
+            button![
+                C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
+                mouse_ev(Ev::Click, |_| Msg::CompleteSelectedTask),
+                "Complete"
+            ],
             button![
                 C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::DeleteSelectedTask),
@@ -202,6 +247,12 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
         .iter()
         .map(|(_, t)| ViewableTask {
             age: duration_string((chrono::offset::Utc::now()).signed_duration_since(*t.entry())),
+            status: match t {
+                Task::Pending(_) => "pending".to_owned(),
+                Task::Completed(_) => "completed".to_owned(),
+                Task::Deleted(_) => "deleted".to_owned(),
+                Task::Waiting(_) => "waiting".to_owned(),
+            },
             project: t.project().to_owned(),
             description: t.description().to_owned(),
             urgency: urgency::calculate(t),
@@ -211,6 +262,12 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
 
     // reverse sort so we have most urgent at the top
     tasks.sort_by(|t1, t2| t2.urgency.partial_cmp(&t1.urgency).unwrap());
+    let show_status = tasks
+        .iter()
+        .map(|t| &t.status)
+        .collect::<HashSet<_>>()
+        .len()
+        > 1;
     let show_project = tasks.iter().any(|t| !t.project.is_empty());
     div![
         C!["mt-8"],
@@ -219,6 +276,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
             tr![
                 C!["border-b-2"],
                 th!["Age"],
+                IF!(show_status => th![C!["border-l-2"], "Status"]),
                 IF!(show_project => th![C!["border-l-2"], "Project"]),
                 th![C!["border-l-2"], "Description"],
                 th![C!["border-l-2"], "Urgency"]
@@ -229,6 +287,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
                     C!["hover:bg-gray-200", "cursor-pointer"],
                     mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
                     td![C!["text-center", "px-2"], t.age.clone()],
+                    IF!(show_status => td![C!["border-l-2","text-center", "px-2"], t.status]),
                     IF!(show_project => td![
                         C!["border-l-2", "text-center", "px-2"],
                         if t.project.is_empty(){
@@ -250,6 +309,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
 
 struct ViewableTask {
     uuid: uuid::Uuid,
+    status: String,
     age: String,
     project: Vec<String>,
     description: String,

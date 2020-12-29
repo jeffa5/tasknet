@@ -4,6 +4,10 @@ use std::collections::HashSet;
 
 // Based on https://taskwarrior.org/docs/design/task.html
 
+pub fn now() -> DateTime {
+    chrono::offset::Utc::now()
+}
+
 type DateTime = chrono::DateTime<chrono::Utc>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,7 +31,7 @@ impl Task {
             due: None,
             until: None,
             scheduled: None,
-            annotation: Vec::new(),
+            annotations: Vec::new(),
             tags: Vec::new(),
             priority: None,
             depends: HashSet::new(),
@@ -102,7 +106,7 @@ pub struct PendingTask {
     due: Option<DateTime>,
     until: Option<DateTime>,
     scheduled: Option<DateTime>,
-    annotation: Vec<Annotation>,
+    annotations: Vec<Annotation>,
     project: Vec<String>,
     tags: Vec<String>,
     priority: Option<Priority>,
@@ -143,6 +147,48 @@ impl PendingTask {
         self.modified();
         self.project = project
     }
+
+    pub fn delete(mut self) -> DeletedTask {
+        self.modified();
+        DeletedTask {
+            uuid: self.uuid,
+            entry: self.entry,
+            description: self.description,
+            end: now(),
+            start: self.start,
+            due: self.due,
+            until: self.until,
+            scheduled: self.scheduled,
+            annotations: self.annotations,
+            project: self.project,
+            tags: self.tags,
+            priority: self.priority,
+            depends: self.depends,
+            udas: self.udas,
+            modified: self.modified,
+        }
+    }
+
+    pub fn complete(mut self) -> CompletedTask {
+        self.modified();
+        CompletedTask {
+            uuid: self.uuid,
+            entry: self.entry,
+            description: self.description,
+            end: now(),
+            start: self.start,
+            due: self.due,
+            until: self.until,
+            scheduled: self.scheduled,
+            annotations: self.annotations,
+            project: self.project,
+            tags: self.tags,
+            priority: self.priority,
+            depends: self.depends,
+            udas: self.udas,
+            modified: self.modified,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,7 +203,7 @@ pub struct DeletedTask {
     due: Option<DateTime>,
     until: Option<DateTime>,
     scheduled: Option<DateTime>,
-    annotation: Vec<Annotation>,
+    annotations: Vec<Annotation>,
     project: Vec<String>,
     tags: Vec<String>,
     priority: Option<Priority>,
@@ -212,7 +258,7 @@ pub struct CompletedTask {
     due: Option<DateTime>,
     until: Option<DateTime>,
     scheduled: Option<DateTime>,
-    annotation: Vec<Annotation>,
+    annotations: Vec<Annotation>,
     project: Vec<String>,
     tags: Vec<String>,
     priority: Option<Priority>,
@@ -267,7 +313,7 @@ pub struct WaitingTask {
     due: Option<DateTime>,
     until: Option<DateTime>,
     scheduled: Option<DateTime>,
-    annotation: Vec<Annotation>,
+    annotations: Vec<Annotation>,
     project: Vec<String>,
     tags: Vec<String>,
     priority: Option<Priority>,
@@ -307,6 +353,27 @@ impl WaitingTask {
     pub fn set_project(&mut self, project: Vec<String>) {
         self.modified();
         self.project = project
+    }
+
+    pub fn delete(mut self) -> DeletedTask {
+        self.modified();
+        DeletedTask {
+            uuid: self.uuid,
+            entry: self.entry,
+            description: self.description,
+            end: now(),
+            start: self.start,
+            due: self.due,
+            until: self.until,
+            scheduled: self.scheduled,
+            annotations: self.annotations,
+            project: self.project,
+            tags: self.tags,
+            priority: self.priority,
+            depends: self.depends,
+            udas: self.udas,
+            modified: self.modified,
+        }
     }
 }
 
