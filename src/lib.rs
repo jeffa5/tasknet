@@ -14,7 +14,8 @@ use task::Task;
 
 const STORAGE_KEY: &str = "tasknet-tasks";
 
-fn init(_url: Url, _orders: &mut impl Orders<Msg>) -> Model {
+fn init(_url: Url, orders: &mut impl Orders<Msg>) -> Model {
+    orders.stream(streams::interval(1000, || Msg::OnTick));
     Model {
         tasks: LocalStorage::get(STORAGE_KEY).unwrap_or_default(),
         selected_task: None,
@@ -45,6 +46,7 @@ enum Msg {
     CreateTask,
     DeleteSelectedTask,
     CompleteSelectedTask,
+    OnTick,
 }
 
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -111,6 +113,9 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                     Task::Waiting(_) => {}
                 }
             }
+        }
+        Msg::OnTick => {
+            // just re-render to show update ages
         }
     }
     LocalStorage::insert(STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
