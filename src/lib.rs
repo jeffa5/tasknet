@@ -39,6 +39,7 @@ struct Model {
 enum Msg {
     SelectTask(Option<uuid::Uuid>),
     SelectedTaskDescriptionChanged(String),
+    SelectedTaskProjectChanged(String),
     SaveSelectedTask,
     CreateTask,
     DeleteSelectedTask,
@@ -54,6 +55,16 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         Msg::SelectedTaskDescriptionChanged(new_description) => {
             if let Some(task) = &mut model.selected_task {
                 task.description = new_description;
+            }
+        }
+        Msg::SelectedTaskProjectChanged(new_project) => {
+            let new_project = new_project.trim();
+            if let Some(task) = &mut model.selected_task {
+                task.project = if new_project.is_empty() {
+                    None
+                } else {
+                    Some(new_project.to_owned())
+                }
             }
         }
         Msg::SaveSelectedTask => {
@@ -112,8 +123,14 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
     div![
         C!["flex", "flex-col"],
         div![view_task_field(
+            "Description",
             &task.description,
             Msg::SelectedTaskDescriptionChanged
+        )],
+        div![view_task_field(
+            "Project",
+            &task.project.as_ref().unwrap_or(&String::new()),
+            Msg::SelectedTaskProjectChanged
         )],
         div![
             C!["flex", "justify-end"],
@@ -136,10 +153,14 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
     ]
 }
 
-fn view_task_field(value: &str, f: impl FnOnce(String) -> Msg + Clone + 'static) -> Node<Msg> {
+fn view_task_field(
+    name: &str,
+    value: &str,
+    f: impl FnOnce(String) -> Msg + Clone + 'static,
+) -> Node<Msg> {
     div![
         C!["flex", "flex-col", "p-2", "mb-2"],
-        div![C!["font-bold"], "Description"],
+        div![C!["font-bold"], name],
         input![
             C!["border"],
             attrs! {
@@ -172,12 +193,18 @@ fn view_filters() -> Node<Msg> {
 fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
     let mut tasks: Vec<_> = tasks
         .iter()
-        .map(|(_, t)| (urgency::calculate(t), t))
+        .map(|(_, t)| ViewableTask {
+            age: duration_string((chrono::offset::Utc::now()).signed_duration_since(t.entry)),
+            project: t.project.clone(),
+            description: t.description.clone(),
+            urgency: urgency::calculate(t),
+            uuid: t.uuid,
+        })
         .collect();
 
     // reverse sort so we have most urgent at the top
-    tasks.sort_by(|(u1, _), (u2, _)| u2.partial_cmp(u1).unwrap());
-    let rendered_tasks = tasks.iter().map(|(u, t)| view_task(t, *u));
+    tasks.sort_by(|t1, t2| t2.urgency.partial_cmp(&t1.urgency).unwrap());
+    let show_project = tasks.iter().any(|t| t.project.is_some());
     div![
         C!["mt-8"],
         table![
@@ -185,33 +212,44 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
             tr![
                 C!["border-b-2"],
                 th!["Age"],
+                IF!(show_project => th![C!["border-l-2"], "Project"]),
                 th![C!["border-l-2"], "Description"],
                 th![C!["border-l-2"], "Urgency"]
             ],
-            rendered_tasks
+            tasks.into_iter().map(|t| {
+                let id = t.uuid;
+                tr![
+                    mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
+                    td![C!["text-center", "px-2"], t.age.clone()],
+                    IF!(show_project => td![
+                        C!["border-l-2", "text-center", "px-2"],
+                        if let Some(ref project) = t.project {
+                            plain!(project.to_owned())
+                        } else {
+                            empty![]
+                        }
+                    ]),
+                    td![C!["border-l-2", "text-left", "px-2"], &t.description],
+                    td![
+                        C!["border-l-2", "text-center", "px-2"],
+                        format!("{:.2}", t.urgency)
+                    ]
+                ]
+            })
         ]
     ]
 }
 
-fn view_task(task: &Task, urgency: f64) -> Node<Msg> {
-    let age = (chrono::offset::Utc::now()).signed_duration_since(task.entry);
-    let id = task.uuid;
-    tr![
-        mouse_ev(Ev::Click, move |_event| {
-            log!("clicked");
-            Msg::SelectTask(Some(id))
-        }),
-        td![C!["text-center", "px-2"], view_duration(age)],
-        td![C!["border-l-2", "text-left", "px-2"], &task.description],
-        td![
-            C!["border-l-2", "text-center", "px-2"],
-            format!("{:.2}", urgency)
-        ]
-    ]
+struct ViewableTask {
+    uuid: uuid::Uuid,
+    age: String,
+    project: Option<String>,
+    description: String,
+    urgency: f64,
 }
 
-fn view_duration(duration: chrono::Duration) -> Node<Msg> {
-    let s = if duration.num_weeks() > 0 {
+fn duration_string(duration: chrono::Duration) -> String {
+    if duration.num_weeks() > 0 {
         format!("{}w", duration.num_weeks())
     } else if duration.num_days() > 0 {
         format!("{}d", duration.num_days())
@@ -223,8 +261,7 @@ fn view_duration(duration: chrono::Duration) -> Node<Msg> {
         format!("{}s", duration.num_seconds())
     } else {
         "now".to_owned()
-    };
-    plain!(s)
+    }
 }
 
 // ------ ------

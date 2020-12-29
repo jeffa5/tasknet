@@ -6,6 +6,7 @@ pub struct Task {
     pub uuid: uuid::Uuid,
     pub entry: chrono::DateTime<chrono::Utc>,
     pub description: String,
+    pub project: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,6 +25,7 @@ impl Task {
             uuid: uuid::Uuid::new_v4(),
             entry: chrono::offset::Utc::now(),
             description: String::new(),
+            project: None,
         }
     }
 }

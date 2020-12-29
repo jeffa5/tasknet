@@ -11,7 +11,7 @@ const NEXT_COEFFICIENT: f64 = 15.0;
 const AGE_COEFFICIENT: f64 = 2.0;
 // urgency.annotations.coefficient             1.0 # has annotations
 // urgency.tags.coefficient                    1.0 # has tags
-// urgency.project.coefficient                 1.0 # assigned to any project
+const PROJECT_COEFFICIENT: f64 = 1.0;
 // urgency.waiting.coefficient                 -3.0 # waiting task
 // urgency.blocked.coefficient                 -5.0 # blocked by other tasks
 
@@ -23,6 +23,7 @@ const SECONDS_IN_A_DAY: f64 = 86400.0;
 pub fn calculate(task: &Task) -> f64 {
     let mut urgency = 0.0;
     urgency += urgency_age(task.entry) * AGE_COEFFICIENT;
+    urgency += urgency_project(&task.project) * PROJECT_COEFFICIENT;
     urgency
 }
 
@@ -31,4 +32,11 @@ fn urgency_age(entry: chrono::DateTime<chrono::Utc>) -> f64 {
         .signed_duration_since(entry)
         .num_seconds() as f64;
     days / (AGE_MAX_DAYS * SECONDS_IN_A_DAY)
+}
+
+fn urgency_project(project: &Option<String>) -> f64 {
+    match project {
+        None => 0.0,
+        Some(_) => 1.0,
+    }
 }
