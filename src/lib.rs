@@ -54,22 +54,22 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::SelectedTaskDescriptionChanged(new_description) => {
             if let Some(task) = &mut model.selected_task {
-                task.description = new_description;
+                task.set_description(new_description);
             }
         }
         Msg::SelectedTaskProjectChanged(new_project) => {
             let new_project = new_project.trim();
             if let Some(task) = &mut model.selected_task {
-                task.project = if new_project.is_empty() {
-                    None
+                task.set_project(if new_project.is_empty() {
+                    Vec::new()
                 } else {
-                    Some(new_project.to_owned())
-                }
+                    new_project.split('.').map(|s| s.to_owned()).collect()
+                })
             }
         }
         Msg::SaveSelectedTask => {
             if let Some(task) = model.selected_task.take() {
-                model.tasks.insert(task.uuid, task);
+                model.tasks.insert(task.uuid(), task);
             }
         }
         Msg::CreateTask => {
@@ -78,7 +78,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::DeleteSelectedTask => {
             if let Some(task) = model.selected_task.take() {
-                model.tasks.remove(&task.uuid);
+                model.tasks.remove(&task.uuid());
             }
         }
     }
@@ -124,12 +124,12 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         C!["flex", "flex-col"],
         div![view_task_field(
             "Description",
-            &task.description,
+            &task.description(),
             Msg::SelectedTaskDescriptionChanged
         )],
         div![view_task_field(
             "Project",
-            &task.project.as_ref().unwrap_or(&String::new()),
+            &task.project().join("."),
             Msg::SelectedTaskProjectChanged
         )],
         div![
@@ -201,17 +201,17 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
     let mut tasks: Vec<_> = tasks
         .iter()
         .map(|(_, t)| ViewableTask {
-            age: duration_string((chrono::offset::Utc::now()).signed_duration_since(t.entry)),
-            project: t.project.clone(),
-            description: t.description.clone(),
+            age: duration_string((chrono::offset::Utc::now()).signed_duration_since(*t.entry())),
+            project: t.project().to_owned(),
+            description: t.description().to_owned(),
             urgency: urgency::calculate(t),
-            uuid: t.uuid,
+            uuid: t.uuid(),
         })
         .collect();
 
     // reverse sort so we have most urgent at the top
     tasks.sort_by(|t1, t2| t2.urgency.partial_cmp(&t1.urgency).unwrap());
-    let show_project = tasks.iter().any(|t| t.project.is_some());
+    let show_project = tasks.iter().any(|t| !t.project.is_empty());
     div![
         C!["mt-8"],
         table![
@@ -231,10 +231,10 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
                     td![C!["text-center", "px-2"], t.age.clone()],
                     IF!(show_project => td![
                         C!["border-l-2", "text-center", "px-2"],
-                        if let Some(ref project) = t.project {
-                            plain!(project.to_owned())
-                        } else {
+                        if t.project.is_empty(){
                             empty![]
+                        } else {
+                            plain!(t.project.join("."))
                         }
                     ]),
                     td![C!["border-l-2", "text-left", "px-2"], &t.description],
@@ -251,7 +251,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
 struct ViewableTask {
     uuid: uuid::Uuid,
     age: String,
-    project: Option<String>,
+    project: Vec<String>,
     description: String,
     urgency: f64,
 }

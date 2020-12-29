@@ -22,8 +22,8 @@ const SECONDS_IN_A_DAY: f64 = 86400.0;
 // https://github.com/GothenburgBitFactory/taskwarrior/blob/16529694eb0b06ed54331775e10bec32a72d01b1/src/Task.cpp#L1790
 pub fn calculate(task: &Task) -> f64 {
     let mut urgency = 0.0;
-    urgency += urgency_age(task.entry) * AGE_COEFFICIENT;
-    urgency += urgency_project(&task.project) * PROJECT_COEFFICIENT;
+    urgency += urgency_age(*task.entry()) * AGE_COEFFICIENT;
+    urgency += urgency_project(&task.project()) * PROJECT_COEFFICIENT;
     urgency
 }
 
@@ -34,9 +34,10 @@ fn urgency_age(entry: chrono::DateTime<chrono::Utc>) -> f64 {
     days / (AGE_MAX_DAYS * SECONDS_IN_A_DAY)
 }
 
-fn urgency_project(project: &Option<String>) -> f64 {
-    match project {
-        None => 0.0,
-        Some(_) => 1.0,
+fn urgency_project(project: &[String]) -> f64 {
+    if project.is_empty() {
+        0.0
+    } else {
+        1.0
     }
 }
