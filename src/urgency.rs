@@ -7,7 +7,7 @@ const NEXT_COEFFICIENT: f64 = 15.0;
 // urgency.uda.priority.M.coefficient          3.9 # medium Priority
 // urgency.uda.priority.L.coefficient          1.8 # low Priority
 // urgency.scheduled.coefficient               5.0 # scheduled tasks
-// urgency.active.coefficient                  4.0 # already started tasks
+const ACTIVE_COEFFICIENT: f64 = 4.0;
 const AGE_COEFFICIENT: f64 = 2.0;
 // urgency.annotations.coefficient             1.0 # has annotations
 // urgency.tags.coefficient                    1.0 # has tags
@@ -25,9 +25,10 @@ pub fn calculate(task: &Task) -> f64 {
         Task::Deleted(_) => 0.0,
         Task::Completed(_) => 0.0,
         Task::Waiting(_) => 0.0,
-        Task::Pending(_) => {
+        Task::Pending(task) => {
             (urgency_age(*task.entry()) * AGE_COEFFICIENT)
                 + (urgency_project(&task.project()) * PROJECT_COEFFICIENT)
+                + (urgency_active(&task.start())) * ACTIVE_COEFFICIENT
         }
     }
 }
@@ -44,5 +45,13 @@ fn urgency_project(project: &[String]) -> f64 {
         0.0
     } else {
         1.0
+    }
+}
+
+fn urgency_active(start: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
+    if start.is_some() {
+        1.0
+    } else {
+        0.0
     }
 }

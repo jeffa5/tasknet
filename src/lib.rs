@@ -17,7 +17,7 @@ const STORAGE_KEY: &str = "tasknet-tasks";
 fn init(_url: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.stream(streams::interval(1000, || Msg::OnTick));
     Model {
-        tasks: LocalStorage::get(STORAGE_KEY).unwrap_or_default(),
+        tasks: LocalStorage::get(STORAGE_KEY).unwrap(),
         selected_task: None,
         new_task_description: String::new(),
     }
@@ -46,6 +46,8 @@ enum Msg {
     CreateTask,
     DeleteSelectedTask,
     CompleteSelectedTask,
+    StartSelectedTask,
+    StopSelectedTask,
     OnTick,
 }
 
@@ -114,6 +116,32 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 }
             }
         }
+        Msg::StartSelectedTask => {
+            if let Some(task) = model.selected_task.take() {
+                match task {
+                    Task::Pending(mut task) => {
+                        task.activate();
+                        model.tasks.insert(task.uuid(), Task::Pending(task));
+                    }
+                    Task::Deleted(_) => {}
+                    Task::Completed(_) => {}
+                    Task::Waiting(_) => {}
+                };
+            }
+        }
+        Msg::StopSelectedTask => {
+            if let Some(task) = model.selected_task.take() {
+                match task {
+                    Task::Pending(mut task) => {
+                        task.deactivate();
+                        model.tasks.insert(task.uuid(), Task::Pending(task));
+                    }
+                    Task::Deleted(_) => {}
+                    Task::Completed(_) => {}
+                    Task::Waiting(_) => {}
+                };
+            }
+        }
         Msg::OnTick => {
             // just re-render to show update ages
         }
@@ -156,17 +184,35 @@ fn view_titlebar() -> Node<Msg> {
 }
 
 fn view_selected_task(task: &Task) -> Node<Msg> {
+    let is_pending = match task {
+        Task::Pending(_) => true,
+        _ => false,
+    };
+    let start = match task {
+        Task::Pending(task) => *task.start(),
+        Task::Deleted(_) | Task::Completed(_) | Task::Waiting(_) => None,
+    };
     div![
         C!["flex", "flex-col"],
         div![
-            "status  ",
+            C!["pl-2"],
+            span![C!["font-bold"], "Status: "],
             match task {
-                Task::Pending(_) => "pending",
-                Task::Deleted(_) => "deleted",
-                Task::Completed(_) => "completed",
-                Task::Waiting(_) => "waiting",
+                Task::Pending(_) => "Pending",
+                Task::Deleted(_) => "Deleted",
+                Task::Completed(_) => "Completed",
+                Task::Waiting(_) => "Waiting",
             }
         ],
+        if let Some(start) = start {
+            div![
+                C!["pl-2"],
+                span![C!["font-bold"], "Start: "],
+                start.to_string()
+            ]
+        } else {
+            empty![]
+        },
         div![view_task_field(
             "Description",
             &task.description(),
@@ -179,16 +225,31 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         )],
         div![
             C!["flex", "justify-end"],
-            button![
+            IF!(is_pending =>
+                if start.is_some() {
+                    button![
+                        C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
+                        mouse_ev(Ev::Click, |_| Msg::StopSelectedTask),
+                        "Stop"
+                    ]
+                } else {
+                    button![
+                        C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
+                        mouse_ev(Ev::Click, |_| Msg::StartSelectedTask),
+                        "Start"
+                    ]
+                }
+            ),
+            IF!(is_pending => button![
                 C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::CompleteSelectedTask),
                 "Complete"
-            ],
-            button![
+            ]),
+            IF!(is_pending => button![
                 C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::DeleteSelectedTask),
                 "Delete"
-            ],
+            ]),
             button![
                 C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::SelectTask(None)),
@@ -262,6 +323,10 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
             description: t.description().to_owned(),
             urgency: urgency::calculate(t),
             uuid: t.uuid(),
+            active: match t {
+                Task::Pending(t) => t.start().is_some(),
+                Task::Completed(_) | Task::Deleted(_) | Task::Waiting(_) => false,
+            },
         })
         .collect();
 
@@ -289,7 +354,12 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
             tasks.into_iter().map(|t| {
                 let id = t.uuid;
                 tr![
-                    C!["hover:bg-gray-200", "cursor-pointer"],
+                    C![
+                        "hover:bg-gray-200",
+                        "cursor-pointer",
+                        IF!(t.active => "bg-green-200"),
+                        IF!(t.active =>  "hover:bg-green-400")
+                    ],
                     mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
                     td![C!["text-center", "px-2"], t.age.clone()],
                     IF!(show_status => td![C!["border-l-2","text-center", "px-2"], t.status]),
@@ -314,6 +384,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
 
 struct ViewableTask {
     uuid: uuid::Uuid,
+    active: bool,
     status: String,
     age: String,
     project: Vec<String>,

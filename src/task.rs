@@ -155,7 +155,6 @@ impl PendingTask {
             entry: self.entry,
             description: self.description,
             end: now(),
-            start: self.start,
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
@@ -176,7 +175,6 @@ impl PendingTask {
             entry: self.entry,
             description: self.description,
             end: now(),
-            start: self.start,
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
@@ -189,6 +187,20 @@ impl PendingTask {
             modified: self.modified,
         }
     }
+
+    pub fn start(&self) -> &Option<DateTime> {
+        &self.start
+    }
+
+    pub fn activate(&mut self) {
+        self.modified();
+        self.start = Some(now())
+    }
+
+    pub fn deactivate(&mut self) {
+        self.modified();
+        self.start = None
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,7 +211,6 @@ pub struct DeletedTask {
     description: String,
     end: DateTime,
     // ---- optional ----
-    start: Option<DateTime>,
     due: Option<DateTime>,
     until: Option<DateTime>,
     scheduled: Option<DateTime>,
@@ -254,7 +265,6 @@ pub struct CompletedTask {
     description: String,
     end: DateTime,
     // ---- optional ----
-    start: Option<DateTime>,
     due: Option<DateTime>,
     until: Option<DateTime>,
     scheduled: Option<DateTime>,
@@ -309,7 +319,6 @@ pub struct WaitingTask {
     description: String,
     wait: DateTime,
     // ---- optional ----
-    start: Option<DateTime>,
     due: Option<DateTime>,
     until: Option<DateTime>,
     scheduled: Option<DateTime>,
@@ -362,7 +371,6 @@ impl WaitingTask {
             entry: self.entry,
             description: self.description,
             end: now(),
-            start: self.start,
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
