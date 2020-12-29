@@ -110,7 +110,7 @@ fn view_titlebar() -> Node<Msg> {
     div![
         C!["flex", "flex-row", "justify-between", "mb-4"],
         a![
-            C!["bg-gray-50", "py-2", "px-8", "mr-8"],
+            C!["bg-gray-50", "py-2", "px-8", "mr-8", "hover:bg-gray-300"],
             attrs! {At::Href => "/"},
             "logo"
         ],
@@ -135,17 +135,17 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         div![
             C!["flex", "justify-end"],
             button![
-                C!["mr-4", "bg-gray-100", "py-2", "px-4"],
+                C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::DeleteSelectedTask),
                 "Delete"
             ],
             button![
-                C!["mr-4", "bg-gray-100", "py-2", "px-4"],
+                C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::SelectTask(None)),
                 "Cancel"
             ],
             button![
-                C!["bg-gray-100", "py-2", "px-4"],
+                C!["bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::SaveSelectedTask),
                 "Save"
             ]
@@ -176,7 +176,7 @@ fn view_actions() -> Node<Msg> {
         C!["flex", "flex-row", "justify-around"],
         view_filters(),
         button![
-            C!["bg-gray-100", "py-2", "px-4"],
+            C!["bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
             mouse_ev(Ev::Click, |_| Msg::CreateTask),
             "Create"
         ]
@@ -219,6 +219,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
             tasks.into_iter().map(|t| {
                 let id = t.uuid;
                 tr![
+                    C!["hover:bg-gray-200", "cursor-pointer"],
                     mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
                     td![C!["text-center", "px-2"], t.age.clone()],
                     IF!(show_project => td![
