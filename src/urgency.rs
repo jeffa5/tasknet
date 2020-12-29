@@ -21,10 +21,15 @@ const SECONDS_IN_A_DAY: f64 = 86400.0;
 
 // https://github.com/GothenburgBitFactory/taskwarrior/blob/16529694eb0b06ed54331775e10bec32a72d01b1/src/Task.cpp#L1790
 pub fn calculate(task: &Task) -> f64 {
-    let mut urgency = 0.0;
-    urgency += urgency_age(*task.entry()) * AGE_COEFFICIENT;
-    urgency += urgency_project(&task.project()) * PROJECT_COEFFICIENT;
-    urgency
+    match task {
+        Task::Deleted(_) => 0.0,
+        Task::Completed(_) => 0.0,
+        Task::Waiting(_) => 0.0,
+        Task::Pending(_) => {
+            (urgency_age(*task.entry()) * AGE_COEFFICIENT)
+                + (urgency_project(&task.project()) * PROJECT_COEFFICIENT)
+        }
+    }
 }
 
 fn urgency_age(entry: chrono::DateTime<chrono::Utc>) -> f64 {
