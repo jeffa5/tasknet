@@ -158,15 +158,22 @@ fn view_task_field(
     value: &str,
     f: impl FnOnce(String) -> Msg + Clone + 'static,
 ) -> Node<Msg> {
+    let also_f = f.clone();
     div![
         C!["flex", "flex-col", "p-2", "mb-2"],
         div![C!["font-bold"], name],
-        input![
-            C!["border"],
-            attrs! {
-                At::Value => value,
-            },
-            input_ev(Ev::Input, f)
+        div![
+            input![
+                C!["border", "mr-2"],
+                attrs! {
+                    At::Value => value,
+                },
+                input_ev(Ev::Input, f)
+            ],
+            IF!(!value.is_empty() => button![
+                mouse_ev(Ev::Click, |_| also_f(String::new())),
+                div![C!["text-red-600"], "X"]
+            ])
         ]
     ]
 }
