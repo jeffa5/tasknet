@@ -28,7 +28,7 @@ fn init(_url: Url, _orders: &mut impl Orders<Msg>) -> Model {
 #[derive(Debug)]
 struct Model {
     tasks: HashMap<uuid::Uuid, Task>,
-    selected_task: Option<uuid::Uuid>,
+    selected_task: Option<Task>,
     new_task_description: String,
 }
 
@@ -39,25 +39,30 @@ struct Model {
 enum Msg {
     SelectTask(Option<uuid::Uuid>),
     SelectedTaskDescriptionChanged(String),
+    SaveSelectedTask,
+    CreateTask,
 }
 
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::SelectTask(None) => {
-            log!("no selected task")
-        }
+        Msg::SelectTask(None) => model.selected_task = None,
         Msg::SelectTask(Some(uuid)) => {
-            log!("selecting", uuid)
+            let task = model.tasks[&uuid].clone();
+            model.selected_task = Some(task)
         }
         Msg::SelectedTaskDescriptionChanged(new_description) => {
-            log!(new_description);
-            match model.selected_task {
-                None => unreachable!(),
-                Some(ref uuid) => {
-                    let task = model.tasks.get_mut(uuid).unwrap();
-                    task.description = new_description;
-                }
+            if let Some(task) = &mut model.selected_task {
+                task.description = new_description;
             }
+        }
+        Msg::SaveSelectedTask => {
+            if let Some(task) = model.selected_task.take() {
+                model.tasks.insert(task.uuid, task);
+            }
+        }
+        Msg::CreateTask => {
+            let task = Task::new();
+            model.selected_task = Some(task)
         }
     }
     LocalStorage::insert(STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
@@ -68,27 +73,81 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
 // ------ ------
 
 fn view(model: &Model) -> Node<Msg> {
-    div![
-        C!["flex", "flex-col", "container", "mx-auto"],
-        view_titlebar(model),
-        view_filters(model),
-        view_tasks(&model.tasks),
-    ]
+    if let Some(ref task) = model.selected_task {
+        div![
+            C!["flex", "flex-col", "container", "mx-auto"],
+            view_titlebar(model),
+            view_selected_task(&task),
+        ]
+    } else {
+        div![
+            C!["flex", "flex-col", "container", "mx-auto"],
+            view_titlebar(model),
+            view_actions(model),
+            view_tasks(&model.tasks),
+        ]
+    }
 }
 
 fn view_titlebar(_model: &Model) -> Node<Msg> {
     div![
-        C!["flex", "flex-row", "justify-around", "mb-4"],
-        div![C!["bg-gray-50", "px-8"], "logo"],
-        p![C!["bg-gray-50", "px-8"], "Search"]
+        C!["flex", "flex-row", "justify-between", "mb-4"],
+        div![C!["bg-gray-50", "px-8", "mr-8"], "logo"],
+        p![C!["bg-gray-50", "w-full", "px-8", "mr-8"], "Search"],
+        nav![C!["bg-gray-50", "px-8"], "Nav", "Nav2"]
+    ]
+}
+
+fn view_selected_task(task: &Task) -> Node<Msg> {
+    div![
+        C!["flex", "flex-col"],
+        div![view_task_field(
+            &task.description,
+            Msg::SelectedTaskDescriptionChanged
+        )],
+        div![
+            C!["flex", "justify-end"],
+            button![
+                C!["mr-4", "bg-gray-100", "py-2", "px-4"],
+                mouse_ev(Ev::Click, |_| Msg::SelectTask(None)),
+                "Cancel"
+            ],
+            button![
+                C!["bg-gray-100", "py-2", "px-4"],
+                mouse_ev(Ev::Click, |_| Msg::SaveSelectedTask),
+                "Save"
+            ]
+        ]
+    ]
+}
+
+fn view_task_field(value: &str, f: impl FnOnce(String) -> Msg + Clone + 'static) -> Node<Msg> {
+    div![
+        C!["flex", "flex-col"],
+        div!["Description"],
+        input![
+            attrs! {
+                At::Value => value,
+            },
+            input_ev(Ev::Input, f)
+        ]
+    ]
+}
+
+fn view_actions(model: &Model) -> Node<Msg> {
+    div![
+        C!["flex", "flex-row", "justify-around"],
+        view_filters(model),
+        button![
+            C!["bg-gray-100", "py-2", "px-4"],
+            mouse_ev(Ev::Click, |_| Msg::CreateTask),
+            "Create"
+        ]
     ]
 }
 
 fn view_filters(_model: &Model) -> Node<Msg> {
-    div![
-        C!["flex", "flex-row", "justify-around", "bg-gray-50"],
-        "Filters"
-    ]
+    div![C!["bg-gray-50", "w-full", "mr-2"], "Filters"]
 }
 
 fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
@@ -124,7 +183,6 @@ fn view_task(task: &Task) -> Node<Msg> {
 }
 
 fn view_duration(duration: chrono::Duration) -> Node<Msg> {
-    log!(duration);
     let s = if duration.num_weeks() > 0 {
         format!("{}w", duration.num_weeks())
     } else if duration.num_days() > 0 {
