@@ -159,7 +159,13 @@ fn view_filters(_model: &Model) -> Node<Msg> {
 }
 
 fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
-    let tasks = tasks.iter().map(|(_, t)| view_task(t));
+    let mut tasks: Vec<_> = tasks
+        .iter()
+        .map(|(_, t)| (urgency::calculate(t), t))
+        .collect();
+    // reverse sort so we have most urgent at the top
+    tasks.sort_by(|(u1, _), (u2, _)| u2.partial_cmp(u1).unwrap());
+    let rendered_tasks = tasks.iter().map(|(u, t)| view_task(t, *u));
     div![
         C!["mt-8"],
         table![
@@ -170,14 +176,13 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
                 th![C!["border-l-2"], "Description"],
                 th![C!["border-l-2"], "Urgency"]
             ],
-            tasks
+            rendered_tasks
         ]
     ]
 }
 
-fn view_task(task: &Task) -> Node<Msg> {
+fn view_task(task: &Task, urgency: f64) -> Node<Msg> {
     let age = (chrono::offset::Utc::now()).signed_duration_since(task.entry);
-    let urgency = urgency::calculate(task);
     let id = task.uuid;
     tr![
         mouse_ev(Ev::Click, move |_event| {
