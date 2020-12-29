@@ -41,6 +41,7 @@ enum Msg {
     SelectedTaskDescriptionChanged(String),
     SaveSelectedTask,
     CreateTask,
+    DeleteSelectedTask,
 }
 
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -63,6 +64,11 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         Msg::CreateTask => {
             let task = Task::new();
             model.selected_task = Some(task)
+        }
+        Msg::DeleteSelectedTask => {
+            if let Some(task) = model.selected_task.take() {
+                model.tasks.remove(&task.uuid);
+            }
         }
     }
     LocalStorage::insert(STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
@@ -111,6 +117,11 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         )],
         div![
             C!["flex", "justify-end"],
+            button![
+                C!["mr-4", "bg-gray-100", "py-2", "px-4"],
+                mouse_ev(Ev::Click, |_| Msg::DeleteSelectedTask),
+                "Delete"
+            ],
             button![
                 C!["mr-4", "bg-gray-100", "py-2", "px-4"],
                 mouse_ev(Ev::Click, |_| Msg::SelectTask(None)),
