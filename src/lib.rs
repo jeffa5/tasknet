@@ -76,20 +76,20 @@ fn view(model: &Model) -> Node<Msg> {
     if let Some(ref task) = model.selected_task {
         div![
             C!["flex", "flex-col", "container", "mx-auto"],
-            view_titlebar(model),
+            view_titlebar(),
             view_selected_task(&task),
         ]
     } else {
         div![
             C!["flex", "flex-col", "container", "mx-auto"],
-            view_titlebar(model),
-            view_actions(model),
+            view_titlebar(),
+            view_actions(),
             view_tasks(&model.tasks),
         ]
     }
 }
 
-fn view_titlebar(_model: &Model) -> Node<Msg> {
+fn view_titlebar() -> Node<Msg> {
     div![
         C!["flex", "flex-row", "justify-between", "mb-4"],
         a![
@@ -139,10 +139,10 @@ fn view_task_field(value: &str, f: impl FnOnce(String) -> Msg + Clone + 'static)
     ]
 }
 
-fn view_actions(model: &Model) -> Node<Msg> {
+fn view_actions() -> Node<Msg> {
     div![
         C!["flex", "flex-row", "justify-around"],
-        view_filters(model),
+        view_filters(),
         button![
             C!["bg-gray-100", "py-2", "px-4"],
             mouse_ev(Ev::Click, |_| Msg::CreateTask),
@@ -151,7 +151,7 @@ fn view_actions(model: &Model) -> Node<Msg> {
     ]
 }
 
-fn view_filters(_model: &Model) -> Node<Msg> {
+fn view_filters() -> Node<Msg> {
     div![
         C!["bg-gray-50", "w-full", "py-2", "px-2", "mr-2"],
         "Filters"
@@ -163,6 +163,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
         .iter()
         .map(|(_, t)| (urgency::calculate(t), t))
         .collect();
+
     // reverse sort so we have most urgent at the top
     tasks.sort_by(|(u1, _), (u2, _)| u2.partial_cmp(u1).unwrap());
     let rendered_tasks = tasks.iter().map(|(u, t)| view_task(t, *u));
