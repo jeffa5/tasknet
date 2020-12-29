@@ -17,6 +17,7 @@ const AGE_COEFFICIENT: f64 = 2.0;
 
 // one week should be long enough for most tasks (for now)
 const AGE_MAX_DAYS: f64 = 7.0;
+const SECONDS_IN_A_DAY: f64 = 86400.0;
 
 // https://github.com/GothenburgBitFactory/taskwarrior/blob/16529694eb0b06ed54331775e10bec32a72d01b1/src/Task.cpp#L1790
 pub fn calculate(task: &Task) -> f64 {
@@ -25,9 +26,9 @@ pub fn calculate(task: &Task) -> f64 {
     urgency
 }
 
-fn urgency_age(age: chrono::DateTime<chrono::Utc>) -> f64 {
-    let days = age
-        .signed_duration_since(chrono::offset::Utc::now())
-        .num_days() as f64;
-    days / AGE_MAX_DAYS
+fn urgency_age(entry: chrono::DateTime<chrono::Utc>) -> f64 {
+    let days = (chrono::offset::Utc::now())
+        .signed_duration_since(entry)
+        .num_seconds() as f64;
+    days / (AGE_MAX_DAYS * SECONDS_IN_A_DAY)
 }

@@ -186,7 +186,10 @@ fn view_task(task: &Task) -> Node<Msg> {
         }),
         td![C!["text-center", "px-2"], view_duration(age)],
         td![C!["border-l-2", "text-left", "px-2"], &task.description],
-        td![C!["border-l-2", "text-center", "px-2"], urgency]
+        td![
+            C!["border-l-2", "text-center", "px-2"],
+            format!("{:.2}", urgency)
+        ]
     ]
 }
 
