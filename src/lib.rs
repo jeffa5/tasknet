@@ -92,9 +92,13 @@ fn view(model: &Model) -> Node<Msg> {
 fn view_titlebar(_model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-row", "justify-between", "mb-4"],
-        div![C!["bg-gray-50", "px-8", "mr-8"], "logo"],
-        p![C!["bg-gray-50", "w-full", "px-8", "mr-8"], "Search"],
-        nav![C!["bg-gray-50", "px-8"], "Nav", "Nav2"]
+        a![
+            C!["bg-gray-50", "py-2", "px-8", "mr-8"],
+            attrs! {At::Href => "/"},
+            "logo"
+        ],
+        p![C!["bg-gray-50", "w-full", "py-2", "px-8", "mr-8"], "Search"],
+        nav![C!["bg-gray-50", "py-2", "px-8"], "Nav", "Nav2"]
     ]
 }
 
@@ -123,9 +127,10 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
 
 fn view_task_field(value: &str, f: impl FnOnce(String) -> Msg + Clone + 'static) -> Node<Msg> {
     div![
-        C!["flex", "flex-col"],
-        div!["Description"],
+        C!["flex", "flex-col", "p-2", "mb-2"],
+        div![C!["font-bold"], "Description"],
         input![
+            C!["border"],
             attrs! {
                 At::Value => value,
             },
@@ -147,7 +152,10 @@ fn view_actions(model: &Model) -> Node<Msg> {
 }
 
 fn view_filters(_model: &Model) -> Node<Msg> {
-    div![C!["bg-gray-50", "w-full", "mr-2"], "Filters"]
+    div![
+        C!["bg-gray-50", "w-full", "py-2", "px-2", "mr-2"],
+        "Filters"
+    ]
 }
 
 fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
