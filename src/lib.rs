@@ -30,7 +30,7 @@ fn init(_url: Url, orders: &mut impl Orders<Msg>) -> Model {
 #[derive(Debug)]
 struct Model {
     tasks: HashMap<uuid::Uuid, Task>,
-    selected_task: Option<Task>,
+    selected_task: Option<uuid::Uuid>,
     new_task_description: String,
 }
 
@@ -42,7 +42,6 @@ enum Msg {
     SelectTask(Option<uuid::Uuid>),
     SelectedTaskDescriptionChanged(String),
     SelectedTaskProjectChanged(String),
-    SaveSelectedTask,
     CreateTask,
     DeleteSelectedTask,
     CompleteSelectedTask,
@@ -54,92 +53,79 @@ enum Msg {
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::SelectTask(None) => model.selected_task = None,
-        Msg::SelectTask(Some(uuid)) => {
-            let task = model.tasks[&uuid].clone();
-            model.selected_task = Some(task)
-        }
+        Msg::SelectTask(Some(uuid)) => model.selected_task = Some(uuid),
         Msg::SelectedTaskDescriptionChanged(new_description) => {
-            if let Some(task) = &mut model.selected_task {
-                task.set_description(new_description);
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    task.set_description(new_description);
+                }
             }
         }
         Msg::SelectedTaskProjectChanged(new_project) => {
             let new_project = new_project.trim();
-            if let Some(task) = &mut model.selected_task {
-                task.set_project(if new_project.is_empty() {
-                    Vec::new()
-                } else {
-                    new_project.split('.').map(|s| s.to_owned()).collect()
-                })
-            }
-        }
-        Msg::SaveSelectedTask => {
-            if let Some(task) = model.selected_task.take() {
-                model.tasks.insert(task.uuid(), task);
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    task.set_project(if new_project.is_empty() {
+                        Vec::new()
+                    } else {
+                        new_project.split('.').map(|s| s.to_owned()).collect()
+                    })
+                }
             }
         }
         Msg::CreateTask => {
             let task = Task::new();
-            model.selected_task = Some(task)
+            let id = task.uuid();
+            model.tasks.insert(task.uuid(), task);
+            model.selected_task = Some(id)
         }
         Msg::DeleteSelectedTask => {
-            if let Some(task) = model.selected_task.take() {
-                match task {
-                    Task::Pending(task) => {
-                        model
-                            .tasks
-                            .insert(task.uuid(), Task::Deleted(task.delete()));
-                    }
-                    Task::Completed(_task) => {}
-                    Task::Waiting(task) => {
-                        model
-                            .tasks
-                            .insert(task.uuid(), Task::Deleted(task.delete()));
-                    }
-                    Task::Deleted(task) => {
-                        model.tasks.remove(&task.uuid());
+            if let Some(uuid) = model.selected_task.take() {
+                if let Some(task) = model.tasks.remove(&uuid) {
+                    match task {
+                        Task::Pending(_) | Task::Completed(_) | Task::Waiting(_) => {
+                            model.tasks.insert(task.uuid(), task.delete());
+                        }
+                        Task::Deleted(task) => {
+                            model.tasks.remove(&task.uuid());
+                        }
                     }
                 }
             }
         }
         Msg::CompleteSelectedTask => {
-            if let Some(task) = model.selected_task.take() {
-                match task {
-                    Task::Pending(task) => {
-                        model
-                            .tasks
-                            .insert(task.uuid(), Task::Completed(task.complete()));
-                    }
-                    Task::Deleted(_) => {}
-                    Task::Completed(_) => {}
-                    Task::Waiting(_) => {}
+            if let Some(uuid) = model.selected_task.take() {
+                if let Some(task) = model.tasks.remove(&uuid) {
+                    model.tasks.insert(task.uuid(), task.complete());
                 }
             }
         }
         Msg::StartSelectedTask => {
-            if let Some(task) = model.selected_task.take() {
-                match task {
-                    Task::Pending(mut task) => {
-                        task.activate();
-                        model.tasks.insert(task.uuid(), Task::Pending(task));
-                    }
-                    Task::Deleted(_) => {}
-                    Task::Completed(_) => {}
-                    Task::Waiting(_) => {}
-                };
+            if let Some(uuid) = model.selected_task.take() {
+                if let Some(task) = model.tasks.get_mut(&uuid) {
+                    match task {
+                        Task::Pending(task) => {
+                            task.activate();
+                        }
+                        Task::Deleted(_) => {}
+                        Task::Completed(_) => {}
+                        Task::Waiting(_) => {}
+                    };
+                }
             }
         }
         Msg::StopSelectedTask => {
-            if let Some(task) = model.selected_task.take() {
-                match task {
-                    Task::Pending(mut task) => {
-                        task.deactivate();
-                        model.tasks.insert(task.uuid(), Task::Pending(task));
-                    }
-                    Task::Deleted(_) => {}
-                    Task::Completed(_) => {}
-                    Task::Waiting(_) => {}
-                };
+            if let Some(uuid) = model.selected_task.take() {
+                if let Some(task) = model.tasks.get_mut(&uuid) {
+                    match task {
+                        Task::Pending(task) => {
+                            task.deactivate();
+                        }
+                        Task::Deleted(_) => {}
+                        Task::Completed(_) => {}
+                        Task::Waiting(_) => {}
+                    };
+                }
             }
         }
         Msg::OnTick => {
@@ -154,12 +140,16 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
 // ------ ------
 
 fn view(model: &Model) -> Node<Msg> {
-    if let Some(ref task) = model.selected_task {
-        div![
-            C!["flex", "flex-col", "container", "mx-auto"],
-            view_titlebar(),
-            view_selected_task(&task),
-        ]
+    if let Some(uuid) = model.selected_task {
+        if let Some(task) = model.tasks.get(&uuid) {
+            div![
+                C!["flex", "flex-col", "container", "mx-auto"],
+                view_titlebar(),
+                view_selected_task(task),
+            ]
+        } else {
+            empty![]
+        }
     } else {
         div![
             C!["flex", "flex-col", "container", "mx-auto"],
@@ -253,13 +243,8 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
             button![
                 C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::SelectTask(None)),
-                "Cancel"
+                "Done"
             ],
-            button![
-                C!["bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
-                mouse_ev(Ev::Click, |_| Msg::SaveSelectedTask),
-                "Save"
-            ]
         ]
     ]
 }

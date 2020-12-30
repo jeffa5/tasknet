@@ -93,6 +93,24 @@ impl Task {
             Self::Waiting(t) => t.set_project(project),
         }
     }
+
+    pub fn complete(self) -> Self {
+        match self {
+            Self::Pending(t) => Self::Completed(t.complete()),
+            Self::Deleted(_) => self,
+            Self::Completed(_) => self,
+            Self::Waiting(_) => self,
+        }
+    }
+
+    pub fn delete(self) -> Self {
+        match self {
+            Self::Pending(t) => Self::Deleted(t.delete()),
+            Self::Deleted(_) => self,
+            Self::Completed(_) => self,
+            Self::Waiting(t) => Self::Deleted(t.delete()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
