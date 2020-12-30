@@ -286,6 +286,7 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         Task::Pending(task) => *task.start(),
         Task::Deleted(_) | Task::Completed(_) | Task::Waiting(_) => None,
     };
+    let urgency = urgency::calculate(task);
     div![
         C!["flex", "flex-col"],
         div![
@@ -298,6 +299,15 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
                 Task::Waiting(_) => "Waiting",
             }
         ],
+        IF!(urgency.is_some() => div![
+            C!["pl-2"],
+            span![C!["font-bold"], "Urgency: "],
+            if let Some(urgency) = urgency {
+                plain![format!("{:.2}", urgency)]
+            } else {
+                empty![]
+            }
+        ]),
         if let Some(start) = start {
             div![
                 C!["pl-2"],
