@@ -273,7 +273,7 @@ fn view_titlebar() -> Node<Msg> {
         a![
             C!["bg-gray-50", "py-2", "px-8", "mr-8", "hover:bg-gray-300"],
             attrs! {At::Href => "/"},
-            "logo"
+            "TaskNet"
         ],
         p![C!["bg-gray-50", "w-full", "py-2", "px-8", "mr-8"], "Search"],
         nav![C!["bg-gray-50", "py-2", "px-8"], "Nav", "Nav2"]
