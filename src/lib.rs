@@ -101,6 +101,7 @@ enum Msg {
     FiltersStatusToggleWaiting,
     FiltersProjectChanged(String),
     FiltersTagsChanged(String),
+    FiltersReset,
 }
 
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -238,6 +239,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 tags
             }
         }
+        Msg::FiltersReset => model.filters = Filters::default(),
     }
     LocalStorage::insert(STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
 }
@@ -352,30 +354,30 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
             IF!(is_pending =>
                 if start.is_some() {
                     button![
-                        C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
+                        C!["mr-4", "bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
                         mouse_ev(Ev::Click, |_| Msg::StopSelectedTask),
                         "Stop"
                     ]
                 } else {
                     button![
-                        C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
+                        C!["mr-4", "bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
                         mouse_ev(Ev::Click, |_| Msg::StartSelectedTask),
                         "Start"
                     ]
                 }
             ),
             IF!(is_pending => button![
-                C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
+                C!["mr-4", "bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::CompleteSelectedTask),
                 "Complete"
             ]),
             IF!(!matches!(task, Task::Completed(_)) => button![
-                C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
+                C!["mr-4", "bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::DeleteSelectedTask),
                 "Delete"
             ]),
             button![
-                C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
+                C!["mr-4", "bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::SelectTask(None)),
                 "Close"
             ],
@@ -413,7 +415,7 @@ fn view_actions(model: &Model) -> Node<Msg> {
         C!["flex", "flex-row", "justify-around"],
         view_filters(&model.filters),
         button![
-            C!["bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
+            C!["bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
             mouse_ev(Ev::Click, |_| Msg::CreateTask),
             "Create"
         ]
@@ -493,6 +495,14 @@ fn view_filters(filters: &Filters) -> Node<Msg> {
                     mouse_ev(Ev::Click, |_| Msg::FiltersTagsChanged(String::new())),
                     div![C!["text-red-600"], "X"]
                 ])
+            ]
+        ],
+        div![
+            C!["mr-8"],
+            button![
+                C!["bg-gray-200", "py-2", "px-4", "hover:bg-gray-300", "h-full"],
+                mouse_ev(Ev::Click, |_| Msg::FiltersReset),
+                "Reset Filters"
             ]
         ],
     ]
