@@ -357,35 +357,22 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         div![
             C!["flex", "justify-end"],
             IF!(is_pending =>
-                if start.is_some() {
-                    button![
-                        C!["mr-4", "bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
-                        mouse_ev(Ev::Click, |_| Msg::StopSelectedTask),
-                        "Stop"
-                    ]
-                } else {
-                    button![
-                        C!["mr-4", "bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
-                        mouse_ev(Ev::Click, |_| Msg::StartSelectedTask),
-                        "Start"
-                    ]
-                }
+                div![
+                    C!["mr-4"],
+                    if start.is_some() {
+                        view_button("Stop", Msg::StopSelectedTask)
+                    } else {
+                        view_button("Start", Msg::StartSelectedTask)
+                    }
+                ]
             ),
-            IF!(is_pending => button![
-                C!["mr-4", "bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
-                mouse_ev(Ev::Click, |_| Msg::CompleteSelectedTask),
-                "Complete"
-            ]),
-            IF!(!matches!(task, Task::Completed(_)) => button![
-                C!["mr-4", "bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
-                mouse_ev(Ev::Click, |_| Msg::DeleteSelectedTask),
-                "Delete"
-            ]),
-            button![
-                C!["mr-4", "bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
-                mouse_ev(Ev::Click, |_| Msg::SelectTask(None)),
-                "Close"
-            ],
+            IF!(is_pending =>
+                div![C!["mr-4"], view_button("Complete", Msg::CompleteSelectedTask)]
+            ),
+            IF!(!matches!(task, Task::Completed(_)) =>
+                div![C!["mr-4"], view_button("Delete", Msg::DeleteSelectedTask)]
+            ),
+            view_button("Close", Msg::SelectTask(None))
         ]
     ]
 }
@@ -415,15 +402,19 @@ fn view_text_input(
     ]
 }
 
+fn view_button(text: &str, msg: Msg) -> Node<Msg> {
+    button![
+        C!["bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
+        mouse_ev(Ev::Click, |_| msg),
+        text
+    ]
+}
+
 fn view_actions(model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-row", "justify-around"],
         view_filters(&model.filters),
-        button![
-            C!["bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
-            mouse_ev(Ev::Click, |_| Msg::CreateTask),
-            "Create"
-        ]
+        view_button("Create", Msg::CreateTask)
     ]
 }
 
@@ -477,14 +468,7 @@ fn view_filters(filters: &Filters) -> Node<Msg> {
             Msg::FiltersProjectChanged
         ),
         view_text_input("Tags", &filters.tags.join(" "), Msg::FiltersTagsChanged),
-        div![
-            C!["mr-8"],
-            button![
-                C!["bg-gray-200", "py-2", "px-4", "hover:bg-gray-300", "h-full"],
-                mouse_ev(Ev::Click, |_| Msg::FiltersReset),
-                "Reset Filters"
-            ]
-        ],
+        view_button("Reset Filters", Msg::FiltersReset),
     ]
 }
 
