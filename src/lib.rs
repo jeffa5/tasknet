@@ -43,6 +43,7 @@ struct Filters {
     status_deleted: bool,
     status_waiting: bool,
     project: Vec<String>,
+    tags: Vec<String>,
 }
 
 impl Default for Filters {
@@ -53,6 +54,7 @@ impl Default for Filters {
             status_deleted: false,
             status_waiting: false,
             project: Vec::new(),
+            tags: Vec::new(),
         }
     }
 }
@@ -69,7 +71,11 @@ impl Filters {
             .project()
             .join(".")
             .starts_with(&self.project.join("."));
-        filter_status && filter_project
+        let filter_tags = self
+            .tags
+            .iter()
+            .all(|tag| task.tags().iter().any(|t| t.starts_with(tag)));
+        filter_status && filter_project && filter_tags
     }
 }
 
@@ -94,6 +100,7 @@ enum Msg {
     FiltersStatusToggleCompleted,
     FiltersStatusToggleWaiting,
     FiltersProjectChanged(String),
+    FiltersTagsChanged(String),
 }
 
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -214,6 +221,21 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 Vec::new()
             } else {
                 new_project.split('.').map(|s| s.to_owned()).collect()
+            }
+        }
+        Msg::FiltersTagsChanged(new_tags) => {
+            let new_end = new_tags.ends_with(' ');
+            model.filters.tags = if new_tags.is_empty() {
+                Vec::new()
+            } else {
+                let mut tags: Vec<_> = new_tags
+                    .split_whitespace()
+                    .map(|s| s.trim().to_owned())
+                    .collect();
+                if new_end {
+                    tags.push(String::new())
+                }
+                tags
             }
         }
     }
@@ -429,7 +451,25 @@ fn view_filters(filters: &Filters) -> Node<Msg> {
                     div![C!["text-red-600"], "X"]
                 ])
             ]
-        ]
+        ],
+        div![
+            C!["flex", "flex-col", "mr-8"],
+            h2![C!["font-bold"], "Tags"],
+            div![
+                C!["flex", "flex-row"],
+                input![
+                    C!["border", "mr-2"],
+                    attrs! {
+                        At::Value => filters.tags.join(" "),
+                    },
+                    input_ev(Ev::Input, Msg::FiltersTagsChanged)
+                ],
+                IF!(!filters.tags.is_empty() => button![
+                    mouse_ev(Ev::Click, |_| Msg::FiltersTagsChanged(String::new())),
+                    div![C!["text-red-600"], "X"]
+                ])
+            ]
+        ],
     ]
 }
 
