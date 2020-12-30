@@ -305,7 +305,7 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
             button![
                 C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::SelectTask(None)),
-                "Done"
+                "Close"
             ],
         ]
     ]
