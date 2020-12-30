@@ -333,10 +333,11 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
                 th![C!["border-l-2"], "Description"],
                 th![C!["border-l-2"], "Urgency"]
             ],
-            tasks.into_iter().map(|t| {
+            tasks.into_iter().enumerate().map(|(i, t)| {
                 let id = t.uuid;
                 tr![
                     C![
+                        IF!(i % 2 == 0 => "bg-gray-50"),
                         "hover:bg-gray-200",
                         "cursor-pointer",
                         IF!(t.active => "bg-green-200"),
