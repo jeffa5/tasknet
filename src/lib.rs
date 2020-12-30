@@ -44,6 +44,7 @@ struct Filters {
     status_waiting: bool,
     project: Vec<String>,
     tags: Vec<String>,
+    description: String,
 }
 
 impl Default for Filters {
@@ -55,6 +56,7 @@ impl Default for Filters {
             status_waiting: false,
             project: Vec::new(),
             tags: Vec::new(),
+            description: String::new(),
         }
     }
 }
@@ -75,7 +77,8 @@ impl Filters {
             .tags
             .iter()
             .all(|tag| task.tags().iter().any(|t| t.starts_with(tag)));
-        filter_status && filter_project && filter_tags
+        let filter_description = task.description().contains(&self.description);
+        filter_status && filter_project && filter_tags && filter_description
     }
 }
 
@@ -101,6 +104,7 @@ enum Msg {
     FiltersStatusToggleWaiting,
     FiltersProjectChanged(String),
     FiltersTagsChanged(String),
+    FiltersDescriptionChanged(String),
     FiltersReset,
 }
 
@@ -238,6 +242,9 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 }
                 tags
             }
+        }
+        Msg::FiltersDescriptionChanged(new_description) => {
+            model.filters.description = new_description
         }
         Msg::FiltersReset => model.filters = Filters::default(),
     }
@@ -458,6 +465,24 @@ fn view_filters(filters: &Filters) -> Node<Msg> {
                 filters.status_waiting,
                 Msg::FiltersStatusToggleWaiting
             ),
+        ],
+        div![
+            C!["flex", "flex-col", "mr-8"],
+            h2![C!["font-bold"], "Description"],
+            div![
+                C!["flex", "flex-row"],
+                input![
+                    C!["border", "mr-2"],
+                    attrs! {
+                        At::Value => filters.description,
+                    },
+                    input_ev(Ev::Input, Msg::FiltersDescriptionChanged)
+                ],
+                IF!(!filters.description.is_empty() => button![
+                    mouse_ev(Ev::Click, |_| Msg::FiltersDescriptionChanged(String::new())),
+                    div![C!["text-red-600"], "X"]
+                ])
+            ]
         ],
         div![
             C!["flex", "flex-col", "mr-8"],
