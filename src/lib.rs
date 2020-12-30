@@ -548,9 +548,10 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                 let is_next = t.tags.contains(&"next".to_owned());
                 tr![
                     C![
-                        IF!(i % 2 == 0 => "bg-gray-50"),
+                        IF!(i % 2 == 0 => "bg-gray-100"),
                         "hover:bg-gray-200",
                         "cursor-pointer",
+                        "select-none",
                         IF!(t.active => "bg-green-200"),
                         IF!(t.active => "hover:bg-green-400"),
                         IF!(is_next => "bg-blue-200"),
