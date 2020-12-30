@@ -347,7 +347,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
                     td![C!["text-center", "px-2"], t.age.clone()],
                     IF!(show_status => td![C!["border-l-2","text-center", "px-2"], t.status]),
                     IF!(show_project => td![
-                        C!["border-l-2", "text-center", "px-2"],
+                        C!["border-l-2", "text-left", "px-2"],
                         if t.project.is_empty(){
                             empty![]
                         } else {
