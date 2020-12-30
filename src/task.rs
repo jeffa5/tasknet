@@ -232,6 +232,10 @@ impl PendingTask {
         self.modified();
         self.start = None
     }
+
+    pub fn due(&self) -> &Option<DateTime> {
+        &self.due
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -429,6 +433,10 @@ impl WaitingTask {
     pub fn set_project(&mut self, project: Vec<String>) {
         self.modified();
         self.project = project
+    }
+
+    pub fn due(&self) -> &Option<DateTime> {
+        &self.due
     }
 
     pub fn delete(mut self) -> DeletedTask {

@@ -2,6 +2,7 @@ use crate::task::Task;
 
 const NEXT_COEFFICIENT: f64 = 15.0;
 // urgency.due.coefficient                    12.0 # overdue or near due date
+const DUE_COEFFICIENT: f64 = 12.0;
 // urgency.blocking.coefficient                8.0 # blocking other tasks
 // urgency.uda.priority.H.coefficient          6.0 # high Priority
 // urgency.uda.priority.M.coefficient          3.9 # medium Priority
@@ -12,7 +13,7 @@ const AGE_COEFFICIENT: f64 = 2.0;
 // urgency.annotations.coefficient             1.0 # has annotations
 // urgency.tags.coefficient                    1.0 # has tags
 const PROJECT_COEFFICIENT: f64 = 1.0;
-// urgency.waiting.coefficient                 -3.0 # waiting task
+const WAITING_COEFFICIENT: f64 = -3.0;
 // urgency.blocked.coefficient                 -5.0 # blocked by other tasks
 
 // one week should be long enough for most tasks (for now)
@@ -24,11 +25,17 @@ pub fn calculate(task: &Task) -> Option<f64> {
     match task {
         Task::Deleted(_) => None,
         Task::Completed(_) => None,
-        Task::Waiting(_) => Some(0.0),
+        Task::Waiting(task) => Some(
+            WAITING_COEFFICIENT
+                + (urgency_age(*task.entry()) * AGE_COEFFICIENT)
+                + (urgency_project(&task.project()) * PROJECT_COEFFICIENT)
+                + (urgency_due(&task.due()) * DUE_COEFFICIENT),
+        ),
         Task::Pending(task) => Some(
             (urgency_age(*task.entry()) * AGE_COEFFICIENT)
                 + (urgency_project(&task.project()) * PROJECT_COEFFICIENT)
-                + (urgency_active(&task.start())) * ACTIVE_COEFFICIENT,
+                + (urgency_active(&task.start()) * ACTIVE_COEFFICIENT)
+                + (urgency_due(&task.due()) * DUE_COEFFICIENT),
         ),
     }
 }
@@ -51,6 +58,18 @@ fn urgency_project(project: &[String]) -> f64 {
 fn urgency_active(start: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
     if start.is_some() {
         1.0
+    } else {
+        0.0
+    }
+}
+
+fn urgency_due(due: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
+    if let Some(due) = due {
+        if due > &chrono::offset::Utc::now() {
+            1.0
+        } else {
+            0.0
+        }
     } else {
         0.0
     }
