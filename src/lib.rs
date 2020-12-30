@@ -359,7 +359,11 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
                     td![C!["border-l-2", "text-left", "px-2"], &t.description],
                     td![
                         C!["border-l-2", "text-center", "px-2"],
-                        format!("{:.2}", t.urgency)
+                        if let Some(urgency) = t.urgency {
+                            plain![format!("{:.2}", urgency)]
+                        } else {
+                            empty![]
+                        }
                     ]
                 ]
             })
@@ -374,7 +378,7 @@ struct ViewableTask {
     age: String,
     project: Vec<String>,
     description: String,
-    urgency: f64,
+    urgency: Option<f64>,
 }
 
 fn duration_string(duration: chrono::Duration) -> String {
