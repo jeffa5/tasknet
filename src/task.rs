@@ -102,14 +102,27 @@ pub struct PendingTask {
     entry: DateTime,
     description: String,
     // ---- optional ----
+    #[serde(skip_serializing_if = "Option::is_none")]
     start: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     due: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     annotations: Vec<Annotation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     project: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     priority: Option<Priority>,
+    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    #[serde(default)]
     depends: HashSet<uuid::Uuid>,
     #[serde(flatten)]
     udas: HashMap<String, UDA>,
@@ -211,13 +224,25 @@ pub struct DeletedTask {
     description: String,
     end: DateTime,
     // ---- optional ----
+    #[serde(skip_serializing_if = "Option::is_none")]
     due: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     annotations: Vec<Annotation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     project: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     priority: Option<Priority>,
+    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    #[serde(default)]
     depends: HashSet<uuid::Uuid>,
     #[serde(flatten)]
     udas: HashMap<String, UDA>,
@@ -265,13 +290,25 @@ pub struct CompletedTask {
     description: String,
     end: DateTime,
     // ---- optional ----
+    #[serde(skip_serializing_if = "Option::is_none")]
     due: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     annotations: Vec<Annotation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     project: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     priority: Option<Priority>,
+    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    #[serde(default)]
     depends: HashSet<uuid::Uuid>,
     #[serde(flatten)]
     udas: HashMap<String, UDA>,
@@ -319,13 +356,25 @@ pub struct WaitingTask {
     description: String,
     wait: DateTime,
     // ---- optional ----
+    #[serde(skip_serializing_if = "Option::is_none")]
     due: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     annotations: Vec<Annotation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     project: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     priority: Option<Priority>,
+    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    #[serde(default)]
     depends: HashSet<uuid::Uuid>,
     #[serde(flatten)]
     udas: HashMap<String, UDA>,
