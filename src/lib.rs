@@ -313,6 +313,11 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
                 empty![]
             }
         ]),
+        div![
+            C!["pl-2"],
+            span![C!["font-bold"], "Entry: "],
+            task.entry().to_string()
+        ],
         if let Some(start) = start {
             div![
                 C!["pl-2"],
