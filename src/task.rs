@@ -111,6 +111,24 @@ impl Task {
             Self::Waiting(t) => Self::Deleted(t.delete()),
         }
     }
+
+    pub fn tags(&self) -> &[String] {
+        match self {
+            Self::Pending(t) => t.tags(),
+            Self::Deleted(t) => t.tags(),
+            Self::Completed(t) => t.tags(),
+            Self::Waiting(t) => t.tags(),
+        }
+    }
+
+    pub fn set_tags(&mut self, tags: Vec<String>) {
+        match self {
+            Self::Pending(t) => t.set_tags(tags),
+            Self::Deleted(t) => t.set_tags(tags),
+            Self::Completed(t) => t.set_tags(tags),
+            Self::Waiting(t) => t.set_tags(tags),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -236,6 +254,15 @@ impl PendingTask {
     pub fn due(&self) -> &Option<DateTime> {
         &self.due
     }
+
+    pub fn tags(&self) -> &[String] {
+        &self.tags
+    }
+
+    pub fn set_tags(&mut self, tags: Vec<String>) {
+        self.modified();
+        self.tags = tags
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -302,6 +329,15 @@ impl DeletedTask {
         self.modified();
         self.project = project
     }
+
+    pub fn tags(&self) -> &[String] {
+        &self.tags
+    }
+
+    pub fn set_tags(&mut self, tags: Vec<String>) {
+        self.modified();
+        self.tags = tags
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -367,6 +403,15 @@ impl CompletedTask {
     pub fn set_project(&mut self, project: Vec<String>) {
         self.modified();
         self.project = project
+    }
+
+    pub fn tags(&self) -> &[String] {
+        &self.tags
+    }
+
+    pub fn set_tags(&mut self, tags: Vec<String>) {
+        self.modified();
+        self.tags = tags
     }
 }
 
@@ -457,6 +502,15 @@ impl WaitingTask {
             udas: self.udas,
             modified: self.modified,
         }
+    }
+
+    pub fn tags(&self) -> &[String] {
+        &self.tags
+    }
+
+    pub fn set_tags(&mut self, tags: Vec<String>) {
+        self.modified();
+        self.tags = tags
     }
 }
 

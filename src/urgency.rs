@@ -11,7 +11,7 @@ const DUE_COEFFICIENT: f64 = 12.0;
 const ACTIVE_COEFFICIENT: f64 = 4.0;
 const AGE_COEFFICIENT: f64 = 2.0;
 // urgency.annotations.coefficient             1.0 # has annotations
-// urgency.tags.coefficient                    1.0 # has tags
+const TAGS_COEFFICIENT: f64 = 1.0;
 const PROJECT_COEFFICIENT: f64 = 1.0;
 const WAITING_COEFFICIENT: f64 = -3.0;
 // urgency.blocked.coefficient                 -5.0 # blocked by other tasks
@@ -29,13 +29,15 @@ pub fn calculate(task: &Task) -> Option<f64> {
             WAITING_COEFFICIENT
                 + (urgency_age(*task.entry()) * AGE_COEFFICIENT)
                 + (urgency_project(&task.project()) * PROJECT_COEFFICIENT)
-                + (urgency_due(&task.due()) * DUE_COEFFICIENT),
+                + (urgency_due(&task.due()) * DUE_COEFFICIENT)
+                + (urgency_tags(&task.tags()) * TAGS_COEFFICIENT),
         ),
         Task::Pending(task) => Some(
             (urgency_age(*task.entry()) * AGE_COEFFICIENT)
                 + (urgency_project(&task.project()) * PROJECT_COEFFICIENT)
                 + (urgency_active(&task.start()) * ACTIVE_COEFFICIENT)
-                + (urgency_due(&task.due()) * DUE_COEFFICIENT),
+                + (urgency_due(&task.due()) * DUE_COEFFICIENT)
+                + (urgency_tags(&task.tags()) * TAGS_COEFFICIENT),
         ),
     }
 }
@@ -72,5 +74,13 @@ fn urgency_due(due: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
         }
     } else {
         0.0
+    }
+}
+
+fn urgency_tags(tags: &[String]) -> f64 {
+    if tags.is_empty() {
+        0.0
+    } else {
+        1.0
     }
 }

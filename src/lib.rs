@@ -82,6 +82,7 @@ enum Msg {
     SelectTask(Option<uuid::Uuid>),
     SelectedTaskDescriptionChanged(String),
     SelectedTaskProjectChanged(String),
+    SelectedTaskTagsChanged(String),
     CreateTask,
     DeleteSelectedTask,
     CompleteSelectedTask,
@@ -114,6 +115,25 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                         Vec::new()
                     } else {
                         new_project.split('.').map(|s| s.to_owned()).collect()
+                    })
+                }
+            }
+        }
+        Msg::SelectedTaskTagsChanged(new_tags) => {
+            let new_end = new_tags.ends_with(' ');
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    task.set_tags(if new_tags.is_empty() {
+                        Vec::new()
+                    } else {
+                        let mut tags: Vec<_> = new_tags
+                            .split_whitespace()
+                            .map(|s| s.trim().to_owned())
+                            .collect();
+                        if new_end {
+                            tags.push(String::new())
+                        }
+                        tags
                     })
                 }
             }
@@ -274,6 +294,11 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
             "Project",
             &task.project().join("."),
             Msg::SelectedTaskProjectChanged
+        )],
+        div![view_task_field(
+            "Tags",
+            &task.tags().join(" "),
+            Msg::SelectedTaskTagsChanged
         )],
         div![
             C!["flex", "justify-end"],
@@ -448,6 +473,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
             description: t.description().to_owned(),
             urgency: urgency::calculate(t),
             uuid: t.uuid(),
+            tags: t.tags().to_owned(),
             active: match t {
                 Task::Pending(t) => t.start().is_some(),
                 Task::Completed(_) | Task::Deleted(_) | Task::Waiting(_) => false,
@@ -464,6 +490,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
         .len()
         > 1;
     let show_project = tasks.iter().any(|t| !t.project.is_empty());
+    let show_tags = tasks.iter().any(|t| !t.tags.is_empty());
     div![
         C!["mt-8"],
         table![
@@ -473,6 +500,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                 th!["Age"],
                 IF!(show_status => th![C!["border-l-2"], "Status"]),
                 IF!(show_project => th![C!["border-l-2"], "Project"]),
+                IF!(show_tags => th![C!["border-l-2"], "Tags"]),
                 th![C!["border-l-2"], "Description"],
                 th![C!["border-l-2"], "Urgency"]
             ],
@@ -497,6 +525,14 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                             plain!(t.project.join("."))
                         }
                     ]),
+                    IF!(show_tags => td![
+                        C!["border-l-2", "text-left", "px-2"],
+                        if t.tags.is_empty(){
+                            empty![]
+                        } else {
+                            plain!(t.tags.join(" "))
+                        }
+                    ]),
                     td![C!["border-l-2", "text-left", "px-2"], &t.description],
                     td![
                         C!["border-l-2", "text-center", "px-2"],
@@ -519,6 +555,7 @@ struct ViewableTask {
     age: String,
     project: Vec<String>,
     description: String,
+    tags: Vec<String>,
     urgency: Option<f64>,
 }
 
