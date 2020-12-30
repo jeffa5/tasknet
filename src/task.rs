@@ -243,6 +243,7 @@ impl PendingTask {
 
     pub fn activate(&mut self) {
         self.modified();
+        self.tags.retain(|t| *t != "next");
         self.start = Some(now())
     }
 
