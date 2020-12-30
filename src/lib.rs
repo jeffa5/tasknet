@@ -296,10 +296,10 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
         .map(|(_, t)| ViewableTask {
             age: duration_string((chrono::offset::Utc::now()).signed_duration_since(*t.entry())),
             status: match t {
-                Task::Pending(_) => "pending".to_owned(),
-                Task::Completed(_) => "completed".to_owned(),
-                Task::Deleted(_) => "deleted".to_owned(),
-                Task::Waiting(_) => "waiting".to_owned(),
+                Task::Pending(_) => "Pending".to_owned(),
+                Task::Completed(_) => "Completed".to_owned(),
+                Task::Deleted(_) => "Deleted".to_owned(),
+                Task::Waiting(_) => "Waiting".to_owned(),
             },
             project: t.project().to_owned(),
             description: t.description().to_owned(),
