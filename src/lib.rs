@@ -339,21 +339,17 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         } else {
             empty![]
         },
-        div![view_text_input(
+        view_text_input(
             "Description",
             &task.description(),
             Msg::SelectedTaskDescriptionChanged
-        )],
-        div![view_text_input(
+        ),
+        view_text_input(
             "Project",
             &task.project().join("."),
             Msg::SelectedTaskProjectChanged
-        )],
-        div![view_text_input(
-            "Tags",
-            &task.tags().join(" "),
-            Msg::SelectedTaskTagsChanged
-        )],
+        ),
+        view_text_input("Tags", &task.tags().join(" "), Msg::SelectedTaskTagsChanged),
         div![
             C!["flex", "justify-end"],
             IF!(is_pending =>
@@ -387,17 +383,22 @@ fn view_text_input(
         C!["flex", "flex-col", "px-2", "mb-2"],
         div![C!["font-bold"], name],
         div![
+            C!["flex", "flex-row"],
             input![
-                C!["border", "mr-2"],
+                C!["flex-grow", "border", "mr-2"],
                 attrs! {
                     At::Value => value,
                 },
                 input_ev(Ev::Input, f)
             ],
-            IF!(!value.is_empty() => button![
-                mouse_ev(Ev::Click, |_| also_f(String::new())),
-                div![C!["text-red-600"], "X"]
-            ])
+            if value.is_empty() {
+                pre![" "]
+            } else {
+                button![
+                    mouse_ev(Ev::Click, |_| also_f(String::new())),
+                    div![C!["text-red-600"], "X"]
+                ]
+            }
         ]
     ]
 }
