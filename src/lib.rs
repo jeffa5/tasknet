@@ -20,6 +20,7 @@ fn init(_url: Url, orders: &mut impl Orders<Msg>) -> Model {
         tasks: LocalStorage::get(STORAGE_KEY).unwrap(),
         selected_task: None,
         new_task_description: String::new(),
+        filters: Filters::default(),
     }
 }
 
@@ -32,12 +33,51 @@ struct Model {
     tasks: HashMap<uuid::Uuid, Task>,
     selected_task: Option<uuid::Uuid>,
     new_task_description: String,
+    filters: Filters,
+}
+
+#[derive(Debug)]
+struct Filters {
+    status_pending: bool,
+    status_completed: bool,
+    status_deleted: bool,
+    status_waiting: bool,
+    project: Vec<String>,
+}
+
+impl Default for Filters {
+    fn default() -> Self {
+        Self {
+            status_pending: true,
+            status_completed: false,
+            status_deleted: false,
+            status_waiting: false,
+            project: Vec::new(),
+        }
+    }
+}
+
+impl Filters {
+    fn filter_task(&self, task: &Task) -> bool {
+        let filter_status = match task {
+            Task::Pending(_) => self.status_pending,
+            Task::Deleted(_) => self.status_deleted,
+            Task::Completed(_) => self.status_completed,
+            Task::Waiting(_) => self.status_waiting,
+        };
+        let filter_project = task
+            .project()
+            .join(".")
+            .starts_with(&self.project.join("."));
+        filter_status && filter_project
+    }
 }
 
 // ------ ------
 //    Update
 // ------ ------
 
+#[derive(Clone)]
 enum Msg {
     SelectTask(Option<uuid::Uuid>),
     SelectedTaskDescriptionChanged(String),
@@ -48,6 +88,11 @@ enum Msg {
     StartSelectedTask,
     StopSelectedTask,
     OnTick,
+    FiltersStatusTogglePending,
+    FiltersStatusToggleDeleted,
+    FiltersStatusToggleCompleted,
+    FiltersStatusToggleWaiting,
+    FiltersProjectChanged(String),
 }
 
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -131,6 +176,26 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         Msg::OnTick => {
             // just re-render to show update ages
         }
+        Msg::FiltersStatusTogglePending => {
+            model.filters.status_pending = !model.filters.status_pending
+        }
+        Msg::FiltersStatusToggleDeleted => {
+            model.filters.status_deleted = !model.filters.status_deleted
+        }
+        Msg::FiltersStatusToggleCompleted => {
+            model.filters.status_completed = !model.filters.status_completed
+        }
+        Msg::FiltersStatusToggleWaiting => {
+            model.filters.status_waiting = !model.filters.status_waiting
+        }
+        Msg::FiltersProjectChanged(new_project) => {
+            let new_project = new_project.trim();
+            model.filters.project = if new_project.is_empty() {
+                Vec::new()
+            } else {
+                new_project.split('.').map(|s| s.to_owned()).collect()
+            }
+        }
     }
     LocalStorage::insert(STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
 }
@@ -154,8 +219,8 @@ fn view(model: &Model) -> Node<Msg> {
         div![
             C!["flex", "flex-col", "container", "mx-auto"],
             view_titlebar(),
-            view_actions(),
-            view_tasks(&model.tasks),
+            view_actions(model),
+            view_tasks(&model.tasks, &model.filters),
         ]
     }
 }
@@ -271,10 +336,10 @@ fn view_task_field(
     ]
 }
 
-fn view_actions() -> Node<Msg> {
+fn view_actions(model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-row", "justify-around"],
-        view_filters(),
+        view_filters(&model.filters),
         button![
             C!["bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
             mouse_ev(Ev::Click, |_| Msg::CreateTask),
@@ -283,17 +348,95 @@ fn view_actions() -> Node<Msg> {
     ]
 }
 
-fn view_filters() -> Node<Msg> {
+fn view_filters(filters: &Filters) -> Node<Msg> {
     div![
-        C!["bg-gray-50", "w-full", "py-2", "px-2", "mr-2"],
-        "Filters"
+        C![
+            "flex",
+            "flex-row",
+            "bg-gray-50",
+            "w-full",
+            "py-2",
+            "px-2",
+            "mr-2"
+        ],
+        div![
+            C!["flex", "flex-col", "mr-8"],
+            h2![C!["font-bold"], "Status"],
+            view_checkbox(
+                "filters-status-pending",
+                "Pending",
+                filters.status_pending,
+                Msg::FiltersStatusTogglePending
+            ),
+            view_checkbox(
+                "filters-status-deleted",
+                "Deleted",
+                filters.status_deleted,
+                Msg::FiltersStatusToggleDeleted
+            ),
+            view_checkbox(
+                "filters-status-completed",
+                "Completed",
+                filters.status_completed,
+                Msg::FiltersStatusToggleCompleted
+            ),
+            view_checkbox(
+                "filters-status-waiting",
+                "Waiting",
+                filters.status_waiting,
+                Msg::FiltersStatusToggleWaiting
+            ),
+        ],
+        div![
+            C!["flex", "flex-col", "mr-8"],
+            h2![C!["font-bold"], "Project"],
+            div![
+                C!["flex", "flex-row"],
+                input![
+                    C!["border", "mr-2"],
+                    attrs! {
+                        At::Value => filters.project.join("."),
+                    },
+                    input_ev(Ev::Input, Msg::FiltersProjectChanged)
+                ],
+                IF!(!filters.project.join(".").is_empty() => button![
+                    mouse_ev(Ev::Click, |_| Msg::FiltersProjectChanged(String::new())),
+                    div![C!["text-red-600"], "X"]
+                ])
+            ]
+        ]
     ]
 }
 
-fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
+fn view_checkbox(name: &str, title: &str, checked: bool, msg: Msg) -> Node<Msg> {
+    let msg_clone = msg.clone();
+    div![
+        C!["flex", "flex-row"],
+        input![
+            C!["mr-2"],
+            attrs! {
+                At::Type => "checkbox",
+                At::Name => name,
+                At::Checked => if checked { AtValue::None } else { AtValue::Ignored },
+            },
+            mouse_ev(Ev::Click, |_| msg),
+        ],
+        label![
+            attrs! {
+                At::For => name,
+            },
+            mouse_ev(Ev::Click, |_| msg_clone),
+            title
+        ]
+    ]
+}
+
+fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg> {
     let mut tasks: Vec<_> = tasks
         .iter()
-        .map(|(_, t)| ViewableTask {
+        .map(|(_, t)| t)
+        .filter(|t| filters.filter_task(t))
+        .map(|t| ViewableTask {
             age: duration_string((chrono::offset::Utc::now()).signed_duration_since(*t.entry())),
             status: match t {
                 Task::Pending(_) => "Pending".to_owned(),
