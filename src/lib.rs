@@ -271,14 +271,12 @@ fn view(model: &Model) -> Node<Msg> {
 
 fn view_titlebar() -> Node<Msg> {
     div![
-        C!["flex", "flex-row", "justify-between", "mb-4"],
+        C!["flex", "justify-center", "mb-4"],
         a![
-            C!["bg-gray-50", "py-2", "px-8", "mr-8", "hover:bg-gray-300"],
+            C!["bg-gray-200", "py-2", "px-8", "mr-8", "hover:bg-gray-300",],
             attrs! {At::Href => "/"},
             "TaskNet"
         ],
-        p![C!["bg-gray-50", "w-full", "py-2", "px-8", "mr-8"], "Search"],
-        nav![C!["bg-gray-50", "py-2", "px-8"], "Nav", "Nav2"]
     ]
 }
 
