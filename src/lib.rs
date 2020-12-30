@@ -174,10 +174,7 @@ fn view_titlebar() -> Node<Msg> {
 }
 
 fn view_selected_task(task: &Task) -> Node<Msg> {
-    let is_pending = match task {
-        Task::Pending(_) => true,
-        _ => false,
-    };
+    let is_pending = matches!(task, Task::Pending(_));
     let start = match task {
         Task::Pending(task) => *task.start(),
         Task::Deleted(_) | Task::Completed(_) | Task::Waiting(_) => None,
