@@ -339,17 +339,17 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         } else {
             empty![]
         },
-        div![view_task_field(
+        div![view_text_input(
             "Description",
             &task.description(),
             Msg::SelectedTaskDescriptionChanged
         )],
-        div![view_task_field(
+        div![view_text_input(
             "Project",
             &task.project().join("."),
             Msg::SelectedTaskProjectChanged
         )],
-        div![view_task_field(
+        div![view_text_input(
             "Tags",
             &task.tags().join(" "),
             Msg::SelectedTaskTagsChanged
@@ -390,14 +390,14 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
     ]
 }
 
-fn view_task_field(
+fn view_text_input(
     name: &str,
     value: &str,
     f: impl FnOnce(String) -> Msg + Clone + 'static,
 ) -> Node<Msg> {
     let also_f = f.clone();
     div![
-        C!["flex", "flex-col", "p-2", "mb-2"],
+        C!["flex", "flex-col", "px-2", "mb-2"],
         div![C!["font-bold"], name],
         div![
             input![
@@ -466,60 +466,17 @@ fn view_filters(filters: &Filters) -> Node<Msg> {
                 Msg::FiltersStatusToggleWaiting
             ),
         ],
-        div![
-            C!["flex", "flex-col", "mr-8"],
-            h2![C!["font-bold"], "Description"],
-            div![
-                C!["flex", "flex-row"],
-                input![
-                    C!["border", "mr-2"],
-                    attrs! {
-                        At::Value => filters.description,
-                    },
-                    input_ev(Ev::Input, Msg::FiltersDescriptionChanged)
-                ],
-                IF!(!filters.description.is_empty() => button![
-                    mouse_ev(Ev::Click, |_| Msg::FiltersDescriptionChanged(String::new())),
-                    div![C!["text-red-600"], "X"]
-                ])
-            ]
-        ],
-        div![
-            C!["flex", "flex-col", "mr-8"],
-            h2![C!["font-bold"], "Project"],
-            div![
-                C!["flex", "flex-row"],
-                input![
-                    C!["border", "mr-2"],
-                    attrs! {
-                        At::Value => filters.project.join("."),
-                    },
-                    input_ev(Ev::Input, Msg::FiltersProjectChanged)
-                ],
-                IF!(!filters.project.join(".").is_empty() => button![
-                    mouse_ev(Ev::Click, |_| Msg::FiltersProjectChanged(String::new())),
-                    div![C!["text-red-600"], "X"]
-                ])
-            ]
-        ],
-        div![
-            C!["flex", "flex-col", "mr-8"],
-            h2![C!["font-bold"], "Tags"],
-            div![
-                C!["flex", "flex-row"],
-                input![
-                    C!["border", "mr-2"],
-                    attrs! {
-                        At::Value => filters.tags.join(" "),
-                    },
-                    input_ev(Ev::Input, Msg::FiltersTagsChanged)
-                ],
-                IF!(!filters.tags.is_empty() => button![
-                    mouse_ev(Ev::Click, |_| Msg::FiltersTagsChanged(String::new())),
-                    div![C!["text-red-600"], "X"]
-                ])
-            ]
-        ],
+        view_text_input(
+            "Description",
+            &filters.description,
+            Msg::FiltersDescriptionChanged
+        ),
+        view_text_input(
+            "Project",
+            &filters.project.join("."),
+            Msg::FiltersProjectChanged
+        ),
+        view_text_input("Tags", &filters.tags.join(" "), Msg::FiltersTagsChanged),
         div![
             C!["mr-8"],
             button![
