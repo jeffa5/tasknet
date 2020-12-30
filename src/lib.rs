@@ -235,7 +235,7 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
                 mouse_ev(Ev::Click, |_| Msg::CompleteSelectedTask),
                 "Complete"
             ]),
-            IF!(is_pending => button![
+            IF!(!matches!(task, Task::Completed(_)) => button![
                 C!["mr-4", "bg-gray-100", "py-2", "px-4", "hover:bg-gray-300"],
                 mouse_ev(Ev::Click, |_| Msg::DeleteSelectedTask),
                 "Delete"
