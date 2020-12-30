@@ -506,13 +506,16 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
             ],
             tasks.into_iter().enumerate().map(|(i, t)| {
                 let id = t.uuid;
+                let is_next = t.tags.contains(&"next".to_owned());
                 tr![
                     C![
                         IF!(i % 2 == 0 => "bg-gray-50"),
                         "hover:bg-gray-200",
                         "cursor-pointer",
                         IF!(t.active => "bg-green-200"),
-                        IF!(t.active =>  "hover:bg-green-400")
+                        IF!(t.active => "hover:bg-green-400"),
+                        IF!(is_next => "bg-blue-200"),
+                        IF!(is_next => "hover:bg-blue-400"),
                     ],
                     mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
                     td![C!["text-center", "px-2"], t.age.clone()],

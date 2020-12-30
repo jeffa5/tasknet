@@ -30,14 +30,16 @@ pub fn calculate(task: &Task) -> Option<f64> {
                 + (urgency_age(*task.entry()) * AGE_COEFFICIENT)
                 + (urgency_project(&task.project()) * PROJECT_COEFFICIENT)
                 + (urgency_due(&task.due()) * DUE_COEFFICIENT)
-                + (urgency_tags(&task.tags()) * TAGS_COEFFICIENT),
+                + (urgency_tags(&task.tags()) * TAGS_COEFFICIENT)
+                + (urgency_next(&task.tags()) * NEXT_COEFFICIENT),
         ),
         Task::Pending(task) => Some(
             (urgency_age(*task.entry()) * AGE_COEFFICIENT)
                 + (urgency_project(&task.project()) * PROJECT_COEFFICIENT)
                 + (urgency_active(&task.start()) * ACTIVE_COEFFICIENT)
                 + (urgency_due(&task.due()) * DUE_COEFFICIENT)
-                + (urgency_tags(&task.tags()) * TAGS_COEFFICIENT),
+                + (urgency_tags(&task.tags()) * TAGS_COEFFICIENT)
+                + (urgency_next(&task.tags()) * NEXT_COEFFICIENT),
         ),
     }
 }
@@ -82,5 +84,13 @@ fn urgency_tags(tags: &[String]) -> f64 {
         0.0
     } else {
         1.0
+    }
+}
+
+fn urgency_next(tags: &[String]) -> f64 {
+    if tags.contains(&"next".to_owned()) {
+        1.0
+    } else {
+        0.0
     }
 }
