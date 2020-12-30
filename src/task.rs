@@ -339,6 +339,10 @@ impl DeletedTask {
         self.modified();
         self.tags = tags
     }
+
+    pub fn end(&self) -> &DateTime {
+        &self.end
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -413,6 +417,10 @@ impl CompletedTask {
     pub fn set_tags(&mut self, tags: Vec<String>) {
         self.modified();
         self.tags = tags
+    }
+
+    pub fn end(&self) -> &DateTime {
+        &self.end
     }
 }
 
