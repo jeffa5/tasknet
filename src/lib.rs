@@ -280,7 +280,14 @@ fn view_titlebar() -> Node<Msg> {
     div![
         C!["flex", "justify-center", "mb-4"],
         a![
-            C!["bg-gray-200", "py-2", "px-8", "mr-8", "hover:bg-gray-300",],
+            C![
+                "bg-gray-200",
+                "py-2",
+                "px-4",
+                "mr-8",
+                "hover:bg-gray-300",
+                "text-lg"
+            ],
             attrs! {At::Href => "/"},
             "TaskNet"
         ],
