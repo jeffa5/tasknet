@@ -19,7 +19,6 @@ fn init(_url: Url, orders: &mut impl Orders<Msg>) -> Model {
     Model {
         tasks: LocalStorage::get(STORAGE_KEY).unwrap(),
         selected_task: None,
-        new_task_description: String::new(),
         filters: Filters::default(),
     }
 }
@@ -32,7 +31,6 @@ fn init(_url: Url, orders: &mut impl Orders<Msg>) -> Model {
 struct Model {
     tasks: HashMap<uuid::Uuid, Task>,
     selected_task: Option<uuid::Uuid>,
-    new_task_description: String,
     filters: Filters,
 }
 
