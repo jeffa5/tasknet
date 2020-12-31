@@ -222,6 +222,7 @@ impl PendingTask {
             entry: self.entry,
             description: self.description,
             end: now(),
+            start: self.start,
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
@@ -242,6 +243,7 @@ impl PendingTask {
             entry: self.entry,
             description: self.description,
             end: now(),
+            start: self.start,
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
@@ -301,6 +303,8 @@ pub struct DeletedTask {
     description: String,
     end: DateTime,
     // ---- optional ----
+    #[serde(skip_serializing_if = "Option::is_none")]
+    start: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     due: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -410,6 +414,8 @@ pub struct CompletedTask {
     end: DateTime,
     // ---- optional ----
     #[serde(skip_serializing_if = "Option::is_none")]
+    start: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     due: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<DateTime>,
@@ -518,6 +524,8 @@ pub struct WaitingTask {
     wait: DateTime,
     // ---- optional ----
     #[serde(skip_serializing_if = "Option::is_none")]
+    start: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     due: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<DateTime>,
@@ -585,6 +593,7 @@ impl WaitingTask {
             entry: self.entry,
             description: self.description,
             end: now(),
+            start: self.start,
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
