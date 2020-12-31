@@ -344,7 +344,7 @@ impl DeletedTask {
         &self.end
     }
 
-    pub fn undelete(self) -> PendingTask {
+    pub fn undelete(mut self) -> PendingTask {
         self.modified();
         PendingTask {
             uuid: self.uuid,
@@ -443,7 +443,7 @@ impl CompletedTask {
         &self.end
     }
 
-    pub fn uncomplete(self) -> PendingTask {
+    pub fn uncomplete(mut self) -> PendingTask {
         self.modified();
         PendingTask {
             uuid: self.uuid,
