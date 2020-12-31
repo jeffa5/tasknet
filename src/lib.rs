@@ -7,6 +7,7 @@ use std::convert::TryFrom;
 mod task;
 mod urgency;
 
+use task::Priority;
 use task::Task;
 
 // ------ ------
@@ -44,6 +45,10 @@ struct Filters {
     project: Vec<String>,
     tags: Vec<String>,
     description: String,
+    priority_none: bool,
+    priority_low: bool,
+    priority_medium: bool,
+    priority_high: bool,
 }
 
 impl Default for Filters {
@@ -56,6 +61,10 @@ impl Default for Filters {
             project: Vec::new(),
             tags: Vec::new(),
             description: String::new(),
+            priority_none: true,
+            priority_low: true,
+            priority_medium: true,
+            priority_high: true,
         }
     }
 }
@@ -77,7 +86,13 @@ impl Filters {
             .iter()
             .all(|tag| task.tags().iter().any(|t| t.starts_with(tag)));
         let filter_description = task.description().contains(&self.description);
-        filter_status && filter_project && filter_tags && filter_description
+        let filter_priority = match task.priority() {
+            None => self.priority_none,
+            Some(Priority::Low) => self.priority_low,
+            Some(Priority::Medium) => self.priority_medium,
+            Some(Priority::High) => self.priority_high,
+        };
+        filter_status && filter_project && filter_tags && filter_description && filter_priority
     }
 }
 
@@ -103,6 +118,10 @@ enum Msg {
     FiltersStatusToggleDeleted,
     FiltersStatusToggleCompleted,
     FiltersStatusToggleWaiting,
+    FiltersPriorityToggleNone,
+    FiltersPriorityToggleLow,
+    FiltersPriorityToggleMedium,
+    FiltersPriorityToggleHigh,
     FiltersProjectChanged(String),
     FiltersTagsChanged(String),
     FiltersDescriptionChanged(String),
@@ -154,7 +173,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         Msg::SelectedTaskPriorityChanged(new_priority) => {
             if let Some(uuid) = model.selected_task {
                 if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_priority(match task::Priority::try_from(new_priority) {
+                    task.set_priority(match Priority::try_from(new_priority) {
                         Ok(p) => Some(p),
                         Err(()) => None,
                     });
@@ -256,6 +275,16 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::FiltersStatusToggleWaiting => {
             model.filters.status_waiting = !model.filters.status_waiting
+        }
+        Msg::FiltersPriorityToggleNone => {
+            model.filters.priority_none = !model.filters.priority_none
+        }
+        Msg::FiltersPriorityToggleLow => model.filters.priority_low = !model.filters.priority_low,
+        Msg::FiltersPriorityToggleMedium => {
+            model.filters.priority_medium = !model.filters.priority_medium
+        }
+        Msg::FiltersPriorityToggleHigh => {
+            model.filters.priority_high = !model.filters.priority_high
         }
         Msg::FiltersProjectChanged(new_project) => {
             let new_project = new_project.trim();
@@ -415,7 +444,7 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
                     option![
                         attrs! {
                             At::Value => "L",
-                            At::Selected => if let Some(task::Priority::Low) = task.priority() {
+                            At::Selected => if let Some(Priority::Low) = task.priority() {
                                 AtValue::None
                             } else {
                                 AtValue::Ignored
@@ -426,7 +455,7 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
                     option![
                         attrs! {
                             At::Value => "M",
-                            At::Selected => if let Some(task::Priority::Medium)  = task.priority() {
+                            At::Selected => if let Some(Priority::Medium)  = task.priority() {
                                 AtValue::None
                             } else {
                                 AtValue::Ignored
@@ -437,7 +466,7 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
                     option![
                         attrs! {
                             At::Value => "H",
-                            At::Selected => if let Some(task::Priority::High) = task.priority() {
+                            At::Selected => if let Some(Priority::High) = task.priority() {
                                 AtValue::None
                             } else {
                                 AtValue::Ignored
@@ -565,6 +594,34 @@ fn view_filters(filters: &Filters) -> Node<Msg> {
                 "Waiting",
                 filters.status_waiting,
                 Msg::FiltersStatusToggleWaiting
+            ),
+        ],
+        div![
+            C!["flex", "flex-col", "mr-8"],
+            h2![C!["font-bold"], "Priority"],
+            view_checkbox(
+                "filters-priority-none",
+                "None",
+                filters.priority_none,
+                Msg::FiltersPriorityToggleNone
+            ),
+            view_checkbox(
+                "filters-priority-low",
+                "Low",
+                filters.priority_low,
+                Msg::FiltersPriorityToggleLow
+            ),
+            view_checkbox(
+                "filters-priority-medium",
+                "Medium",
+                filters.priority_medium,
+                Msg::FiltersPriorityToggleMedium
+            ),
+            view_checkbox(
+                "filters-priority-high",
+                "High",
+                filters.priority_high,
+                Msg::FiltersPriorityToggleHigh
             ),
         ],
         view_text_input(
@@ -697,9 +754,9 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                         C!["border-l-2", "text-center", "px-2"],
                         if let Some(p) = t.priority {
                             plain!(match p {
-                                task::Priority::Low => "L",
-                                task::Priority::Medium => "M",
-                                task::Priority::High => "H",
+                                Priority::Low => "L",
+                                Priority::Medium => "M",
+                                Priority::High => "H",
                             })
                         } else {
                             empty![]
@@ -728,7 +785,7 @@ struct ViewableTask {
     project: Vec<String>,
     description: String,
     tags: Vec<String>,
-    priority: Option<task::Priority>,
+    priority: Option<Priority>,
     urgency: Option<f64>,
 }
 
