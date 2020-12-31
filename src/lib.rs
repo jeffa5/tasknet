@@ -18,8 +18,13 @@ const STORAGE_KEY: &str = "tasknet-tasks";
 
 fn init(_url: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.stream(streams::interval(1000, || Msg::OnTick));
+    let tasks = match LocalStorage::get(STORAGE_KEY) {
+        Ok(tasks) => tasks,
+        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!(err),
+        Err(_) => HashMap::new(),
+    };
     Model {
-        tasks: LocalStorage::get(STORAGE_KEY).unwrap(),
+        tasks,
         selected_task: None,
         filters: Filters::default(),
     }
