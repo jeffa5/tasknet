@@ -71,22 +71,28 @@ fn urgency_active(start: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
 
 fn urgency_due(due: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
     if let Some(due) = due {
-        if due > &chrono::offset::Utc::now() {
-            DUE_COEFFICIENT
+        let days_overdue = (chrono::offset::Utc::now())
+            .signed_duration_since(*due)
+            .num_days();
+        (if days_overdue > 7 {
+            1.0
+        } else if days_overdue >= -14 {
+            ((days_overdue as f64 + 14.0) * 0.8 / 21.0) + 0.2
         } else {
-            0.0
-        }
+            0.2
+        }) * DUE_COEFFICIENT
     } else {
         0.0
     }
 }
 
 fn urgency_tags(tags: &[String]) -> f64 {
-    if tags.is_empty() {
-        0.0
-    } else {
-        TAGS_COEFFICIENT
-    }
+    (match tags.len() {
+        0 => 0.0,
+        1 => 0.8,
+        2 => 0.9,
+        _ => 1.0,
+    }) * TAGS_COEFFICIENT
 }
 
 fn urgency_next(tags: &[String]) -> f64 {
