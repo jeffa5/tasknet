@@ -343,6 +343,26 @@ impl DeletedTask {
     pub fn end(&self) -> &DateTime {
         &self.end
     }
+
+    pub fn undelete(self) -> PendingTask {
+        self.modified();
+        PendingTask {
+            uuid: self.uuid,
+            entry: self.entry,
+            description: self.description,
+            start: None,
+            due: self.due,
+            until: self.until,
+            scheduled: self.scheduled,
+            annotations: self.annotations,
+            project: self.project,
+            tags: self.tags,
+            priority: self.priority,
+            depends: self.depends,
+            udas: self.udas,
+            modified: self.modified,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -421,6 +441,26 @@ impl CompletedTask {
 
     pub fn end(&self) -> &DateTime {
         &self.end
+    }
+
+    pub fn uncomplete(self) -> PendingTask {
+        self.modified();
+        PendingTask {
+            uuid: self.uuid,
+            entry: self.entry,
+            description: self.description,
+            start: None,
+            due: self.due,
+            until: self.until,
+            scheduled: self.scheduled,
+            annotations: self.annotations,
+            project: self.project,
+            tags: self.tags,
+            priority: self.priority,
+            depends: self.depends,
+            udas: self.udas,
+            modified: self.modified,
+        }
     }
 }
 

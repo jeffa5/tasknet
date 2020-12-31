@@ -97,6 +97,7 @@ enum Msg {
     CompleteSelectedTask,
     StartSelectedTask,
     StopSelectedTask,
+    MoveSelectedTaskToPending,
     OnTick,
     FiltersStatusTogglePending,
     FiltersStatusToggleDeleted,
@@ -201,6 +202,27 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                         Task::Deleted(_) => {}
                         Task::Completed(_) => {}
                         Task::Waiting(_) => {}
+                    };
+                }
+            }
+        }
+        Msg::MoveSelectedTaskToPending => {
+            if let Some(uuid) = model.selected_task.take() {
+                if let Some(task) = model.tasks.remove(&uuid) {
+                    match task {
+                        Task::Pending(_) | Task::Waiting(_) => {
+                            model.tasks.insert(task.uuid(), task);
+                        }
+                        Task::Deleted(task) => {
+                            model
+                                .tasks
+                                .insert(task.uuid(), Task::Pending(task.undelete()));
+                        }
+                        Task::Completed(task) => {
+                            model
+                                .tasks
+                                .insert(task.uuid(), Task::Pending(task.uncomplete()));
+                        }
                     };
                 }
             }
@@ -372,8 +394,17 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
             IF!(is_pending =>
                 div![C!["mr-4"], view_button("Complete", Msg::CompleteSelectedTask)]
             ),
-            IF!(!matches!(task, Task::Completed(_)) =>
+            IF!(matches!(task, Task::Pending(_)|Task::Waiting(_)) =>
                 div![C!["mr-4"], view_button("Delete", Msg::DeleteSelectedTask)]
+            ),
+            IF!(matches!(task, Task::Deleted(_)) =>
+                div![C!["mr-4"], view_button("Permanently delete", Msg::DeleteSelectedTask)]
+            ),
+            IF!(matches!(task, Task::Deleted(_)) =>
+                div![C!["mr-4"], view_button("Undelete", Msg::MoveSelectedTaskToPending)]
+            ),
+            IF!(matches!(task, Task::Completed(_)) =>
+                div![C!["mr-4"], view_button("Uncomplete", Msg::MoveSelectedTaskToPending)]
             ),
             view_button("Close", Msg::SelectTask(None))
         ]
