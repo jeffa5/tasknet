@@ -2,6 +2,7 @@
 use seed::{prelude::*, *};
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::convert::TryFrom;
 
 mod task;
 mod urgency;
@@ -90,6 +91,7 @@ enum Msg {
     SelectedTaskDescriptionChanged(String),
     SelectedTaskProjectChanged(String),
     SelectedTaskTagsChanged(String),
+    SelectedTaskPriorityChanged(String),
     CreateTask,
     DeleteSelectedTask,
     CompleteSelectedTask,
@@ -146,6 +148,16 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                         }
                         tags
                     })
+                }
+            }
+        }
+        Msg::SelectedTaskPriorityChanged(new_priority) => {
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    task.set_priority(match task::Priority::try_from(new_priority) {
+                        Ok(p) => Some(p),
+                        Err(()) => None,
+                    });
                 }
             }
         }
@@ -383,6 +395,61 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         ),
         view_text_input("Tags", &task.tags().join(" "), Msg::SelectedTaskTagsChanged),
         div![
+            C!["flex", "flex-col", "px-2", "mb-2"],
+            div![C!["font-bold"], "Priority"],
+            div![
+                C!["flex", "flex-row"],
+                select![
+                    C!["border", "mr-2"],
+                    option![
+                        attrs! {
+                            At::Value => "",
+                            At::Selected => if task.priority().is_none() {
+                                AtValue::None
+                            } else {
+                                AtValue::Ignored
+                            }
+                        },
+                        "None"
+                    ],
+                    option![
+                        attrs! {
+                            At::Value => "L",
+                            At::Selected => if let Some(task::Priority::Low) = task.priority() {
+                                AtValue::None
+                            } else {
+                                AtValue::Ignored
+                            }
+                        },
+                        "Low"
+                    ],
+                    option![
+                        attrs! {
+                            At::Value => "M",
+                            At::Selected => if let Some(task::Priority::Medium)  = task.priority() {
+                                AtValue::None
+                            } else {
+                                AtValue::Ignored
+                            }
+                        },
+                        "Medium"
+                    ],
+                    option![
+                        attrs! {
+                            At::Value => "H",
+                            At::Selected => if let Some(task::Priority::High) = task.priority() {
+                                AtValue::None
+                            } else {
+                                AtValue::Ignored
+                            }
+                        },
+                        "High"
+                    ],
+                    input_ev(Ev::Input, Msg::SelectedTaskPriorityChanged)
+                ],
+            ]
+        ],
+        div![
             C!["flex", "justify-end"],
             IF!(is_pending =>
                 div![
@@ -556,6 +623,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
             urgency: urgency::calculate(t),
             uuid: t.uuid(),
             tags: t.tags().to_owned(),
+            priority: t.priority().to_owned(),
             active: match t {
                 Task::Pending(t) => t.start().is_some(),
                 Task::Completed(_) | Task::Deleted(_) | Task::Waiting(_) => false,
@@ -573,6 +641,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
         > 1;
     let show_project = tasks.iter().any(|t| !t.project.is_empty());
     let show_tags = tasks.iter().any(|t| !t.tags.is_empty());
+    let show_priority = tasks.iter().any(|t| t.priority.is_some());
     div![
         C!["mt-8"],
         table![
@@ -583,6 +652,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                 IF!(show_status => th![C!["border-l-2"], "Status"]),
                 IF!(show_project => th![C!["border-l-2"], "Project"]),
                 IF!(show_tags => th![C!["border-l-2"], "Tags"]),
+                IF!(show_priority => th![C!["border-l-2"], "Priority"]),
                 th![C!["border-l-2"], "Description"],
                 th![C!["border-l-2"], "Urgency"]
             ],
@@ -623,6 +693,18 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                             plain!(t.tags.join(" "))
                         }
                     ]),
+                    IF!(show_priority => td![
+                        C!["border-l-2", "text-center", "px-2"],
+                        if let Some(p) = t.priority {
+                            plain!(match p {
+                                task::Priority::Low => "L",
+                                task::Priority::Medium => "M",
+                                task::Priority::High => "H",
+                            })
+                        } else {
+                            empty![]
+                        }
+                    ]),
                     td![C!["border-l-2", "text-left", "px-2"], &t.description],
                     td![
                         C!["border-l-2", "text-center", "px-2"],
@@ -646,6 +728,7 @@ struct ViewableTask {
     project: Vec<String>,
     description: String,
     tags: Vec<String>,
+    priority: Option<task::Priority>,
     urgency: Option<f64>,
 }
 

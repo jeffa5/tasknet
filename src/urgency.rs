@@ -1,12 +1,13 @@
+use crate::task::Priority;
 use crate::task::Task;
 
 const NEXT_COEFFICIENT: f64 = 15.0;
 // urgency.due.coefficient                    12.0 # overdue or near due date
 const DUE_COEFFICIENT: f64 = 12.0;
 // urgency.blocking.coefficient                8.0 # blocking other tasks
-// urgency.uda.priority.H.coefficient          6.0 # high Priority
-// urgency.uda.priority.M.coefficient          3.9 # medium Priority
-// urgency.uda.priority.L.coefficient          1.8 # low Priority
+const HIGH_PRIORITY_COEFFICIENT: f64 = 6.0;
+const MEDIUM_PRIORITY_COEFFICIENT: f64 = 3.9;
+const LOW_PRIORITY_COEFFICIENT: f64 = 1.8;
 // urgency.scheduled.coefficient               5.0 # scheduled tasks
 const ACTIVE_COEFFICIENT: f64 = 4.0;
 const AGE_COEFFICIENT: f64 = 2.0;
@@ -27,19 +28,21 @@ pub fn calculate(task: &Task) -> Option<f64> {
         Task::Completed(_) => None,
         Task::Waiting(task) => Some(
             WAITING_COEFFICIENT
-                + (urgency_age(*task.entry()) * AGE_COEFFICIENT)
-                + (urgency_project(&task.project()) * PROJECT_COEFFICIENT)
-                + (urgency_due(&task.due()) * DUE_COEFFICIENT)
-                + (urgency_tags(&task.tags()) * TAGS_COEFFICIENT)
-                + (urgency_next(&task.tags()) * NEXT_COEFFICIENT),
+                + urgency_age(*task.entry())
+                + urgency_project(task.project())
+                + urgency_due(task.due())
+                + urgency_tags(task.tags())
+                + urgency_next(task.tags())
+                + urgency_priority(task.priority()),
         ),
         Task::Pending(task) => Some(
-            (urgency_age(*task.entry()) * AGE_COEFFICIENT)
-                + (urgency_project(&task.project()) * PROJECT_COEFFICIENT)
-                + (urgency_active(&task.start()) * ACTIVE_COEFFICIENT)
-                + (urgency_due(&task.due()) * DUE_COEFFICIENT)
-                + (urgency_tags(&task.tags()) * TAGS_COEFFICIENT)
-                + (urgency_next(&task.tags()) * NEXT_COEFFICIENT),
+            urgency_age(*task.entry())
+                + urgency_project(task.project())
+                + urgency_active(task.start())
+                + urgency_due(task.due())
+                + urgency_tags(task.tags())
+                + urgency_next(task.tags())
+                + urgency_priority(task.priority()),
         ),
     }
 }
@@ -48,20 +51,20 @@ fn urgency_age(entry: chrono::DateTime<chrono::Utc>) -> f64 {
     let days = (chrono::offset::Utc::now())
         .signed_duration_since(entry)
         .num_seconds() as f64;
-    days / (AGE_MAX_DAYS * SECONDS_IN_A_DAY)
+    (days / (AGE_MAX_DAYS * SECONDS_IN_A_DAY)) * AGE_COEFFICIENT
 }
 
 fn urgency_project(project: &[String]) -> f64 {
     if project.is_empty() {
         0.0
     } else {
-        1.0
+        PROJECT_COEFFICIENT
     }
 }
 
 fn urgency_active(start: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
     if start.is_some() {
-        1.0
+        ACTIVE_COEFFICIENT
     } else {
         0.0
     }
@@ -70,7 +73,7 @@ fn urgency_active(start: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
 fn urgency_due(due: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
     if let Some(due) = due {
         if due > &chrono::offset::Utc::now() {
-            1.0
+            DUE_COEFFICIENT
         } else {
             0.0
         }
@@ -83,14 +86,23 @@ fn urgency_tags(tags: &[String]) -> f64 {
     if tags.is_empty() {
         0.0
     } else {
-        1.0
+        TAGS_COEFFICIENT
     }
 }
 
 fn urgency_next(tags: &[String]) -> f64 {
     if tags.contains(&"next".to_owned()) {
-        1.0
+        NEXT_COEFFICIENT
     } else {
         0.0
+    }
+}
+
+fn urgency_priority(priority: &Option<Priority>) -> f64 {
+    match priority {
+        None => 0.0,
+        Some(Priority::Low) => LOW_PRIORITY_COEFFICIENT,
+        Some(Priority::Medium) => MEDIUM_PRIORITY_COEFFICIENT,
+        Some(Priority::High) => HIGH_PRIORITY_COEFFICIENT,
     }
 }

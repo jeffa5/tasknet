@@ -10,7 +10,7 @@ pub fn now() -> DateTime {
 
 type DateTime = chrono::DateTime<chrono::Utc>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "lowercase")]
 pub enum Task {
     Pending(PendingTask),
@@ -129,9 +129,27 @@ impl Task {
             Self::Waiting(t) => t.set_tags(tags),
         }
     }
+
+    pub fn priority(&self) -> &Option<Priority> {
+        match self {
+            Self::Pending(t) => t.priority(),
+            Self::Deleted(t) => t.priority(),
+            Self::Completed(t) => t.priority(),
+            Self::Waiting(t) => t.priority(),
+        }
+    }
+
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        match self {
+            Self::Pending(t) => t.set_priority(priority),
+            Self::Deleted(t) => t.set_priority(priority),
+            Self::Completed(t) => t.set_priority(priority),
+            Self::Waiting(t) => t.set_priority(priority),
+        }
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PendingTask {
     // ---- required ----
     uuid: uuid::Uuid,
@@ -264,9 +282,18 @@ impl PendingTask {
         self.modified();
         self.tags = tags
     }
+
+    pub fn priority(&self) -> &Option<Priority> {
+        &self.priority
+    }
+
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        self.modified();
+        self.priority = priority
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeletedTask {
     // ---- required ----
     uuid: uuid::Uuid,
@@ -340,6 +367,15 @@ impl DeletedTask {
         self.tags = tags
     }
 
+    pub fn priority(&self) -> &Option<Priority> {
+        &self.priority
+    }
+
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        self.modified();
+        self.priority = priority
+    }
+
     pub fn end(&self) -> &DateTime {
         &self.end
     }
@@ -365,7 +401,7 @@ impl DeletedTask {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompletedTask {
     // ---- required ----
     uuid: uuid::Uuid,
@@ -439,6 +475,15 @@ impl CompletedTask {
         self.tags = tags
     }
 
+    pub fn priority(&self) -> &Option<Priority> {
+        &self.priority
+    }
+
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        self.modified();
+        self.priority = priority
+    }
+
     pub fn end(&self) -> &DateTime {
         &self.end
     }
@@ -464,7 +509,7 @@ impl CompletedTask {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WaitingTask {
     // ---- required ----
     uuid: uuid::Uuid,
@@ -561,10 +606,18 @@ impl WaitingTask {
         self.modified();
         self.tags = tags
     }
+
+    pub fn priority(&self) -> &Option<Priority> {
+        &self.priority
+    }
+
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        self.modified();
+        self.priority = priority
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Priority {
     #[serde(rename(serialize = "H", deserialize = "H"))]
     High,
@@ -574,17 +627,45 @@ pub enum Priority {
     Low,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl std::convert::TryFrom<String> for Priority {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.trim().to_lowercase().as_ref() {
+            "h" => Ok(Priority::High),
+            "m" => Ok(Priority::Medium),
+            "l" => Ok(Priority::Low),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Annotation {
     entry: DateTime,
     description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum UDA {
     Duration(String), // TODO: use custom newtype struct
     String(String),
     Number(f64),
     Date(DateTime),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_serde_priority() {
+        let mut task = Task::new();
+        task.set_priority(Some(Priority::Medium));
+        let s = serde_json::to_string(&task).unwrap();
+        let t = serde_json::from_str(&s).unwrap();
+        assert_eq!(task, t)
+    }
 }

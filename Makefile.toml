@@ -8,9 +8,7 @@ skip_core_tasks = true
 
 [tasks.watch]
 description = "Watch files and recompile the project on change"
-run_task = [
-    { name = "build" },
-]
+dependencies = ["verify", "build"]
 watch = true
 
 [tasks.serve]
@@ -21,7 +19,7 @@ args = ["--port", "${PORT}"]
 
 [tasks.verify]
 description = "Format, lint with Clippy and run tests"
-dependencies = ["fmt", "clippy", "test_h_firefox"]
+dependencies = ["fmt", "clippy", "test", "test_browser_headless_firefox"]
 
 # ---- BUILD ----
 
@@ -54,18 +52,23 @@ args = ["fmt"]
 
 # ---- TEST ----
 
-[tasks.test_h]
-description = "Run headless tests. Ex: 'cargo make test_h firefox'. Test envs: [chrome, firefox, safari]"
-extend = "test"
+[tasks.test_browser_headless]
+description = "Run headless tests for browsers. Ex: 'cargo make test_browser_headless firefox'. Test envs: [chrome, firefox, safari]"
+extend = "test_browser"
 args = ["test", "--headless", "--${@}"]
 
-[tasks.test_h_firefox]
+[tasks.test_browser_headless_firefox]
 description = "Run headless tests with Firefox."
-extend = "test"
+extend = "test_browser"
 args = ["test", "--headless", "--firefox"]
 
-[tasks.test]
-description = "Run tests. Ex: 'cargo make test firefox'. Test envs: [chrome, firefox, safari]"
+[tasks.test_browser]
+description = "Run tests for browsers. Ex: 'cargo make test_browser firefox'. Test envs: [chrome, firefox, safari]"
 install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
 command = "wasm-pack"
 args = ["test", "--${@}"]
+
+[tasks.test]
+description = "Run tests"
+command = "cargo"
+args = ["test"]
