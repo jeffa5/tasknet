@@ -21,6 +21,17 @@ args = ["--port", "${PORT}"]
 description = "Format, lint with Clippy and run tests"
 dependencies = ["fmt", "clippy", "test", "test_browser_headless_firefox"]
 
+[tasks.clean]
+dependencies = ["clean_target", "clean_pkg"]
+
+[tasks.clean_target]
+command = "cargo"
+args = ["clean"]
+
+[tasks.clean_pkg]
+command = "cargo"
+args = ["clean", "--target-dir", "pkg"]
+
 # ---- BUILD ----
 
 [tasks.build]
