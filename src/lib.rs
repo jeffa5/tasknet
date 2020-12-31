@@ -420,7 +420,7 @@ fn view_button(text: &str, msg: Msg) -> Node<Msg> {
 
 fn view_actions(model: &Model) -> Node<Msg> {
     div![
-        C!["flex", "flex-row", "justify-around"],
+        C!["flex", "flex-row", "flex-wrap", "justify-around"],
         view_filters(&model.filters),
         view_button("Create", Msg::CreateTask)
     ]
@@ -431,11 +431,12 @@ fn view_filters(filters: &Filters) -> Node<Msg> {
         C![
             "flex",
             "flex-row",
+            "flex-wrap",
             "bg-gray-50",
-            "w-full",
             "py-2",
             "px-2",
-            "mr-2"
+            "mx-2",
+            "mb-2"
         ],
         div![
             C!["flex", "flex-col", "mr-8"],
