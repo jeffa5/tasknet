@@ -13,16 +13,16 @@ type DateTime = chrono::DateTime<chrono::Utc>;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "lowercase")]
 pub enum Task {
-    Pending(PendingTask),
-    Deleted(DeletedTask),
-    Completed(CompletedTask),
-    Waiting(WaitingTask),
-    // Recurring(RecurringTask), // TODO
+    Pending(Pending),
+    Deleted(Deleted),
+    Completed(Completed),
+    Waiting(Waiting),
+    // Recurring(Recurring), // TODO
 }
 
 impl Task {
     pub fn new() -> Self {
-        Task::Pending(PendingTask {
+        Task::Pending(Pending {
             uuid: uuid::Uuid::new_v4(),
             entry: chrono::offset::Utc::now(),
             description: String::new(),
@@ -94,6 +94,15 @@ impl Task {
         }
     }
 
+    pub fn due(&self) -> &Option<DateTime> {
+        match self {
+            Self::Pending(t) => t.due(),
+            Self::Deleted(t) => t.due(),
+            Self::Completed(t) => t.due(),
+            Self::Waiting(t) => t.due(),
+        }
+    }
+
     pub fn complete(self) -> Self {
         match self {
             Self::Pending(t) => Self::Completed(t.complete()),
@@ -150,7 +159,7 @@ impl Task {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct PendingTask {
+pub struct Pending {
     // ---- required ----
     uuid: uuid::Uuid,
     entry: DateTime,
@@ -184,7 +193,7 @@ pub struct PendingTask {
     modified: DateTime,
 }
 
-impl PendingTask {
+impl Pending {
     fn modified(&mut self) {
         self.modified = chrono::offset::Utc::now();
     }
@@ -215,9 +224,9 @@ impl PendingTask {
         self.project = project
     }
 
-    pub fn delete(mut self) -> DeletedTask {
+    pub fn delete(mut self) -> Deleted {
         self.modified();
-        DeletedTask {
+        Deleted {
             uuid: self.uuid,
             entry: self.entry,
             description: self.description,
@@ -236,9 +245,9 @@ impl PendingTask {
         }
     }
 
-    pub fn complete(mut self) -> CompletedTask {
+    pub fn complete(mut self) -> Completed {
         self.modified();
-        CompletedTask {
+        Completed {
             uuid: self.uuid,
             entry: self.entry,
             description: self.description,
@@ -296,7 +305,7 @@ impl PendingTask {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DeletedTask {
+pub struct Deleted {
     // ---- required ----
     uuid: uuid::Uuid,
     entry: DateTime,
@@ -331,227 +340,7 @@ pub struct DeletedTask {
     modified: DateTime,
 }
 
-impl DeletedTask {
-    fn modified(&mut self) {
-        self.modified = chrono::offset::Utc::now();
-    }
-
-    pub fn entry(&self) -> &DateTime {
-        &self.entry
-    }
-
-    pub fn uuid(&self) -> uuid::Uuid {
-        self.uuid
-    }
-
-    pub fn description(&self) -> &str {
-        &self.description
-    }
-
-    pub fn set_description(&mut self, description: String) {
-        self.modified();
-        self.description = description
-    }
-
-    pub fn project(&self) -> &[String] {
-        &self.project
-    }
-
-    pub fn set_project(&mut self, project: Vec<String>) {
-        self.modified();
-        self.project = project
-    }
-
-    pub fn tags(&self) -> &[String] {
-        &self.tags
-    }
-
-    pub fn set_tags(&mut self, tags: Vec<String>) {
-        self.modified();
-        self.tags = tags
-    }
-
-    pub fn priority(&self) -> &Option<Priority> {
-        &self.priority
-    }
-
-    pub fn set_priority(&mut self, priority: Option<Priority>) {
-        self.modified();
-        self.priority = priority
-    }
-
-    pub fn end(&self) -> &DateTime {
-        &self.end
-    }
-
-    pub fn undelete(mut self) -> PendingTask {
-        self.modified();
-        PendingTask {
-            uuid: self.uuid,
-            entry: self.entry,
-            description: self.description,
-            start: None,
-            due: self.due,
-            until: self.until,
-            scheduled: self.scheduled,
-            annotations: self.annotations,
-            project: self.project,
-            tags: self.tags,
-            priority: self.priority,
-            depends: self.depends,
-            udas: self.udas,
-            modified: self.modified,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CompletedTask {
-    // ---- required ----
-    uuid: uuid::Uuid,
-    entry: DateTime,
-    description: String,
-    end: DateTime,
-    // ---- optional ----
-    #[serde(skip_serializing_if = "Option::is_none")]
-    start: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    due: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    until: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    scheduled: Option<DateTime>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(default)]
-    annotations: Vec<Annotation>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(default)]
-    project: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(default)]
-    tags: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    priority: Option<Priority>,
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    #[serde(default)]
-    depends: HashSet<uuid::Uuid>,
-    #[serde(flatten)]
-    udas: HashMap<String, UDA>,
-    // ---- internal ----
-    modified: DateTime,
-}
-
-impl CompletedTask {
-    fn modified(&mut self) {
-        self.modified = chrono::offset::Utc::now();
-    }
-
-    pub fn entry(&self) -> &DateTime {
-        &self.entry
-    }
-
-    pub fn uuid(&self) -> uuid::Uuid {
-        self.uuid
-    }
-
-    pub fn description(&self) -> &str {
-        &self.description
-    }
-
-    pub fn set_description(&mut self, description: String) {
-        self.modified();
-        self.description = description
-    }
-
-    pub fn project(&self) -> &[String] {
-        &self.project
-    }
-
-    pub fn set_project(&mut self, project: Vec<String>) {
-        self.modified();
-        self.project = project
-    }
-
-    pub fn tags(&self) -> &[String] {
-        &self.tags
-    }
-
-    pub fn set_tags(&mut self, tags: Vec<String>) {
-        self.modified();
-        self.tags = tags
-    }
-
-    pub fn priority(&self) -> &Option<Priority> {
-        &self.priority
-    }
-
-    pub fn set_priority(&mut self, priority: Option<Priority>) {
-        self.modified();
-        self.priority = priority
-    }
-
-    pub fn end(&self) -> &DateTime {
-        &self.end
-    }
-
-    pub fn uncomplete(mut self) -> PendingTask {
-        self.modified();
-        PendingTask {
-            uuid: self.uuid,
-            entry: self.entry,
-            description: self.description,
-            start: None,
-            due: self.due,
-            until: self.until,
-            scheduled: self.scheduled,
-            annotations: self.annotations,
-            project: self.project,
-            tags: self.tags,
-            priority: self.priority,
-            depends: self.depends,
-            udas: self.udas,
-            modified: self.modified,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct WaitingTask {
-    // ---- required ----
-    uuid: uuid::Uuid,
-    entry: DateTime,
-    description: String,
-    wait: DateTime,
-    // ---- optional ----
-    #[serde(skip_serializing_if = "Option::is_none")]
-    start: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    due: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    until: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    scheduled: Option<DateTime>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(default)]
-    annotations: Vec<Annotation>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(default)]
-    project: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(default)]
-    tags: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    priority: Option<Priority>,
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    #[serde(default)]
-    depends: HashSet<uuid::Uuid>,
-    #[serde(flatten)]
-    udas: HashMap<String, UDA>,
-    // ---- internal ----
-    modified: DateTime,
-}
-
-impl WaitingTask {
+impl Deleted {
     fn modified(&mut self) {
         self.modified = chrono::offset::Utc::now();
     }
@@ -586,9 +375,237 @@ impl WaitingTask {
         &self.due
     }
 
-    pub fn delete(mut self) -> DeletedTask {
+    pub fn tags(&self) -> &[String] {
+        &self.tags
+    }
+
+    pub fn set_tags(&mut self, tags: Vec<String>) {
         self.modified();
-        DeletedTask {
+        self.tags = tags
+    }
+
+    pub fn priority(&self) -> &Option<Priority> {
+        &self.priority
+    }
+
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        self.modified();
+        self.priority = priority
+    }
+
+    pub fn end(&self) -> &DateTime {
+        &self.end
+    }
+
+    pub fn undelete(mut self) -> Pending {
+        self.modified();
+        Pending {
+            uuid: self.uuid,
+            entry: self.entry,
+            description: self.description,
+            start: None,
+            due: self.due,
+            until: self.until,
+            scheduled: self.scheduled,
+            annotations: self.annotations,
+            project: self.project,
+            tags: self.tags,
+            priority: self.priority,
+            depends: self.depends,
+            udas: self.udas,
+            modified: self.modified,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Completed {
+    // ---- required ----
+    uuid: uuid::Uuid,
+    entry: DateTime,
+    description: String,
+    end: DateTime,
+    // ---- optional ----
+    #[serde(skip_serializing_if = "Option::is_none")]
+    start: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    due: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    until: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    scheduled: Option<DateTime>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    annotations: Vec<Annotation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    project: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    priority: Option<Priority>,
+    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    #[serde(default)]
+    depends: HashSet<uuid::Uuid>,
+    #[serde(flatten)]
+    udas: HashMap<String, UDA>,
+    // ---- internal ----
+    modified: DateTime,
+}
+
+impl Completed {
+    fn modified(&mut self) {
+        self.modified = chrono::offset::Utc::now();
+    }
+
+    pub fn entry(&self) -> &DateTime {
+        &self.entry
+    }
+
+    pub fn uuid(&self) -> uuid::Uuid {
+        self.uuid
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn set_description(&mut self, description: String) {
+        self.modified();
+        self.description = description
+    }
+
+    pub fn project(&self) -> &[String] {
+        &self.project
+    }
+
+    pub fn set_project(&mut self, project: Vec<String>) {
+        self.modified();
+        self.project = project
+    }
+
+    pub fn due(&self) -> &Option<DateTime> {
+        &self.due
+    }
+
+    pub fn tags(&self) -> &[String] {
+        &self.tags
+    }
+
+    pub fn set_tags(&mut self, tags: Vec<String>) {
+        self.modified();
+        self.tags = tags
+    }
+
+    pub fn priority(&self) -> &Option<Priority> {
+        &self.priority
+    }
+
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        self.modified();
+        self.priority = priority
+    }
+
+    pub fn end(&self) -> &DateTime {
+        &self.end
+    }
+
+    pub fn uncomplete(mut self) -> Pending {
+        self.modified();
+        Pending {
+            uuid: self.uuid,
+            entry: self.entry,
+            description: self.description,
+            start: None,
+            due: self.due,
+            until: self.until,
+            scheduled: self.scheduled,
+            annotations: self.annotations,
+            project: self.project,
+            tags: self.tags,
+            priority: self.priority,
+            depends: self.depends,
+            udas: self.udas,
+            modified: self.modified,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Waiting {
+    // ---- required ----
+    uuid: uuid::Uuid,
+    entry: DateTime,
+    description: String,
+    wait: DateTime,
+    // ---- optional ----
+    #[serde(skip_serializing_if = "Option::is_none")]
+    start: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    due: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    until: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    scheduled: Option<DateTime>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    annotations: Vec<Annotation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    project: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    priority: Option<Priority>,
+    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    #[serde(default)]
+    depends: HashSet<uuid::Uuid>,
+    #[serde(flatten)]
+    udas: HashMap<String, UDA>,
+    // ---- internal ----
+    modified: DateTime,
+}
+
+impl Waiting {
+    fn modified(&mut self) {
+        self.modified = chrono::offset::Utc::now();
+    }
+
+    pub fn entry(&self) -> &DateTime {
+        &self.entry
+    }
+
+    pub fn uuid(&self) -> uuid::Uuid {
+        self.uuid
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn set_description(&mut self, description: String) {
+        self.modified();
+        self.description = description
+    }
+
+    pub fn project(&self) -> &[String] {
+        &self.project
+    }
+
+    pub fn set_project(&mut self, project: Vec<String>) {
+        self.modified();
+        self.project = project
+    }
+
+    pub fn due(&self) -> &Option<DateTime> {
+        &self.due
+    }
+
+    pub fn delete(mut self) -> Deleted {
+        self.modified();
+        Deleted {
             uuid: self.uuid,
             entry: self.entry,
             description: self.description,

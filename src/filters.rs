@@ -1,6 +1,7 @@
 use crate::task::{Priority, Task};
 
 #[derive(Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Filters {
     pub status_pending: bool,
     pub status_completed: bool,
