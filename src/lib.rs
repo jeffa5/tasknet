@@ -162,9 +162,14 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                         Task::Pending(_) | Task::Completed(_) | Task::Waiting(_) => {
                             model.tasks.insert(task.uuid(), task.delete());
                         }
-                        Task::Deleted(task) => {
-                            model.tasks.remove(&task.uuid());
-                        }
+                        Task::Deleted(_) => match window().confirm_with_message(
+                            "Are you sure you want to permanently delete this task?",
+                        ) {
+                            Ok(true) => { /* already removed from set so just don't add it back */ }
+                            Ok(false) | Err(_) => {
+                                model.tasks.insert(task.uuid(), task);
+                            }
+                        },
                     }
                 }
             }
