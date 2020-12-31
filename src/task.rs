@@ -1,6 +1,6 @@
+use std::collections::{HashMap, HashSet};
+
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::collections::HashSet;
 
 // Based on https://taskwarrior.org/docs/design/task.html
 
@@ -666,8 +666,9 @@ pub enum UDA {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pretty_assertions::assert_eq;
+
+    use super::*;
 
     #[test]
     fn test_serde_priority() {

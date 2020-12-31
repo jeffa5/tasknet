@@ -1,16 +1,17 @@
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryFrom,
+};
+
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::convert::TryFrom;
 
 mod filters;
 mod task;
 mod urgency;
 
 use filters::Filters;
-use task::Priority;
-use task::Task;
+use task::{Priority, Task};
 
 // ------ ------
 //     Init

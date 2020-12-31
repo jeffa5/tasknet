@@ -1,5 +1,4 @@
-use crate::task::Priority;
-use crate::task::Task;
+use crate::task::{Priority, Task};
 
 #[derive(Debug)]
 pub struct Filters {

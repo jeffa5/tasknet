@@ -1,5 +1,4 @@
-use crate::task::Priority;
-use crate::task::Task;
+use crate::task::{Priority, Task};
 
 const NEXT_COEFFICIENT: f64 = 15.0;
 // urgency.due.coefficient                    12.0 # overdue or near due date
