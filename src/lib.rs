@@ -429,7 +429,7 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
             div![
                 C!["flex", "flex-row"],
                 select![
-                    C!["border", "mr-2"],
+                    C!["border", "bg-white"],
                     option![
                         attrs! {
                             At::Value => "",
