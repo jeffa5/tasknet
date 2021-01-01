@@ -1,8 +1,12 @@
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+
 use std::{
     collections::{HashMap, HashSet},
     convert::TryFrom,
 };
 
+use apply::Apply;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
@@ -24,6 +28,19 @@ const FILTERS_STORAGE_KEY: &str = "tasknet-filters";
 // ------ ------
 
 fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
+    orders.perform_cmd(async move {
+        let res = window()
+            .navigator()
+            .service_worker()
+            .register("./sw.js")
+            .apply(JsFuture::from)
+            .await;
+        match res {
+            Err(e) => log!(e),
+            Ok(v) => log!("registered", v),
+        }
+    });
+
     orders
         .stream(streams::interval(1000, || Msg::OnTick))
         .stream(streams::window_event(Ev::KeyUp, |event| {
