@@ -17,7 +17,8 @@ const ENTER_KEY: &str = "Enter";
 const ESCAPE_KEY: &str = "Escape";
 
 const VIEW_TASK_SEARCH_KEY: &str = "viewtask";
-const STORAGE_KEY: &str = "tasknet-tasks";
+const TASKS_STORAGE_KEY: &str = "tasknet-tasks";
+const FILTERS_STORAGE_KEY: &str = "tasknet-filters";
 
 // ------ ------
 //     Init
@@ -35,10 +36,15 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
             }
         }))
         .subscribe(Msg::UrlChanged);
-    let tasks = match LocalStorage::get(STORAGE_KEY) {
+    let tasks = match LocalStorage::get(TASKS_STORAGE_KEY) {
         Ok(tasks) => tasks,
         Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!(err),
         Err(_) => HashMap::new(),
+    };
+    let filters = match LocalStorage::get(FILTERS_STORAGE_KEY) {
+        Ok(filters) => filters,
+        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!(err),
+        Err(_) => Filters::default(),
     };
     let selected_task = url
         .search()
@@ -63,7 +69,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     Model {
         tasks,
         selected_task,
-        filters: Filters::default(),
+        filters,
         base_url: url.to_base_url(),
     }
 }
@@ -364,7 +370,9 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             }
         }
     }
-    LocalStorage::insert(STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
+    LocalStorage::insert(TASKS_STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
+    LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
+        .expect("save filters to LocalStorage");
 }
 
 // ------ ------

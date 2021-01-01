@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::task::{Priority, Task};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Filters {
     pub status_pending: bool,
