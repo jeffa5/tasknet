@@ -13,6 +13,9 @@ mod urgency;
 use filters::Filters;
 use task::{Priority, Task};
 
+const ENTER_KEY: &str = "Enter";
+const ESCAPE_KEY: &str = "Escape";
+
 const VIEW_TASK_SEARCH_KEY: &str = "viewtask";
 const STORAGE_KEY: &str = "tasknet-tasks";
 
@@ -23,6 +26,14 @@ const STORAGE_KEY: &str = "tasknet-tasks";
 fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders
         .stream(streams::interval(1000, || Msg::OnTick))
+        .stream(streams::window_event(Ev::KeyUp, |event| {
+            let key_event: web_sys::KeyboardEvent = event.unchecked_into();
+            match key_event.key().as_ref() {
+                ENTER_KEY => Some(Msg::EnterKey),
+                ESCAPE_KEY => Some(Msg::EscapeKey),
+                _ => None,
+            }
+        }))
         .subscribe(Msg::UrlChanged);
     let tasks = match LocalStorage::get(STORAGE_KEY) {
         Ok(tasks) => tasks,
@@ -118,6 +129,8 @@ enum Msg {
     FiltersDescriptionChanged(String),
     FiltersReset,
     UrlChanged(subs::UrlChanged),
+    EnterKey,
+    EscapeKey,
 }
 
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -331,6 +344,18 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 url.set_search(UrlSearch::default()).go_and_replace();
             }
             model.selected_task = selected_task
+        }
+        Msg::EnterKey => {
+            if model.selected_task.is_some() {
+                Urls::new(&model.base_url).home().go_and_push();
+                model.selected_task = None
+            }
+        }
+        Msg::EscapeKey => {
+            if model.selected_task.is_some() {
+                Urls::new(&model.base_url).home().go_and_push();
+                model.selected_task = None
+            }
         }
     }
     LocalStorage::insert(STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
