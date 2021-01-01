@@ -734,11 +734,21 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                 Task::Pending(t) => t.start().is_some(),
                 Task::Completed(_) | Task::Deleted(_) | Task::Waiting(_) => false,
             },
+            end: match t {
+                Task::Pending(_) | Task::Waiting(_) => None,
+                Task::Completed(t) => Some(*t.end()),
+                Task::Deleted(t) => Some(*t.end()),
+            },
         })
         .collect();
 
     // reverse sort so we have most urgent at the top
-    tasks.sort_by(|t1, t2| t2.urgency.partial_cmp(&t1.urgency).unwrap());
+    tasks.sort_by(|t1, t2| match (t1.urgency, t2.urgency) {
+        (Some(u1), Some(u2)) => u2.partial_cmp(&u1).unwrap(),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => t2.end.cmp(&t1.end),
+    });
     let show_status = tasks
         .iter()
         .map(|t| &t.status)
@@ -836,6 +846,7 @@ struct ViewableTask {
     tags: Vec<String>,
     priority: Option<Priority>,
     urgency: Option<f64>,
+    end: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 fn duration_string(duration: chrono::Duration) -> String {
