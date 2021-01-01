@@ -31,7 +31,7 @@ impl Task {
             due: None,
             until: None,
             scheduled: None,
-            annotations: Vec::new(),
+            notes: String::new(),
             tags: Vec::new(),
             priority: None,
             depends: HashSet::new(),
@@ -156,6 +156,24 @@ impl Task {
             Self::Waiting(t) => t.set_priority(priority),
         }
     }
+
+    pub fn set_notes(&mut self, notes: String) {
+        match self {
+            Self::Pending(t) => t.set_notes(notes),
+            Self::Deleted(t) => t.set_notes(notes),
+            Self::Completed(t) => t.set_notes(notes),
+            Self::Waiting(t) => t.set_notes(notes),
+        }
+    }
+
+    pub fn notes(&self) -> &str {
+        match self {
+            Self::Pending(t) => t.notes(),
+            Self::Deleted(t) => t.notes(),
+            Self::Completed(t) => t.notes(),
+            Self::Waiting(t) => t.notes(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -173,9 +191,9 @@ pub struct Pending {
     until: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty")]
     #[serde(default)]
-    annotations: Vec<Annotation>,
+    notes: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     project: Vec<String>,
@@ -235,7 +253,7 @@ impl Pending {
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
-            annotations: self.annotations,
+            notes: self.notes,
             project: self.project,
             tags: self.tags,
             priority: self.priority,
@@ -256,7 +274,7 @@ impl Pending {
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
-            annotations: self.annotations,
+            notes: self.notes,
             project: self.project,
             tags: self.tags,
             priority: self.priority,
@@ -302,6 +320,15 @@ impl Pending {
         self.modified();
         self.priority = priority
     }
+
+    pub fn set_notes(&mut self, notes: String) {
+        self.modified();
+        self.notes = notes
+    }
+
+    pub fn notes(&self) -> &str {
+        &self.notes
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -320,9 +347,9 @@ pub struct Deleted {
     until: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty")]
     #[serde(default)]
-    annotations: Vec<Annotation>,
+    notes: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     project: Vec<String>,
@@ -397,6 +424,15 @@ impl Deleted {
         &self.end
     }
 
+    pub fn set_notes(&mut self, notes: String) {
+        self.modified();
+        self.notes = notes
+    }
+
+    pub fn notes(&self) -> &str {
+        &self.notes
+    }
+
     pub fn undelete(mut self) -> Pending {
         self.modified();
         Pending {
@@ -407,7 +443,7 @@ impl Deleted {
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
-            annotations: self.annotations,
+            notes: self.notes,
             project: self.project,
             tags: self.tags,
             priority: self.priority,
@@ -434,9 +470,9 @@ pub struct Completed {
     until: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty")]
     #[serde(default)]
-    annotations: Vec<Annotation>,
+    notes: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     project: Vec<String>,
@@ -511,6 +547,15 @@ impl Completed {
         &self.end
     }
 
+    pub fn set_notes(&mut self, notes: String) {
+        self.modified();
+        self.notes = notes
+    }
+
+    pub fn notes(&self) -> &str {
+        &self.notes
+    }
+
     pub fn uncomplete(mut self) -> Pending {
         self.modified();
         Pending {
@@ -521,7 +566,7 @@ impl Completed {
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
-            annotations: self.annotations,
+            notes: self.notes,
             project: self.project,
             tags: self.tags,
             priority: self.priority,
@@ -548,9 +593,9 @@ pub struct Waiting {
     until: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty")]
     #[serde(default)]
-    annotations: Vec<Annotation>,
+    notes: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     project: Vec<String>,
@@ -614,7 +659,7 @@ impl Waiting {
             due: self.due,
             until: self.until,
             scheduled: self.scheduled,
-            annotations: self.annotations,
+            notes: self.notes,
             project: self.project,
             tags: self.tags,
             priority: self.priority,
@@ -641,6 +686,15 @@ impl Waiting {
         self.modified();
         self.priority = priority
     }
+
+    pub fn set_notes(&mut self, notes: String) {
+        self.modified();
+        self.notes = notes
+    }
+
+    pub fn notes(&self) -> &str {
+        &self.notes
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -664,12 +718,6 @@ impl std::convert::TryFrom<String> for Priority {
             _ => Err(()),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Annotation {
-    entry: DateTime,
-    description: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
