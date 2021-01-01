@@ -10,7 +10,7 @@ const LOW_PRIORITY_COEFFICIENT: f64 = 1.8;
 // urgency.scheduled.coefficient               5.0 # scheduled tasks
 const ACTIVE_COEFFICIENT: f64 = 4.0;
 const AGE_COEFFICIENT: f64 = 2.0;
-// urgency.annotations.coefficient             1.0 # has annotations
+const NOTES_COEFFICIENT: f64 = 1.0;
 const TAGS_COEFFICIENT: f64 = 1.0;
 const PROJECT_COEFFICIENT: f64 = 1.0;
 const WAITING_COEFFICIENT: f64 = -3.0;
@@ -32,7 +32,8 @@ pub fn calculate(task: &Task) -> Option<f64> {
                 + urgency_due(task.due())
                 + urgency_tags(task.tags())
                 + urgency_next(task.tags())
-                + urgency_priority(task.priority()),
+                + urgency_priority(task.priority())
+                + urgency_notes(task.notes()),
         ),
         Task::Pending(task) => Some(
             urgency_age(*task.entry())
@@ -41,7 +42,8 @@ pub fn calculate(task: &Task) -> Option<f64> {
                 + urgency_due(task.due())
                 + urgency_tags(task.tags())
                 + urgency_next(task.tags())
-                + urgency_priority(task.priority()),
+                + urgency_priority(task.priority())
+                + urgency_notes(task.notes()),
         ),
     }
 }
@@ -109,5 +111,13 @@ fn urgency_priority(priority: &Option<Priority>) -> f64 {
         Some(Priority::Low) => LOW_PRIORITY_COEFFICIENT,
         Some(Priority::Medium) => MEDIUM_PRIORITY_COEFFICIENT,
         Some(Priority::High) => HIGH_PRIORITY_COEFFICIENT,
+    }
+}
+
+fn urgency_notes(notes: &str) -> f64 {
+    if notes.is_empty() {
+        0.0
+    } else {
+        NOTES_COEFFICIENT
     }
 }
