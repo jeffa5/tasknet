@@ -32,12 +32,11 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         let res = window()
             .navigator()
             .service_worker()
-            .register("./sw.js")
+            .register("./service-worker.js")
             .apply(JsFuture::from)
             .await;
-        match res {
-            Err(e) => log!(e),
-            Ok(v) => log!("registered", v),
+        if let Err(e) = res {
+            log!("Error registering service worker:", e)
         }
     });
 
