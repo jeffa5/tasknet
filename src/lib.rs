@@ -13,7 +13,6 @@ mod urgency;
 use filters::Filters;
 use task::{Priority, Task};
 
-const ENTER_KEY: &str = "Enter";
 const ESCAPE_KEY: &str = "Escape";
 
 const VIEW_TASK_SEARCH_KEY: &str = "viewtask";
@@ -30,7 +29,6 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .stream(streams::window_event(Ev::KeyUp, |event| {
             let key_event: web_sys::KeyboardEvent = event.unchecked_into();
             match key_event.key().as_ref() {
-                ENTER_KEY => Some(Msg::EnterKey),
                 ESCAPE_KEY => Some(Msg::EscapeKey),
                 _ => None,
             }
@@ -115,6 +113,7 @@ enum Msg {
     SelectedTaskProjectChanged(String),
     SelectedTaskTagsChanged(String),
     SelectedTaskPriorityChanged(String),
+    SelectedTaskNotesChanged(String),
     CreateTask,
     DeleteSelectedTask,
     CompleteSelectedTask,
@@ -135,7 +134,6 @@ enum Msg {
     FiltersDescriptionChanged(String),
     FiltersReset,
     UrlChanged(subs::UrlChanged),
-    EnterKey,
     EscapeKey,
 }
 
@@ -194,6 +192,13 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                         Ok(p) => Some(p),
                         Err(()) => None,
                     });
+                }
+            }
+        }
+        Msg::SelectedTaskNotesChanged(new_notes) => {
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    task.set_notes(new_notes)
                 }
             }
         }
@@ -356,12 +361,6 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 url.set_search(UrlSearch::default()).go_and_replace();
             }
             model.selected_task = selected_task
-        }
-        Msg::EnterKey => {
-            if model.selected_task.is_some() {
-                Urls::new(&model.base_url).home().go_and_push();
-                model.selected_task = None
-            }
         }
         Msg::EscapeKey => {
             if model.selected_task.is_some() {
@@ -541,6 +540,28 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
                     ],
                     input_ev(Ev::Input, Msg::SelectedTaskPriorityChanged)
                 ],
+            ]
+        ],
+        div![
+            C!["flex", "flex-col", "px-2", "mb-2"],
+            div![C!["font-bold"], "Notes"],
+            div![
+                C!["flex", "flex-row"],
+                textarea![
+                    C!["flex-grow", "border", "mr-2"],
+                    attrs! {
+                        At::Value => task.notes(),
+                    },
+                    input_ev(Ev::Input, Msg::SelectedTaskNotesChanged)
+                ],
+                if task.notes().is_empty() {
+                    pre![" "]
+                } else {
+                    button![
+                        mouse_ev(Ev::Click, |_| Msg::SelectedTaskNotesChanged(String::new())),
+                        div![C!["text-red-600"], "X"]
+                    ]
+                }
             ]
         ],
         div![
