@@ -90,7 +90,7 @@ impl<'a> Urls<'a> {
         self.base_url().set_search(UrlSearch::default())
     }
 
-    pub fn view_task(self, uuid: uuid::Uuid) -> Url {
+    pub fn view_task(self, uuid: &uuid::Uuid) -> Url {
         self.base_url().set_search(UrlSearch::new(vec![(
             VIEW_TASK_SEARCH_KEY,
             vec![uuid.to_string()],
@@ -140,7 +140,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             model.selected_task = None
         }
         Msg::SelectTask(Some(uuid)) => {
-            Urls::new(&model.base_url).view_task(uuid).go_and_push();
+            Urls::new(&model.base_url).view_task(&uuid).go_and_push();
             model.selected_task = Some(uuid)
         }
         Msg::SelectedTaskDescriptionChanged(new_description) => {
@@ -195,10 +195,12 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let task = Task::new();
             let id = task.uuid();
             model.tasks.insert(task.uuid(), task);
-            model.selected_task = Some(id)
+            model.selected_task = Some(id);
+            Urls::new(&model.base_url).view_task(&id).go_and_push();
         }
         Msg::DeleteSelectedTask => {
             if let Some(uuid) = model.selected_task.take() {
+                Urls::new(&model.base_url).home().go_and_push();
                 if let Some(task) = model.tasks.remove(&uuid) {
                     match task {
                         Task::Pending(_) | Task::Completed(_) | Task::Waiting(_) => {
@@ -218,6 +220,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::CompleteSelectedTask => {
             if let Some(uuid) = model.selected_task.take() {
+                Urls::new(&model.base_url).home().go_and_push();
                 if let Some(task) = model.tasks.remove(&uuid) {
                     model.tasks.insert(task.uuid(), task.complete());
                 }
@@ -225,6 +228,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::StartSelectedTask => {
             if let Some(uuid) = model.selected_task.take() {
+                Urls::new(&model.base_url).home().go_and_push();
                 if let Some(task) = model.tasks.get_mut(&uuid) {
                     match task {
                         Task::Pending(task) => {
@@ -239,6 +243,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::StopSelectedTask => {
             if let Some(uuid) = model.selected_task.take() {
+                Urls::new(&model.base_url).home().go_and_push();
                 if let Some(task) = model.tasks.get_mut(&uuid) {
                     match task {
                         Task::Pending(task) => {
@@ -253,6 +258,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::MoveSelectedTaskToPending => {
             if let Some(uuid) = model.selected_task.take() {
+                Urls::new(&model.base_url).home().go_and_push();
                 if let Some(task) = model.tasks.remove(&uuid) {
                     match task {
                         Task::Pending(_) | Task::Waiting(_) => {
