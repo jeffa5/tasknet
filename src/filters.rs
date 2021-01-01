@@ -45,12 +45,17 @@ impl Filters {
         let filter_project = task
             .project()
             .join(".")
-            .starts_with(&self.project.join("."));
-        let filter_tags = self
-            .tags
-            .iter()
-            .all(|tag| task.tags().iter().any(|t| t.starts_with(tag)));
-        let filter_description = task.description().contains(&self.description);
+            .to_lowercase()
+            .starts_with(&self.project.join(".").to_lowercase());
+        let filter_tags = self.tags.iter().all(|tag| {
+            task.tags()
+                .iter()
+                .any(|t| t.to_lowercase().starts_with(&tag.to_lowercase()))
+        });
+        let filter_description = task
+            .description()
+            .to_lowercase()
+            .contains(&self.description.to_lowercase());
         let filter_priority = match task.priority() {
             None => self.priority_none,
             Some(Priority::Low) => self.priority_low,
