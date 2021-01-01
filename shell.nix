@@ -14,6 +14,8 @@ stdenv.mkDerivation {
     cargo-watch
     wasm-pack
     rust-analyzer
+    pkgconfig
+    openssl
 
     rnix-lsp
     nixpkgs-fmt
