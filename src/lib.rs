@@ -473,14 +473,21 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         view_text_input(
             "Description",
             &task.description(),
+            true,
             Msg::SelectedTaskDescriptionChanged
         ),
         view_text_input(
             "Project",
             &task.project().join("."),
+            false,
             Msg::SelectedTaskProjectChanged
         ),
-        view_text_input("Tags", &task.tags().join(" "), Msg::SelectedTaskTagsChanged),
+        view_text_input(
+            "Tags",
+            &task.tags().join(" "),
+            false,
+            Msg::SelectedTaskTagsChanged
+        ),
         div![
             C!["flex", "flex-col", "px-2", "mb-2"],
             div![C!["font-bold"], "Priority"],
@@ -571,6 +578,7 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
 fn view_text_input(
     name: &str,
     value: &str,
+    autofocus: bool,
     f: impl FnOnce(String) -> Msg + Clone + 'static,
 ) -> Node<Msg> {
     let also_f = f.clone();
@@ -583,6 +591,7 @@ fn view_text_input(
                 C!["flex-grow", "border", "mr-2"],
                 attrs! {
                     At::Value => value,
+                    At::AutoFocus => if autofocus { AtValue::None } else { AtValue::Ignored }
                 },
                 input_ev(Ev::Input, f)
             ],
@@ -685,14 +694,21 @@ fn view_filters(filters: &Filters) -> Node<Msg> {
         view_text_input(
             "Description",
             &filters.description,
+            false,
             Msg::FiltersDescriptionChanged
         ),
         view_text_input(
             "Project",
             &filters.project.join("."),
+            false,
             Msg::FiltersProjectChanged
         ),
-        view_text_input("Tags", &filters.tags.join(" "), Msg::FiltersTagsChanged),
+        view_text_input(
+            "Tags",
+            &filters.tags.join(" "),
+            false,
+            Msg::FiltersTagsChanged
+        ),
         view_button("Reset Filters", Msg::FiltersReset),
     ]
 }
