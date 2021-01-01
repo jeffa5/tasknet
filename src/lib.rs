@@ -13,23 +13,47 @@ mod urgency;
 use filters::Filters;
 use task::{Priority, Task};
 
+const VIEW_TASK_SEARCH_KEY: &str = "viewtask";
+const STORAGE_KEY: &str = "tasknet-tasks";
+
 // ------ ------
 //     Init
 // ------ ------
 
-const STORAGE_KEY: &str = "tasknet-tasks";
-
-fn init(_url: Url, orders: &mut impl Orders<Msg>) -> Model {
-    orders.stream(streams::interval(1000, || Msg::OnTick));
+fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
+    orders
+        .stream(streams::interval(1000, || Msg::OnTick))
+        .subscribe(Msg::UrlChanged);
     let tasks = match LocalStorage::get(STORAGE_KEY) {
         Ok(tasks) => tasks,
         Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!(err),
         Err(_) => HashMap::new(),
     };
+    let selected_task = url
+        .search()
+        .get(VIEW_TASK_SEARCH_KEY)
+        .map(|v| {
+            uuid::Uuid::parse_str(&v.first().unwrap_or(&String::new()))
+                .map(|uuid| {
+                    if tasks.contains_key(&uuid) {
+                        Some(uuid)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(None)
+        })
+        .flatten();
+    if selected_task.is_none() {
+        url.clone()
+            .set_search(UrlSearch::default())
+            .go_and_replace();
+    }
     Model {
         tasks,
-        selected_task: None,
+        selected_task,
         filters: Filters::default(),
+        base_url: url.to_base_url(),
     }
 }
 
@@ -42,6 +66,25 @@ struct Model {
     tasks: HashMap<uuid::Uuid, Task>,
     selected_task: Option<uuid::Uuid>,
     filters: Filters,
+    base_url: Url,
+}
+
+// ------ ------
+//     Urls
+// ------ ------
+
+struct_urls!();
+impl<'a> Urls<'a> {
+    pub fn home(self) -> Url {
+        self.base_url().set_search(UrlSearch::default())
+    }
+
+    pub fn view_task(self, uuid: uuid::Uuid) -> Url {
+        self.base_url().set_search(UrlSearch::new(vec![(
+            VIEW_TASK_SEARCH_KEY,
+            vec![uuid.to_string()],
+        )]))
+    }
 }
 
 // ------ ------
@@ -74,12 +117,19 @@ enum Msg {
     FiltersTagsChanged(String),
     FiltersDescriptionChanged(String),
     FiltersReset,
+    UrlChanged(subs::UrlChanged),
 }
 
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::SelectTask(None) => model.selected_task = None,
-        Msg::SelectTask(Some(uuid)) => model.selected_task = Some(uuid),
+        Msg::SelectTask(None) => {
+            Urls::new(&model.base_url).home().go_and_push();
+            model.selected_task = None
+        }
+        Msg::SelectTask(Some(uuid)) => {
+            Urls::new(&model.base_url).view_task(uuid).go_and_push();
+            model.selected_task = Some(uuid)
+        }
         Msg::SelectedTaskDescriptionChanged(new_description) => {
             if let Some(uuid) = model.selected_task {
                 if let Some(task) = &mut model.tasks.get_mut(&uuid) {
@@ -261,6 +311,27 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             model.filters.description = new_description
         }
         Msg::FiltersReset => model.filters = Filters::default(),
+        Msg::UrlChanged(subs::UrlChanged(url)) => {
+            let selected_task = url
+                .search()
+                .get(VIEW_TASK_SEARCH_KEY)
+                .map(|v| {
+                    uuid::Uuid::parse_str(&v.first().unwrap_or(&String::new()))
+                        .map(|uuid| {
+                            if model.tasks.contains_key(&uuid) {
+                                Some(uuid)
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or(None)
+                })
+                .flatten();
+            if selected_task.is_none() {
+                url.set_search(UrlSearch::default()).go_and_replace();
+            }
+            model.selected_task = selected_task
+        }
     }
     LocalStorage::insert(STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
 }
@@ -612,8 +683,7 @@ fn view_checkbox(name: &str, title: &str, checked: bool, msg: Msg) -> Node<Msg> 
 
 fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg> {
     let mut tasks: Vec<_> = tasks
-        .iter()
-        .map(|(_, t)| t)
+        .values()
         .filter(|t| filters.filter_task(t))
         .map(|t| ViewableTask {
             age: duration_string((chrono::offset::Utc::now()).signed_duration_since(*t.entry())),
