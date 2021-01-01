@@ -48,11 +48,11 @@ impl Filters {
             .project()
             .join(".")
             .to_lowercase()
-            .starts_with(&self.project.join(".").to_lowercase());
+            .contains(&self.project.join(".").to_lowercase());
         let filter_tags = self.tags.iter().all(|tag| {
             task.tags()
                 .iter()
-                .any(|t| t.to_lowercase().starts_with(&tag.to_lowercase()))
+                .any(|t| t.to_lowercase().contains(&tag.to_lowercase()))
         });
         let filter_description = task
             .description()
