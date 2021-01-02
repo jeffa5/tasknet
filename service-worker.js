@@ -1,43 +1,81 @@
-var cacheName = "tasknet-0";
-var contentToCache = [
+const version = 0;
+const appName = "tasknet";
+const cacheName = `${appName}-${version}`;
+const contentToCache = [
   "index.html",
   "pkg/package.js",
 ];
 
-self.addEventListener('install', (e) => {
+self.addEventListener('install', (event) => {
   console.log('[Service Worker] Install');
-  e.waitUntil(
+  event.waitUntil(
     caches.open(cacheName).then((cache) => {
-          console.log('[Service Worker] Caching all: app shell and content');
+          console.log('[Service Worker] Caching: resources for offline');
       return cache.addAll(contentToCache);
+    }).then(() => {
+      console.log("[Service Worker] Install complete")
     })
   );
 });
 
-function promiseAny(promises) {
-  return new Promise((resolve, reject) => {
-    // make sure promises are all promises
-    promises = promises.map((p) => Promise.resolve(p));
-    // resolve this promise as soon as one resolves
-    promises.forEach((p) => p.then(resolve));
-    // reject if all promises reject
-    promises.reduce((a, b) => a.catch(() => b)).catch(() => reject(Error('All failed')));
+function fetchedFromNetwork(response) {
+  var cacheCopy = response.clone();
+
+  console.log('[Service Worker]: fetch response from network.', event.request.url);
+
+  caches
+    .open(cacheName)
+    .then((cache) => {
+      cache.put(event.request, cacheCopy);
+    })
+    .then(() => {
+      console.log('[Service Worker]: fetch response stored in cache.', event.request.url);
+    });
+
+  return response;
+}
+
+function unableToResolve () {
+  console.log('[Service Worker]: fetch request failed in both cache and network.');
+
+  return new Response('<h1>Service Unavailable</h1>', {
+    status: 503,
+    statusText: 'Service Unavailable',
+    headers: new Headers({
+      'Content-Type': 'text/html'
+    })
   });
 }
 
-
 self.addEventListener('fetch', (event) => {
-  event.respondWith(promiseAny([
-    caches.match(event.request).then((r) => {
-      console.log("[Service Worker] Cached resource: " + event.request.url);
-      return r;
-    }),
-    fetch(event.request).then((response) => {
-      return caches.open(cacheName).then((cache) => {
-        console.log("[Service Worker] Retrieved resource: "+event.request.url);
-        cache.put(event.request, response.clone());
-        return response;
-      })
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      var networked = fetch(event.request).then(fetchedFromNetwork, unableToResolve).catch(unableToResolve);
+      console.log("[Service Worker]: fetch event", cached ? "(cached)" : "(network)", event.request.url);
+      return cached || networked
     })
-  ]));
+  )
+});
+
+self.addEventListener("activate", function(event) {
+  console.log('[Service Worker]: activate event in progress.');
+
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => {
+        return Promise.all(
+          keys
+            .filter((key) => {
+              return key.startsWith(appName) && !key.startsWith(cacheName);
+            })
+            .map((key) => {
+              return caches.delete(key);
+            })
+        );
+      })
+      .then(() => {
+        console.log('[Service Worker]: activate completed.');
+      })
+  );
 });
