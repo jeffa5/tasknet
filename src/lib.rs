@@ -482,6 +482,7 @@ fn view_titlebar() -> Node<Msg> {
 }
 
 #[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
 fn view_selected_task(task: &Task) -> Node<Msg> {
     let is_pending = matches!(task, Task::Pending(_));
     let start = match task {
@@ -494,8 +495,23 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         Task::Pending(_) | Task::Waiting(_) => None,
     };
     let urgency = urgency::calculate(task);
+    let active = match task {
+        Task::Pending(t) => t.start().is_some(),
+        Task::Completed(_) | Task::Deleted(_) | Task::Waiting(_) => false,
+    };
+    let is_next = task.tags().contains(&"next".to_owned());
     div![
-        C!["flex", "flex-col", "bg-gray-100", "p-2"],
+        C![
+            "flex",
+            "flex-col",
+            "bg-gray-100",
+            "p-2",
+            "border-4",
+            IF!(urgency.unwrap_or(0.) > 5. => "border-yellow-200"),
+            IF!(urgency.unwrap_or(0.) > 10. => "border-red-200"),
+            IF!(active => "border-green-200"),
+            IF!(is_next => "border-blue-200"),
+        ],
         div![
             C!["pl-2"],
             span![C!["font-bold"], "Status: "],
