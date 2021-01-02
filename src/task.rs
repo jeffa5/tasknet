@@ -22,7 +22,7 @@ pub enum Task {
 
 impl Task {
     pub fn new() -> Self {
-        Task::Pending(Pending {
+        Self::Pending(Pending {
             uuid: uuid::Uuid::new_v4(),
             entry: chrono::offset::Utc::now(),
             description: String::new(),
@@ -40,7 +40,7 @@ impl Task {
         })
     }
 
-    pub fn entry(&self) -> &DateTime {
+    pub const fn entry(&self) -> &DateTime {
         match self {
             Self::Pending(t) => t.entry(),
             Self::Deleted(t) => t.entry(),
@@ -49,7 +49,7 @@ impl Task {
         }
     }
 
-    pub fn uuid(&self) -> uuid::Uuid {
+    pub const fn uuid(&self) -> uuid::Uuid {
         match self {
             Self::Pending(t) => t.uuid(),
             Self::Deleted(t) => t.uuid(),
@@ -94,7 +94,7 @@ impl Task {
         }
     }
 
-    pub fn due(&self) -> &Option<DateTime> {
+    pub const fn due(&self) -> &Option<DateTime> {
         match self {
             Self::Pending(t) => t.due(),
             Self::Deleted(t) => t.due(),
@@ -106,17 +106,14 @@ impl Task {
     pub fn complete(self) -> Self {
         match self {
             Self::Pending(t) => Self::Completed(t.complete()),
-            Self::Deleted(_) => self,
-            Self::Completed(_) => self,
-            Self::Waiting(_) => self,
+            Self::Deleted(_) | Self::Completed(_) | Self::Waiting(_) => self,
         }
     }
 
     pub fn delete(self) -> Self {
         match self {
             Self::Pending(t) => Self::Deleted(t.delete()),
-            Self::Deleted(_) => self,
-            Self::Completed(_) => self,
+            Self::Deleted(_) | Self::Completed(_) => self,
             Self::Waiting(t) => Self::Deleted(t.delete()),
         }
     }
@@ -139,7 +136,7 @@ impl Task {
         }
     }
 
-    pub fn priority(&self) -> &Option<Priority> {
+    pub const fn priority(&self) -> &Option<Priority> {
         match self {
             Self::Pending(t) => t.priority(),
             Self::Deleted(t) => t.priority(),
@@ -216,11 +213,11 @@ impl Pending {
         self.modified = chrono::offset::Utc::now();
     }
 
-    pub fn entry(&self) -> &DateTime {
+    pub const fn entry(&self) -> &DateTime {
         &self.entry
     }
 
-    pub fn uuid(&self) -> uuid::Uuid {
+    pub const fn uuid(&self) -> uuid::Uuid {
         self.uuid
     }
 
@@ -284,7 +281,7 @@ impl Pending {
         }
     }
 
-    pub fn start(&self) -> &Option<DateTime> {
+    pub const fn start(&self) -> &Option<DateTime> {
         &self.start
     }
 
@@ -299,7 +296,7 @@ impl Pending {
         self.start = None
     }
 
-    pub fn due(&self) -> &Option<DateTime> {
+    pub const fn due(&self) -> &Option<DateTime> {
         &self.due
     }
 
@@ -312,7 +309,7 @@ impl Pending {
         self.tags = tags
     }
 
-    pub fn priority(&self) -> &Option<Priority> {
+    pub const fn priority(&self) -> &Option<Priority> {
         &self.priority
     }
 
@@ -372,11 +369,11 @@ impl Deleted {
         self.modified = chrono::offset::Utc::now();
     }
 
-    pub fn entry(&self) -> &DateTime {
+    pub const fn entry(&self) -> &DateTime {
         &self.entry
     }
 
-    pub fn uuid(&self) -> uuid::Uuid {
+    pub const fn uuid(&self) -> uuid::Uuid {
         self.uuid
     }
 
@@ -398,7 +395,7 @@ impl Deleted {
         self.project = project
     }
 
-    pub fn due(&self) -> &Option<DateTime> {
+    pub const fn due(&self) -> &Option<DateTime> {
         &self.due
     }
 
@@ -411,7 +408,7 @@ impl Deleted {
         self.tags = tags
     }
 
-    pub fn priority(&self) -> &Option<Priority> {
+    pub const fn priority(&self) -> &Option<Priority> {
         &self.priority
     }
 
@@ -420,7 +417,7 @@ impl Deleted {
         self.priority = priority
     }
 
-    pub fn end(&self) -> &DateTime {
+    pub const fn end(&self) -> &DateTime {
         &self.end
     }
 
@@ -495,11 +492,11 @@ impl Completed {
         self.modified = chrono::offset::Utc::now();
     }
 
-    pub fn entry(&self) -> &DateTime {
+    pub const fn entry(&self) -> &DateTime {
         &self.entry
     }
 
-    pub fn uuid(&self) -> uuid::Uuid {
+    pub const fn uuid(&self) -> uuid::Uuid {
         self.uuid
     }
 
@@ -521,7 +518,7 @@ impl Completed {
         self.project = project
     }
 
-    pub fn due(&self) -> &Option<DateTime> {
+    pub const fn due(&self) -> &Option<DateTime> {
         &self.due
     }
 
@@ -534,7 +531,7 @@ impl Completed {
         self.tags = tags
     }
 
-    pub fn priority(&self) -> &Option<Priority> {
+    pub const fn priority(&self) -> &Option<Priority> {
         &self.priority
     }
 
@@ -543,7 +540,7 @@ impl Completed {
         self.priority = priority
     }
 
-    pub fn end(&self) -> &DateTime {
+    pub const fn end(&self) -> &DateTime {
         &self.end
     }
 
@@ -618,11 +615,11 @@ impl Waiting {
         self.modified = chrono::offset::Utc::now();
     }
 
-    pub fn entry(&self) -> &DateTime {
+    pub const fn entry(&self) -> &DateTime {
         &self.entry
     }
 
-    pub fn uuid(&self) -> uuid::Uuid {
+    pub const fn uuid(&self) -> uuid::Uuid {
         self.uuid
     }
 
@@ -644,7 +641,7 @@ impl Waiting {
         self.project = project
     }
 
-    pub fn due(&self) -> &Option<DateTime> {
+    pub const fn due(&self) -> &Option<DateTime> {
         &self.due
     }
 
@@ -678,7 +675,7 @@ impl Waiting {
         self.tags = tags
     }
 
-    pub fn priority(&self) -> &Option<Priority> {
+    pub const fn priority(&self) -> &Option<Priority> {
         &self.priority
     }
 
@@ -712,9 +709,9 @@ impl std::convert::TryFrom<String> for Priority {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.trim().to_lowercase().as_ref() {
-            "h" => Ok(Priority::High),
-            "m" => Ok(Priority::Medium),
-            "l" => Ok(Priority::Low),
+            "h" => Ok(Self::High),
+            "m" => Ok(Self::Medium),
+            "l" => Ok(Self::Low),
             _ => Err(()),
         }
     }

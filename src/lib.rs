@@ -27,6 +27,7 @@ const FILTERS_STORAGE_KEY: &str = "tasknet-filters";
 //     Init
 // ------ ------
 
+#[allow(clippy::needless_pass_by_value)]
 fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     let url_clone = url.clone();
     orders.perform_cmd(async move {
@@ -65,21 +66,17 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!(err),
         Err(_) => Filters::default(),
     };
-    let selected_task = url
-        .search()
-        .get(VIEW_TASK_SEARCH_KEY)
-        .map(|v| {
-            uuid::Uuid::parse_str(&v.first().unwrap_or(&String::new()))
-                .map(|uuid| {
-                    if tasks.contains_key(&uuid) {
-                        Some(uuid)
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or(None)
-        })
-        .flatten();
+    let selected_task = url.search().get(VIEW_TASK_SEARCH_KEY).and_then(|v| {
+        uuid::Uuid::parse_str(v.first().unwrap_or(&String::new()))
+            .map(|uuid| {
+                if tasks.contains_key(&uuid) {
+                    Some(uuid)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(None)
+    });
     if selected_task.is_none() {
         url.clone()
             .set_search(UrlSearch::default())
@@ -111,15 +108,21 @@ struct Model {
 
 struct_urls!();
 impl<'a> Urls<'a> {
+    #[must_use]
     pub fn home(self) -> Url {
-        self.base_url().add_path_part("tasknet").set_search(UrlSearch::default())
+        self.base_url()
+            .add_path_part("tasknet")
+            .set_search(UrlSearch::default())
     }
 
+    #[must_use]
     pub fn view_task(self, uuid: &uuid::Uuid) -> Url {
-        self.base_url().add_path_part("tasknet").set_search(UrlSearch::new(vec![(
-            VIEW_TASK_SEARCH_KEY,
-            vec![uuid.to_string()],
-        )]))
+        self.base_url()
+            .add_path_part("tasknet")
+            .set_search(UrlSearch::new(vec![(
+                VIEW_TASK_SEARCH_KEY,
+                vec![uuid.to_string()],
+            )]))
     }
 }
 
@@ -160,6 +163,8 @@ enum Msg {
     ExportTasks,
 }
 
+#[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::SelectTask(None) => {
@@ -184,7 +189,10 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                     task.set_project(if new_project.is_empty() {
                         Vec::new()
                     } else {
-                        new_project.split('.').map(|s| s.to_owned()).collect()
+                        new_project
+                            .split('.')
+                            .map(std::borrow::ToOwned::to_owned)
+                            .collect()
                     })
                 }
             }
@@ -268,9 +276,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                         Task::Pending(task) => {
                             task.activate();
                         }
-                        Task::Deleted(_) => {}
-                        Task::Completed(_) => {}
-                        Task::Waiting(_) => {}
+                        Task::Deleted(_) | Task::Completed(_) | Task::Waiting(_) => {}
                     };
                 }
             }
@@ -283,9 +289,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                         Task::Pending(task) => {
                             task.deactivate();
                         }
-                        Task::Deleted(_) => {}
-                        Task::Completed(_) => {}
-                        Task::Waiting(_) => {}
+                        Task::Deleted(_) | Task::Completed(_) | Task::Waiting(_) => {}
                     };
                 }
             }
@@ -342,7 +346,10 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             model.filters.project = if new_project.is_empty() {
                 Vec::new()
             } else {
-                new_project.split('.').map(|s| s.to_owned()).collect()
+                new_project
+                    .split('.')
+                    .map(std::borrow::ToOwned::to_owned)
+                    .collect()
             }
         }
         Msg::FiltersTagsChanged(new_tags) => {
@@ -365,21 +372,17 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::FiltersReset => model.filters = Filters::default(),
         Msg::UrlChanged(subs::UrlChanged(url)) => {
-            let selected_task = url
-                .search()
-                .get(VIEW_TASK_SEARCH_KEY)
-                .map(|v| {
-                    uuid::Uuid::parse_str(&v.first().unwrap_or(&String::new()))
-                        .map(|uuid| {
-                            if model.tasks.contains_key(&uuid) {
-                                Some(uuid)
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap_or(None)
-                })
-                .flatten();
+            let selected_task = url.search().get(VIEW_TASK_SEARCH_KEY).and_then(|v| {
+                uuid::Uuid::parse_str(v.first().unwrap_or(&String::new()))
+                    .map(|uuid| {
+                        if model.tasks.contains_key(&uuid) {
+                            Some(uuid)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or(None)
+            });
             if selected_task.is_none() {
                 url.set_search(UrlSearch::default()).go_and_replace();
             }
@@ -395,7 +398,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             Ok(Some(content)) => {
                 match serde_json::from_str::<HashMap<uuid::Uuid, Task>>(&content) {
                     Ok(tasks) => {
-                        for (id, task) in tasks.into_iter() {
+                        for (id, task) in tasks {
                             model.tasks.insert(id, task);
                         }
                     }
@@ -478,6 +481,7 @@ fn view_titlebar() -> Node<Msg> {
     ]
 }
 
+#[allow(clippy::too_many_lines)]
 fn view_selected_task(task: &Task) -> Node<Msg> {
     let is_pending = matches!(task, Task::Pending(_));
     let start = match task {
@@ -532,7 +536,7 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         },
         view_text_input(
             "Description",
-            &task.description(),
+            task.description(),
             true,
             Msg::SelectedTaskDescriptionChanged
         ),
@@ -700,14 +704,14 @@ fn view_button(text: &str, msg: Msg) -> Node<Msg> {
 fn view_actions(model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-row", "flex-wrap", "justify-around"],
-        view_filters(&model.filters,&model.tasks),
+        view_filters(&model.filters, &model.tasks),
         view_button("Import Tasks", Msg::ImportTasks),
         view_button("Export Tasks", Msg::ExportTasks),
         view_button("Create", Msg::CreateTask)
     ]
 }
 
-fn view_filters(filters: &Filters,tasks:&HashMap<uuid::Uuid, Task>) -> Node<Msg> {
+fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
     div![
         C![
             "flex",
@@ -826,33 +830,41 @@ fn view_checkbox(name: &str, title: &str, checked: bool, msg: Msg) -> Node<Msg> 
     ]
 }
 
+#[allow(clippy::too_many_lines)]
 fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg> {
     let mut tasks: Vec<_> = tasks
         .values()
-        .filter(|t| filters.filter_task(t))
-        .map(|t| ViewableTask {
-            age: duration_string((chrono::offset::Utc::now()).signed_duration_since(*t.entry())),
-            status: match t {
-                Task::Pending(_) => "Pending".to_owned(),
-                Task::Completed(_) => "Completed".to_owned(),
-                Task::Deleted(_) => "Deleted".to_owned(),
-                Task::Waiting(_) => "Waiting".to_owned(),
-            },
-            project: t.project().to_owned(),
-            description: t.description().to_owned(),
-            urgency: urgency::calculate(t),
-            uuid: t.uuid(),
-            tags: t.tags().to_owned(),
-            priority: t.priority().to_owned(),
-            active: match t {
-                Task::Pending(t) => t.start().is_some(),
-                Task::Completed(_) | Task::Deleted(_) | Task::Waiting(_) => false,
-            },
-            end: match t {
-                Task::Pending(_) | Task::Waiting(_) => None,
-                Task::Completed(t) => Some(*t.end()),
-                Task::Deleted(t) => Some(*t.end()),
-            },
+        .filter_map(|t| {
+            if filters.filter_task(t) {
+                Some(ViewableTask {
+                    age: duration_string(
+                        (chrono::offset::Utc::now()).signed_duration_since(*t.entry()),
+                    ),
+                    status: match t {
+                        Task::Pending(_) => "Pending".to_owned(),
+                        Task::Completed(_) => "Completed".to_owned(),
+                        Task::Deleted(_) => "Deleted".to_owned(),
+                        Task::Waiting(_) => "Waiting".to_owned(),
+                    },
+                    project: t.project().to_owned(),
+                    description: t.description().to_owned(),
+                    urgency: urgency::calculate(t),
+                    uuid: t.uuid(),
+                    tags: t.tags().to_owned(),
+                    priority: t.priority().to_owned(),
+                    active: match t {
+                        Task::Pending(t) => t.start().is_some(),
+                        Task::Completed(_) | Task::Deleted(_) | Task::Waiting(_) => false,
+                    },
+                    end: match t {
+                        Task::Pending(_) | Task::Waiting(_) => None,
+                        Task::Completed(t) => Some(*t.end()),
+                        Task::Deleted(t) => Some(*t.end()),
+                    },
+                })
+            } else {
+                None
+            }
         })
         .collect();
 

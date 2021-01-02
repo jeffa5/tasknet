@@ -23,8 +23,7 @@ const SECONDS_IN_A_DAY: f64 = 86400.0;
 // https://github.com/GothenburgBitFactory/taskwarrior/blob/16529694eb0b06ed54331775e10bec32a72d01b1/src/Task.cpp#L1790
 pub fn calculate(task: &Task) -> Option<f64> {
     match task {
-        Task::Deleted(_) => None,
-        Task::Completed(_) => None,
+        Task::Deleted(_) | Task::Completed(_) => None,
         Task::Waiting(task) => Some(
             WAITING_COEFFICIENT
                 + urgency_age(*task.entry())
@@ -48,6 +47,7 @@ pub fn calculate(task: &Task) -> Option<f64> {
     }
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn urgency_age(entry: chrono::DateTime<chrono::Utc>) -> f64 {
     let days = (chrono::offset::Utc::now())
         .signed_duration_since(entry)
@@ -55,7 +55,7 @@ fn urgency_age(entry: chrono::DateTime<chrono::Utc>) -> f64 {
     (days / (AGE_MAX_DAYS * SECONDS_IN_A_DAY)) * AGE_COEFFICIENT
 }
 
-fn urgency_project(project: &[String]) -> f64 {
+const fn urgency_project(project: &[String]) -> f64 {
     if project.is_empty() {
         0.0
     } else {
@@ -63,7 +63,7 @@ fn urgency_project(project: &[String]) -> f64 {
     }
 }
 
-fn urgency_active(start: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
+const fn urgency_active(start: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
     if start.is_some() {
         ACTIVE_COEFFICIENT
     } else {
@@ -71,10 +71,11 @@ fn urgency_active(start: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
     }
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn urgency_due(due: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
-    if let Some(due) = due {
+    due.map_or(0.0, |due| {
         let days_overdue = (chrono::offset::Utc::now())
-            .signed_duration_since(*due)
+            .signed_duration_since(due)
             .num_days();
         (if days_overdue > 7 {
             1.0
@@ -83,9 +84,7 @@ fn urgency_due(due: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
         } else {
             0.2
         }) * DUE_COEFFICIENT
-    } else {
-        0.0
-    }
+    })
 }
 
 fn urgency_tags(tags: &[String]) -> f64 {
@@ -105,7 +104,7 @@ fn urgency_next(tags: &[String]) -> f64 {
     }
 }
 
-fn urgency_priority(priority: &Option<Priority>) -> f64 {
+const fn urgency_priority(priority: &Option<Priority>) -> f64 {
     match priority {
         None => 0.0,
         Some(Priority::Low) => LOW_PRIORITY_COEFFICIENT,
@@ -114,7 +113,7 @@ fn urgency_priority(priority: &Option<Priority>) -> f64 {
     }
 }
 
-fn urgency_notes(notes: &str) -> f64 {
+const fn urgency_notes(notes: &str) -> f64 {
     if notes.is_empty() {
         0.0
     } else {
