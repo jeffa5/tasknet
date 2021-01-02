@@ -24,7 +24,7 @@ apply = "0.3.0"
 
 [dependencies.web-sys]
 version = "0.3.46"
-features = ["Navigator", "Window", "ServiceWorkerContainer"]
+features = ["Navigator", "Window", "ServiceWorkerContainer", "RegistrationOptions"]
 
 [profile.release]
 lto = true

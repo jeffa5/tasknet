@@ -32,7 +32,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         let res = window()
             .navigator()
             .service_worker()
-            .register("service-worker.js")
+            .register_with_options("service-worker.js", web_sys::RegistrationOptions::new().scope("./"))
             .apply(JsFuture::from)
             .await;
         if let Err(e) = res {
