@@ -564,10 +564,17 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
             "bg-gray-100",
             "p-2",
             "border-4",
-            IF!(urgency.unwrap_or(0.) > 5. => "border-yellow-200"),
-            IF!(urgency.unwrap_or(0.) > 10. => "border-red-200"),
-            IF!(active => "border-green-200"),
-            IF!(is_next => "border-blue-200"),
+            if active {
+                "border-green-200"
+            } else if is_next {
+                "border-blue-200"
+            } else if urgency.unwrap_or(0.) > 10. {
+                "border-red-200"
+            } else if urgency.unwrap_or(0.) > 5. {
+                "border-yellow-200"
+            } else {
+                "border-gray-200"
+            }
         ],
         div![
             C!["pl-2"],
@@ -1002,18 +1009,21 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                 let is_next = t.tags.contains(&"next".to_owned());
                 tr![
                     C![
-                        IF!(i % 2 == 0 => "bg-gray-100"),
-                        "hover:bg-gray-200",
                         "cursor-pointer",
                         "select-none",
-                        IF!(t.urgency.unwrap_or(0.) > 5. => "bg-yellow-200"),
-                        IF!(t.urgency.unwrap_or(0.) > 5. => "hover:bg-yellow-400"),
-                        IF!(t.urgency.unwrap_or(0.) > 10. => "bg-red-200"),
-                        IF!(t.urgency.unwrap_or(0.) > 10. => "hover:bg-red-400"),
-                        IF!(t.active => "bg-green-200"),
-                        IF!(t.active => "hover:bg-green-400"),
-                        IF!(is_next => "bg-blue-200"),
-                        IF!(is_next => "hover:bg-blue-400"),
+                        if t.active {
+                            vec!["bg-green-200", "hover:bg-green-400"]
+                        } else if is_next {
+                            vec!["bg-blue-200", "hover:bg-blue-400"]
+                        } else if t.urgency.unwrap_or(0.) > 10. {
+                            vec!["bg-red-300", "hover:bg-red-400"]
+                        } else if t.urgency.unwrap_or(0.) > 5. {
+                            vec!["bg-yellow-200", "hover:bg-yellow-400"]
+                        } else if i % 2 == 0 {
+                            vec!["bg-gray-100", "hover:bg-gray-200"]
+                        } else {
+                            vec!["hover:bg-gray-200"]
+                        }
                     ],
                     mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
                     td![C!["text-center", "px-2"], t.age.clone()],
