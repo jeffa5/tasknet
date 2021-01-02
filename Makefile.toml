@@ -23,9 +23,9 @@ args = ["-rf", "docs"]
 
 [tasks.site_pkg]
 script = [
-"mkdir -p docs/pkg",
-"cp pkg/package_bg.wasm docs/pkg/.",
-"cp pkg/package.js docs/pkg/.",
+"mkdir -p docs",
+"cp -r pkg docs/.",
+"rm docs/pkg/.gitignore",
 ]
 
 [tasks.site_statics]
