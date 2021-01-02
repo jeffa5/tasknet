@@ -700,14 +700,14 @@ fn view_button(text: &str, msg: Msg) -> Node<Msg> {
 fn view_actions(model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-row", "flex-wrap", "justify-around"],
-        view_filters(&model.filters),
+        view_filters(&model.filters,&model.tasks),
         view_button("Import Tasks", Msg::ImportTasks),
         view_button("Export Tasks", Msg::ExportTasks),
         view_button("Create", Msg::CreateTask)
     ]
 }
 
-fn view_filters(filters: &Filters) -> Node<Msg> {
+fn view_filters(filters: &Filters,tasks:&HashMap<uuid::Uuid, Task>) -> Node<Msg> {
     div![
         C![
             "flex",
@@ -794,6 +794,12 @@ fn view_filters(filters: &Filters) -> Node<Msg> {
             false,
             Msg::FiltersTagsChanged
         ),
+        div![
+            C!["mr-2"],
+            tasks.values().filter(|t| filters.filter_task(t)).count(),
+            "/",
+            tasks.len()
+        ],
         view_button("Reset Filters", Msg::FiltersReset),
     ]
 }
