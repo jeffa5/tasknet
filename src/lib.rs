@@ -666,6 +666,7 @@ fn view_filters(filters: &Filters) -> Node<Msg> {
             "flex",
             "flex-row",
             "flex-wrap",
+            "items-center",
             "bg-gray-50",
             "py-2",
             "px-2",
