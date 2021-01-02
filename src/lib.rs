@@ -112,11 +112,11 @@ struct Model {
 struct_urls!();
 impl<'a> Urls<'a> {
     pub fn home(self) -> Url {
-        self.base_url().set_search(UrlSearch::default())
+        self.base_url().add_path_part("tasknet").set_search(UrlSearch::default())
     }
 
     pub fn view_task(self, uuid: &uuid::Uuid) -> Url {
-        self.base_url().set_search(UrlSearch::new(vec![(
+        self.base_url().add_path_part("tasknet").set_search(UrlSearch::new(vec![(
             VIEW_TASK_SEARCH_KEY,
             vec![uuid.to_string()],
         )]))
