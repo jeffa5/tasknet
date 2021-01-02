@@ -506,15 +506,15 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
                 Task::Waiting(_) => "Waiting",
             }
         ],
-        IF!(urgency.is_some() => div![
-            C!["pl-2"],
-            span![C!["font-bold"], "Urgency: "],
-            if let Some(urgency) = urgency {
+        if let Some(urgency) = urgency {
+            div![
+                C!["pl-2"],
+                span![C!["font-bold"], "Urgency: "],
                 plain![format!("{:.2}", urgency)]
-            } else {
-                empty![]
-            }
-        ]),
+            ]
+        } else {
+            empty![]
+        },
         div![
             C!["pl-2"],
             span![C!["font-bold"], "Entry: "],
