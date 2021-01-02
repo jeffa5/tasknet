@@ -472,7 +472,7 @@ fn view_titlebar() -> Node<Msg> {
                 "hover:bg-gray-300",
                 "text-lg"
             ],
-            attrs! {At::Href => "/"},
+            attrs! {At::Href => "/tasknet"},
             "TaskNet"
         ],
     ]
