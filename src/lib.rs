@@ -34,7 +34,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         let res = window()
             .navigator()
             .service_worker()
-            .register(&format!("/{}/{}", url_clone.path().join("/"), "service-worker.js"))
+            .register(&format!("{}/{}", url_clone.path().join("/"), "service-worker.js"))
             .apply(JsFuture::from)
             .await;
         if let Err(e) = res {
