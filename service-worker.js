@@ -2,7 +2,7 @@ var staticCacheName = "tasknet-0.1.0-static";
 var variableCacheName = "tasknet-0.1.0-variable";
 var contentToCache = [
   "index.html",
-  "scripts/package.js",
+  "pkg/package.js",
 ];
 
 self.addEventListener('install', (e) => {
