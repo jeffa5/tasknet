@@ -495,7 +495,7 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
     };
     let urgency = urgency::calculate(task);
     div![
-        C!["flex", "flex-col"],
+        C!["flex", "flex-col", "bg-gray-100", "p-2"],
         div![
             C!["pl-2"],
             span![C!["font-bold"], "Status: "],
@@ -718,9 +718,8 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             "flex-row",
             "flex-wrap",
             "items-center",
-            "bg-gray-50",
-            "py-2",
-            "px-2",
+            "bg-gray-100",
+            "p-2",
             "mx-2",
         ],
         div![
