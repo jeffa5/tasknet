@@ -1,5 +1,4 @@
-var staticCacheName = "tasknet-0.1.0-static";
-var variableCacheName = "tasknet-0.1.0-variable";
+var cacheName = "tasknet-0";
 var contentToCache = [
   "index.html",
   "pkg/package.js",
@@ -8,7 +7,7 @@ var contentToCache = [
 self.addEventListener('install', (e) => {
   console.log('[Service Worker] Install');
   e.waitUntil(
-    caches.open(staticCacheName).then((cache) => {
+    caches.open(cacheName).then((cache) => {
           console.log('[Service Worker] Caching all: app shell and content');
       return cache.addAll(contentToCache);
     })
@@ -34,7 +33,7 @@ self.addEventListener('fetch', (event) => {
       return r;
     }),
     fetch(event.request).then((response) => {
-      return caches.open(variableCacheName).then((cache) => {
+      return caches.open(cacheName).then((cache) => {
         console.log("[Service Worker] Retrieved resource: "+event.request.url);
         cache.put(event.request, response.clone());
         return response;
