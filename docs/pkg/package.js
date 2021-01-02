@@ -983,12 +983,12 @@ async function init(input) {
         var ret = makeMutClosure(arg0, arg1, 20, __wbg_adapter_24);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1147 = function(arg0, arg1, arg2) {
-        var ret = makeMutClosure(arg0, arg1, 120, __wbg_adapter_27);
+    imports.wbg.__wbindgen_closure_wrapper1149 = function(arg0, arg1, arg2) {
+        var ret = makeMutClosure(arg0, arg1, 121, __wbg_adapter_27);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1185 = function(arg0, arg1, arg2) {
-        var ret = makeMutClosure(arg0, arg1, 89, __wbg_adapter_30);
+    imports.wbg.__wbindgen_closure_wrapper1187 = function(arg0, arg1, arg2) {
+        var ret = makeMutClosure(arg0, arg1, 90, __wbg_adapter_30);
         return addHeapObject(ret);
     };
 
