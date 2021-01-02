@@ -957,6 +957,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                         Task::Completed(t) => Some(*t.end()),
                         Task::Deleted(t) => Some(*t.end()),
                     },
+                    due: t.due().to_owned(),
                 })
             } else {
                 None
@@ -980,6 +981,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
     let show_project = tasks.iter().any(|t| !t.project.is_empty());
     let show_tags = tasks.iter().any(|t| !t.tags.is_empty());
     let show_priority = tasks.iter().any(|t| t.priority.is_some());
+    let show_due = tasks.iter().any(|t| t.due.is_some());
     div![
         C!["mt-8"],
         table![
@@ -987,6 +989,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
             tr![
                 C!["border-b-2"],
                 th!["Age"],
+                IF!(show_due => th![C!["border-l-2"], "Due"]),
                 IF!(show_status => th![C!["border-l-2"], "Status"]),
                 IF!(show_project => th![C!["border-l-2"], "Project"]),
                 IF!(show_tags => th![C!["border-l-2"], "Tags"]),
@@ -1014,6 +1017,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                     ],
                     mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
                     td![C!["text-center", "px-2"], t.age.clone()],
+                    IF!(show_due => td![C!["border-l-2", "text-center", "px-2"], t.due.map(|due|duration_string(due.signed_duration_since(chrono::offset::Utc::now())))]),
                     IF!(show_status => td![C!["border-l-2","text-center", "px-2"], t.status]),
                     IF!(show_project => td![
                         C!["border-l-2", "text-left", "px-2"],
@@ -1069,6 +1073,7 @@ struct ViewableTask {
     priority: Option<Priority>,
     urgency: Option<f64>,
     end: Option<chrono::DateTime<chrono::Utc>>,
+    due: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 fn duration_string(duration: chrono::Duration) -> String {
@@ -1082,8 +1087,18 @@ fn duration_string(duration: chrono::Duration) -> String {
         format!("{}m", duration.num_minutes())
     } else if duration.num_seconds() > 0 {
         format!("{}s", duration.num_seconds())
-    } else {
+    } else if duration.num_seconds() > -1 {
         "now".to_owned()
+    } else if duration.num_seconds() > -60 {
+        format!("{}s", duration.num_seconds())
+    } else if duration.num_minutes() > -60 {
+        format!("{}m", duration.num_minutes())
+    } else if duration.num_hours() > -24 {
+        format!("{}h", duration.num_hours())
+    } else if duration.num_days() > -7 {
+        format!("{}d", duration.num_days())
+    } else {
+        format!("{}w", duration.num_weeks())
     }
 }
 
