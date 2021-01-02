@@ -649,7 +649,6 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
             C!["flex", "justify-end"],
             IF!(is_pending =>
                 div![
-                    C!["mr-4"],
                     if start.is_some() {
                         view_button("Stop", Msg::StopSelectedTask)
                     } else {
@@ -658,19 +657,19 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
                 ]
             ),
             IF!(is_pending =>
-                div![C!["mr-4"], view_button("Complete", Msg::CompleteSelectedTask)]
+                div![ view_button("Complete", Msg::CompleteSelectedTask)]
             ),
             IF!(matches!(task, Task::Pending(_)|Task::Waiting(_)) =>
-                div![C!["mr-4"], view_button("Delete", Msg::DeleteSelectedTask)]
+                div![ view_button("Delete", Msg::DeleteSelectedTask)]
             ),
             IF!(matches!(task, Task::Deleted(_)) =>
-                div![C!["mr-4"], view_button("Permanently delete", Msg::DeleteSelectedTask)]
+                div![ view_button("Permanently delete", Msg::DeleteSelectedTask)]
             ),
             IF!(matches!(task, Task::Deleted(_)) =>
-                div![C!["mr-4"], view_button("Undelete", Msg::MoveSelectedTaskToPending)]
+                div![ view_button("Undelete", Msg::MoveSelectedTaskToPending)]
             ),
             IF!(matches!(task, Task::Completed(_)) =>
-                div![C!["mr-4"], view_button("Uncomplete", Msg::MoveSelectedTaskToPending)]
+                div![ view_button("Uncomplete", Msg::MoveSelectedTaskToPending)]
             ),
             view_button("Close", Msg::SelectTask(None))
         ]
@@ -711,7 +710,7 @@ fn view_text_input(
 
 fn view_button(text: &str, msg: Msg) -> Node<Msg> {
     button![
-        C!["bg-gray-200", "py-2", "px-4", "hover:bg-gray-300"],
+        C!["bg-gray-200", "py-2", "px-4","m-2", "hover:bg-gray-300"],
         mouse_ev(Ev::Click, |_| msg),
         text
     ]
@@ -721,8 +720,11 @@ fn view_actions(model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-row", "flex-wrap", "justify-around"],
         view_filters(&model.filters, &model.tasks),
-        view_button("Import Tasks", Msg::ImportTasks),
-        view_button("Export Tasks", Msg::ExportTasks),
+        div![
+            C!["flex", "flex-col", "justify-around"],
+            view_button("Import Tasks", Msg::ImportTasks),
+            view_button("Export Tasks", Msg::ExportTasks),
+        ],
         view_button("Create", Msg::CreateTask)
     ]
 }
