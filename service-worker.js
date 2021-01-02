@@ -18,7 +18,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-function fetchedFromNetwork(response) {
+function fetchedFromNetwork(event, response) {
   var cacheCopy = response.clone();
 
   console.log('[Service Worker]: Fetch response from network.', event.request.url);
@@ -50,7 +50,7 @@ function unableToResolve () {
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      var networked = fetch(event.request).then(fetchedFromNetwork, unableToResolve).catch(unableToResolve);
+      var networked = fetch(event.request).then((response) => fetchedFromNetwork(event, response), unableToResolve).catch(unableToResolve);
       console.log("[Service Worker]: Fetch event", cached ? "(cached)" : "(network)", event.request.url);
       return cached || networked
     })
