@@ -1,7 +1,6 @@
 use crate::task::{Priority, Task};
 
 const NEXT_COEFFICIENT: f64 = 15.0;
-// urgency.due.coefficient                    12.0 # overdue or near due date
 const DUE_COEFFICIENT: f64 = 12.0;
 // urgency.blocking.coefficient                8.0 # blocking other tasks
 const HIGH_PRIORITY_COEFFICIENT: f64 = 6.0;

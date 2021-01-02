@@ -7,6 +7,7 @@ use std::{
 };
 
 use apply::Apply;
+use chrono::{Datelike, Timelike};
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
@@ -138,6 +139,8 @@ enum Msg {
     SelectedTaskTagsChanged(String),
     SelectedTaskPriorityChanged(String),
     SelectedTaskNotesChanged(String),
+    SelectedTaskDueDateChanged(String),
+    SelectedTaskDueTimeChanged(String),
     CreateTask,
     DeleteSelectedTask,
     CompleteSelectedTask,
@@ -230,6 +233,60 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             if let Some(uuid) = model.selected_task {
                 if let Some(task) = &mut model.tasks.get_mut(&uuid) {
                     task.set_notes(new_notes)
+                }
+            }
+        }
+        Msg::SelectedTaskDueDateChanged(new_date) => {
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
+                    match new_date {
+                        Ok(new_date) => {
+                            let due = task.due();
+                            match due {
+                                None => task.set_due(Some(chrono::DateTime::from_utc(
+                                    new_date.and_hms(0, 0, 0),
+                                    chrono::Utc,
+                                ))),
+                                Some(due) => {
+                                    let due = due
+                                        .with_year(new_date.year())
+                                        .and_then(|due| due.with_month(new_date.month()))
+                                        .and_then(|due| due.with_day(new_date.day()));
+                                    task.set_due(due)
+                                }
+                            }
+                        }
+                        Err(_) => task.set_due(None),
+                    }
+                }
+            }
+        }
+        Msg::SelectedTaskDueTimeChanged(new_time) => {
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
+                    match new_time {
+                        Ok(new_time) => {
+                            let due = task.due();
+                            match due {
+                                None => {
+                                    let now = chrono::offset::Utc::now();
+                                    let now = now
+                                        .with_hour(new_time.hour())
+                                        .and_then(|now| now.with_minute(new_time.minute()));
+                                    task.set_due(now)
+                                }
+                                Some(due) => {
+                                    let due = due
+                                        .with_hour(new_time.hour())
+                                        .and_then(|due| due.with_minute(new_time.minute()));
+                                    task.set_due(due)
+                                }
+                            }
+                        }
+                        Err(_) => task.set_due(None),
+                    }
                 }
             }
         }
@@ -625,6 +682,28 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         ],
         div![
             C!["flex", "flex-col", "px-2", "mb-2"],
+            div![C!["font-bold"], "Due"],
+            div![
+                C!["flex", "flex-row"],
+                input![
+                    C!["mr-4"],
+                    attrs! {
+                        At::Type => "date",
+                        At::Value => task.due().map_or_else(String::new, |due| due.format("%Y-%m-%d").to_string()),
+                    },
+                    input_ev(Ev::Input, Msg::SelectedTaskDueDateChanged)
+                ],
+                input![
+                    attrs! {
+                        At::Type => "time",
+                        At::Value => task.due().map_or_else(String::new, |due| due.format("%H:%M").to_string()),
+                    },
+                    input_ev(Ev::Input, Msg::SelectedTaskDueTimeChanged)
+                ]
+            ]
+        ],
+        div![
+            C!["flex", "flex-col", "px-2", "mb-2"],
             div![C!["font-bold"], "Notes"],
             div![
                 C!["flex", "flex-row"],
@@ -710,7 +789,7 @@ fn view_text_input(
 
 fn view_button(text: &str, msg: Msg) -> Node<Msg> {
     button![
-        C!["bg-gray-200", "py-2", "px-4","m-2", "hover:bg-gray-300"],
+        C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300"],
         mouse_ev(Ev::Click, |_| msg),
         text
     ]

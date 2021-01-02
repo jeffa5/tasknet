@@ -103,6 +103,15 @@ impl Task {
         }
     }
 
+    pub fn set_due(&mut self, due: Option<DateTime>) {
+        match self {
+            Self::Pending(t) => t.set_due(due),
+            Self::Deleted(t) => t.set_due(due),
+            Self::Completed(t) => t.set_due(due),
+            Self::Waiting(t) => t.set_due(due),
+        }
+    }
+
     pub fn complete(self) -> Self {
         match self {
             Self::Pending(t) => Self::Completed(t.complete()),
@@ -300,6 +309,11 @@ impl Pending {
         &self.due
     }
 
+    pub fn set_due(&mut self, due: Option<DateTime>) {
+        self.modified();
+        self.due = due
+    }
+
     pub fn tags(&self) -> &[String] {
         &self.tags
     }
@@ -397,6 +411,11 @@ impl Deleted {
 
     pub const fn due(&self) -> &Option<DateTime> {
         &self.due
+    }
+
+    pub fn set_due(&mut self, due: Option<DateTime>) {
+        self.modified();
+        self.due = due
     }
 
     pub fn tags(&self) -> &[String] {
@@ -522,6 +541,11 @@ impl Completed {
         &self.due
     }
 
+    pub fn set_due(&mut self, due: Option<DateTime>) {
+        self.modified();
+        self.due = due
+    }
+
     pub fn tags(&self) -> &[String] {
         &self.tags
     }
@@ -643,6 +667,11 @@ impl Waiting {
 
     pub const fn due(&self) -> &Option<DateTime> {
         &self.due
+    }
+
+    pub fn set_due(&mut self, due: Option<DateTime>) {
+        self.modified();
+        self.due = due
     }
 
     pub fn delete(mut self) -> Deleted {
