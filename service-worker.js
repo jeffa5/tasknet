@@ -35,10 +35,22 @@ function fetchedFromNetwork(response) {
   return response;
 }
 
+function unableToResolve () {
+  console.log('[Service Worker]: Fetch request failed in both cache and network.');
+
+  return new Response('<h1>Service Unavailable</h1>', {
+    status: 503,
+    statusText: 'Service Unavailable',
+    headers: new Headers({
+      'Content-Type': 'text/html'
+    })
+  });
+}
+
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      var networked = fetch(event.request).then(fetchedFromNetwork);
+      var networked = fetch(event.request).then(fetchedFromNetwork, unableToResolve).catch(unableToResolve);
       console.log("[Service Worker]: Fetch event", cached ? "(cached)" : "(network)", event.request.url);
       return cached || networked
     })
