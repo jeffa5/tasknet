@@ -29,12 +29,11 @@ const FILTERS_STORAGE_KEY: &str = "tasknet-filters";
 
 fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     let url_clone = url.clone();
-    log!(url_clone.path().join("/"));
     orders.perform_cmd(async move {
         let res = window()
             .navigator()
             .service_worker()
-            .register_with_options(&format!("{}/{}", url_clone.path().join("/"), "service-worker.js"), web_sys::RegistrationOptions::new().scope("./"))
+            .register(&format!("/{}/{}", url_clone.path().join("/"), "service-worker.js"))
             .apply(JsFuture::from)
             .await;
         if let Err(e) = res {
