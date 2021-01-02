@@ -4,6 +4,52 @@ PORT = "8000"
 [config]
 skip_core_tasks = true
 
+# ---- SITE ----
+
+[tasks.site]
+description = "Build the site and move files to docs folder"
+dependencies = ["site_clean","site_release", "site_statics"]
+
+[tasks.site_serve]
+description = "Start server from docs folder"
+install_crate = { crate_name = "microserver", binary = "microserver", test_arg = "-h" }
+command = "microserver"
+args = ["--port", "${PORT}", "docs"]
+dependencies = ["site"]
+
+[tasks.site_clean]
+command = "rm"
+args = ["-rf", "docs"]
+
+[tasks.site_release]
+description = "Build with wasm-pack in release mode to docs/pkgs folder"
+install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
+command = "wasm-pack"
+args = ["build", "--target", "web", "--out-name", "package", "--release", "--out-dir", "docs/pkg"]
+
+[tasks.site_statics]
+dependencies = ["site_statics_assets", "site_statics_index", "site_statics_sw", "site_statics_styles", "site_statics_manifest"]
+
+[tasks.site_statics_assets]
+command = "cp"
+args = ["-r", "assets", "docs/."]
+
+[tasks.site_statics_index]
+command = "cp"
+args = ["index.html", "docs/."]
+
+[tasks.site_statics_sw]
+command = "cp"
+args = ["service-worker.js", "docs/."]
+
+[tasks.site_statics_styles]
+command = "cp"
+args = ["-r", "styles", "docs/."]
+
+[tasks.site_statics_manifest]
+command = "cp"
+args = ["tasknet.webmanifest", "docs/."]
+
 # ---- BASIC ----
 
 [tasks.watch]
