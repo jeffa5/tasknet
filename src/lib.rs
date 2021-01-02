@@ -718,7 +718,6 @@ fn view_filters(filters: &Filters,tasks:&HashMap<uuid::Uuid, Task>) -> Node<Msg>
             "py-2",
             "px-2",
             "mx-2",
-            "mb-2"
         ],
         div![
             C!["flex", "flex-col", "mr-8"],
