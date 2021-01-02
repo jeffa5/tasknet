@@ -33,7 +33,11 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         let res = window()
             .navigator()
             .service_worker()
-            .register(&format!("{}/{}", url_clone.path().join("/"), "service-worker.js"))
+            .register(&format!(
+                "{}/{}",
+                url_clone.path().join("/"),
+                "service-worker.js"
+            ))
             .apply(JsFuture::from)
             .await;
         if let Err(e) = res {
@@ -152,6 +156,8 @@ enum Msg {
     FiltersReset,
     UrlChanged(subs::UrlChanged),
     EscapeKey,
+    ImportTasks,
+    ExportTasks,
 }
 
 fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -383,6 +389,44 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             if model.selected_task.is_some() {
                 Urls::new(&model.base_url).home().go_and_push();
                 model.selected_task = None
+            }
+        }
+        Msg::ImportTasks => match window().prompt_with_message("Paste the tasks json here") {
+            Ok(Some(content)) => {
+                match serde_json::from_str::<HashMap<uuid::Uuid, Task>>(&content) {
+                    Ok(tasks) => {
+                        for (id, task) in tasks.into_iter() {
+                            model.tasks.insert(id, task);
+                        }
+                    }
+                    Err(e) => {
+                        log!(e);
+                        window()
+                            .alert_with_message("Failed to import tasks")
+                            .unwrap_or_else(|e| log!(e));
+                    }
+                }
+            }
+            Ok(None) => {}
+            Err(e) => {
+                log!(e);
+                window()
+                    .alert_with_message("Failed to create prompt")
+                    .unwrap_or_else(|e| log!(e));
+            }
+        },
+        Msg::ExportTasks => {
+            let json = serde_json::to_string(&model.tasks);
+            match json {
+                Ok(json) => {
+                    window()
+                        .prompt_with_message_and_default("Copy this", &json)
+                        .unwrap_or_else(|e| {
+                            log!(e);
+                            None
+                        });
+                }
+                Err(e) => log!(e),
             }
         }
     }
@@ -657,6 +701,8 @@ fn view_actions(model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-row", "flex-wrap", "justify-around"],
         view_filters(&model.filters),
+        view_button("Import Tasks", Msg::ImportTasks),
+        view_button("Export Tasks", Msg::ExportTasks),
         view_button("Create", Msg::CreateTask)
     ]
 }
