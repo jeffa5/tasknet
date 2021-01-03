@@ -686,7 +686,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
                 }
             ],
             div![
-                C!["flex", "flex-row"],
+                C!["flex", "flex-row", "flex-nowrap"],
                 tags_suggestions
                     .into_iter()
                     .map(|sug| {
@@ -876,7 +876,7 @@ fn view_text_input(
             }
         ],
         div![
-            C!["flex", "flex-row"],
+            C!["flex", "flex-row", "flex-nowrap"],
             suggestions
                 .into_iter()
                 .map(|sug| {
