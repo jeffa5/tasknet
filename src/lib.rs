@@ -569,6 +569,29 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             }
         })
         .collect::<BTreeSet<_>>();
+    let tags_suggestions = tasks
+        .values()
+        .flat_map(|saved_task| {
+            saved_task
+                .tags()
+                .iter()
+                .filter_map(|saved_tag| {
+                    let input_tags = task.tags();
+                    if input_tags.is_empty() {
+                        Some(saved_tag.to_owned())
+                    } else if !input_tags.contains(&saved_tag.to_lowercase())
+                        && input_tags
+                            .iter()
+                            .any(|input_tag| saved_tag.contains(input_tag))
+                    {
+                        Some(saved_tag.to_owned())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<BTreeSet<_>>()
+        })
+        .collect::<BTreeSet<_>>();
     div![
         C![
             "flex",
@@ -640,13 +663,57 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             project_suggestions,
             Msg::SelectedTaskProjectChanged
         ),
-        view_text_input(
-            "Tags",
-            &task.tags().join(" "),
-            false,
-            BTreeSet::new(),
-            Msg::SelectedTaskTagsChanged
-        ),
+        div![
+            C!["flex", "flex-col", "px-2", "mb-2"],
+            div![C!["font-bold"], "Tags"],
+            div![
+                C!["flex", "flex-row"],
+                input![
+                    C!["flex-grow", "border", "mr-2"],
+                    attrs! {
+                        At::Value => task.tags().join(" "),
+                        At::AutoFocus => AtValue::Ignored
+                    },
+                    input_ev(Ev::Input, Msg::SelectedTaskTagsChanged)
+                ],
+                if task.tags().join(" ").is_empty() {
+                    pre![" "]
+                } else {
+                    button![
+                        mouse_ev(Ev::Click, |_| Msg::SelectedTaskTagsChanged(String::new())),
+                        div![C!["text-red-600"], "X"]
+                    ]
+                }
+            ],
+            div![
+                C!["flex", "flex-row"],
+                tags_suggestions
+                    .into_iter()
+                    .map(|sug| {
+                        let sug_clone = sug.clone();
+                        let tags = task.tags().join(" ");
+                        button![
+                            C!["mr-2", "mt-2", "px-1", "bg-gray-200"],
+                            mouse_ev(Ev::Click, move |_| {
+                                if tags.ends_with(' ') || tags.is_empty() {
+                                    Msg::SelectedTaskTagsChanged(format!("{} {}", tags, sug_clone))
+                                } else {
+                                    let split_tags = tags.split_whitespace().collect::<Vec<_>>();
+                                    let tags = split_tags
+                                        .iter()
+                                        .take(split_tags.len() - 1)
+                                        .map(|s| s.to_owned())
+                                        .collect::<Vec<_>>()
+                                        .join(" ");
+                                    Msg::SelectedTaskTagsChanged(format!("{} {}", tags, sug_clone))
+                                }
+                            }),
+                            sug
+                        ]
+                    })
+                    .collect::<Vec<_>>()
+            ]
+        ],
         div![
             C!["flex", "flex-col", "px-2", "mb-2"],
             div![C!["font-bold"], "Priority"],
