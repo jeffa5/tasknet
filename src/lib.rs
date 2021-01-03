@@ -2,7 +2,7 @@
 #![warn(clippy::nursery)]
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     convert::TryFrom,
 };
 
@@ -505,7 +505,7 @@ fn view(model: &Model) -> Node<Msg> {
             div![
                 C!["flex", "flex-col", "container", "mx-auto"],
                 view_titlebar(),
-                view_selected_task(task),
+                view_selected_task(task, &model.tasks),
             ]
         } else {
             empty![]
@@ -540,7 +540,7 @@ fn view_titlebar() -> Node<Msg> {
 
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
-fn view_selected_task(task: &Task) -> Node<Msg> {
+fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
     let is_pending = matches!(task, Task::Pending(_));
     let start = match task {
         Task::Pending(task) => *task.start(),
@@ -557,6 +557,18 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
         Task::Completed(_) | Task::Deleted(_) | Task::Waiting(_) => false,
     };
     let is_next = task.tags().contains(&"next".to_owned());
+    let project_lowercase = task.project().join(".").to_lowercase();
+    let project_suggestions = tasks
+        .values()
+        .filter_map(|t| {
+            let t_proj = t.project().join(".").to_lowercase();
+            if t_proj.contains(&project_lowercase) && t_proj != project_lowercase {
+                Some(t.project().join("."))
+            } else {
+                None
+            }
+        })
+        .collect::<BTreeSet<_>>();
     div![
         C![
             "flex",
@@ -618,18 +630,21 @@ fn view_selected_task(task: &Task) -> Node<Msg> {
             "Description",
             task.description(),
             true,
+            BTreeSet::new(),
             Msg::SelectedTaskDescriptionChanged
         ),
         view_text_input(
             "Project",
             &task.project().join("."),
             false,
+            project_suggestions,
             Msg::SelectedTaskProjectChanged
         ),
         view_text_input(
             "Tags",
             &task.tags().join(" "),
             false,
+            BTreeSet::new(),
             Msg::SelectedTaskTagsChanged
         ),
         div![
@@ -766,9 +781,11 @@ fn view_text_input(
     name: &str,
     value: &str,
     autofocus: bool,
+    suggestions: BTreeSet<String>,
     f: impl FnOnce(String) -> Msg + Clone + 'static,
 ) -> Node<Msg> {
     let also_f = f.clone();
+    let also_also_f = f.clone();
     div![
         C!["flex", "flex-col", "px-2", "mb-2"],
         div![C!["font-bold"], name],
@@ -790,6 +807,21 @@ fn view_text_input(
                     div![C!["text-red-600"], "X"]
                 ]
             }
+        ],
+        div![
+            C!["flex", "flex-row"],
+            suggestions
+                .into_iter()
+                .map(|sug| {
+                    let sug_clone = sug.clone();
+                    let new_f = also_also_f.clone();
+                    button![
+                        C!["mr-2", "mt-2", "px-1", "bg-gray-200"],
+                        mouse_ev(Ev::Click, |_| new_f(sug_clone)),
+                        sug
+                    ]
+                })
+                .collect::<Vec<_>>()
         ]
     ]
 }
@@ -886,18 +918,21 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             "Description",
             &filters.description,
             false,
+            BTreeSet::new(),
             Msg::FiltersDescriptionChanged
         ),
         view_text_input(
             "Project",
             &filters.project.join("."),
             false,
+            BTreeSet::new(),
             Msg::FiltersProjectChanged
         ),
         view_text_input(
             "Tags",
             &filters.tags.join(" "),
             false,
+            BTreeSet::new(),
             Msg::FiltersTagsChanged
         ),
         div![
