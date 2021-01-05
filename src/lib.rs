@@ -59,12 +59,12 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .subscribe(Msg::UrlChanged);
     let tasks = match LocalStorage::get(TASKS_STORAGE_KEY) {
         Ok(tasks) => tasks,
-        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!(err),
+        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!("failed to parse tasks: {:?}", err),
         Err(_) => HashMap::new(),
     };
     let filters = match LocalStorage::get(FILTERS_STORAGE_KEY) {
         Ok(filters) => filters,
-        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!(err),
+        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!("failed to parse filters: {:?}", err),
         Err(_) => Filters::default(),
     };
     let selected_task = url.search().get(VIEW_TASK_SEARCH_KEY).and_then(|v| {
