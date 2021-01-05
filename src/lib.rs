@@ -425,7 +425,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             }
         }
         Msg::FiltersDescriptionChanged(new_description) => {
-            model.filters.description = new_description
+            model.filters.description_and_notes = new_description
         }
         Msg::FiltersReset => model.filters = Filters::default(),
         Msg::UrlChanged(subs::UrlChanged(url)) => {
@@ -982,8 +982,8 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             ),
         ],
         view_text_input(
-            "Description",
-            &filters.description,
+            "Description & Notes",
+            &filters.description_and_notes,
             false,
             BTreeSet::new(),
             Msg::FiltersDescriptionChanged
