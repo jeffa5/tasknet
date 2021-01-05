@@ -59,12 +59,16 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .subscribe(Msg::UrlChanged);
     let tasks = match LocalStorage::get(TASKS_STORAGE_KEY) {
         Ok(tasks) => tasks,
-        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!("failed to parse tasks: {:?}", err),
+        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
+            panic!("failed to parse tasks: {:?}", err)
+        }
         Err(_) => HashMap::new(),
     };
     let filters = match LocalStorage::get(FILTERS_STORAGE_KEY) {
         Ok(filters) => filters,
-        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => panic!("failed to parse filters: {:?}", err),
+        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
+            panic!("failed to parse filters: {:?}", err)
+        }
         Err(_) => Filters::default(),
     };
     let selected_task = url.search().get(VIEW_TASK_SEARCH_KEY).and_then(|v| {
@@ -569,7 +573,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             }
         })
         .collect::<BTreeSet<_>>();
-    let tags_suggestions = tasks
+    let mut tags_suggestions = tasks
         .values()
         .flat_map(|saved_task| {
             saved_task
@@ -577,12 +581,11 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
                 .iter()
                 .filter_map(|saved_tag| {
                     let input_tags = task.tags();
-                    if input_tags.is_empty() {
-                        Some(saved_tag.to_owned())
-                    } else if !input_tags.contains(&saved_tag.to_lowercase())
-                        && input_tags
-                            .iter()
-                            .any(|input_tag| saved_tag.contains(input_tag))
+                    if input_tags.is_empty()
+                        || (!input_tags.contains(&saved_tag.to_lowercase())
+                            && input_tags
+                                .iter()
+                                .any(|input_tag| saved_tag.contains(input_tag)))
                     {
                         Some(saved_tag.to_owned())
                     } else {
@@ -592,6 +595,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
                 .collect::<BTreeSet<_>>()
         })
         .collect::<BTreeSet<_>>();
+    tags_suggestions.insert("next".to_owned());
     div![
         C![
             "flex",
