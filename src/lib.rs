@@ -792,7 +792,15 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
                         At::Value => task.due().map_or_else(String::new, |due| due.format("%H:%M").to_string()),
                     },
                     input_ev(Ev::Input, Msg::SelectedTaskDueTimeChanged)
-                ]
+                ],
+                if let Some(due) = task.due() {
+                    span![
+                        C!["ml-2"],
+                        duration_string(due.signed_duration_since(chrono::offset::Utc::now()))
+                    ]
+                } else {
+                    empty![]
+                }
             ]
         ],
         div![
