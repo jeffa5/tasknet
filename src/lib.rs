@@ -16,7 +16,7 @@ mod task;
 mod urgency;
 
 use filters::Filters;
-use task::{Priority, Task};
+use task::{Priority, Status, Task};
 
 const ESCAPE_KEY: &str = "Escape";
 
@@ -304,18 +304,19 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         Msg::DeleteSelectedTask => {
             if let Some(uuid) = model.selected_task.take() {
                 Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.remove(&uuid) {
-                    match task {
-                        Task::Pending(_) | Task::Completed(_) | Task::Waiting(_) => {
-                            model.tasks.insert(task.uuid(), task.delete());
+                if let Some(task) = model.tasks.get_mut(&uuid) {
+                    match task.status() {
+                        Status::Pending(_) | Status::Completed(_) | Status::Waiting(_) => {
+                            task.delete();
                         }
-                        Task::Deleted(_) => match window().confirm_with_message(
+                        Status::Deleted(_) => match window().confirm_with_message(
                             "Are you sure you want to permanently delete this task?",
                         ) {
-                            Ok(true) => { /* already removed from set so just don't add it back */ }
-                            Ok(false) | Err(_) => {
-                                model.tasks.insert(task.uuid(), task);
+                            Ok(true) => {
+                                /* already removed from set so just don't add it back */
+                                model.tasks.remove(&uuid);
                             }
+                            Ok(false) | Err(_) => {}
                         },
                     }
                 }
@@ -324,8 +325,8 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         Msg::CompleteSelectedTask => {
             if let Some(uuid) = model.selected_task.take() {
                 Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.remove(&uuid) {
-                    model.tasks.insert(task.uuid(), task.complete());
+                if let Some(task) = model.tasks.get_mut(&uuid) {
+                    task.complete()
                 }
             }
         }
@@ -333,12 +334,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             if let Some(uuid) = model.selected_task.take() {
                 Urls::new(&model.base_url).home().go_and_push();
                 if let Some(task) = model.tasks.get_mut(&uuid) {
-                    match task {
-                        Task::Pending(task) => {
-                            task.activate();
-                        }
-                        Task::Deleted(_) | Task::Completed(_) | Task::Waiting(_) => {}
-                    };
+                    task.activate()
                 }
             }
         }
@@ -346,34 +342,15 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             if let Some(uuid) = model.selected_task.take() {
                 Urls::new(&model.base_url).home().go_and_push();
                 if let Some(task) = model.tasks.get_mut(&uuid) {
-                    match task {
-                        Task::Pending(task) => {
-                            task.deactivate();
-                        }
-                        Task::Deleted(_) | Task::Completed(_) | Task::Waiting(_) => {}
-                    };
+                    task.deactivate()
                 }
             }
         }
         Msg::MoveSelectedTaskToPending => {
             if let Some(uuid) = model.selected_task.take() {
                 Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.remove(&uuid) {
-                    match task {
-                        Task::Pending(_) | Task::Waiting(_) => {
-                            model.tasks.insert(task.uuid(), task);
-                        }
-                        Task::Deleted(task) => {
-                            model
-                                .tasks
-                                .insert(task.uuid(), Task::Pending(task.undelete()));
-                        }
-                        Task::Completed(task) => {
-                            model
-                                .tasks
-                                .insert(task.uuid(), Task::Pending(task.uncomplete()));
-                        }
-                    };
+                if let Some(task) = model.tasks.get_mut(&uuid) {
+                    task.restore()
                 }
             }
         }
@@ -545,21 +522,11 @@ fn view_titlebar() -> Node<Msg> {
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
 fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
-    let is_pending = matches!(task, Task::Pending(_));
-    let start = match task {
-        Task::Pending(task) => *task.start(),
-        Task::Deleted(_) | Task::Completed(_) | Task::Waiting(_) => None,
-    };
-    let end = match task {
-        Task::Completed(task) => Some(task.end()),
-        Task::Deleted(task) => Some(task.end()),
-        Task::Pending(_) | Task::Waiting(_) => None,
-    };
+    let is_pending = matches!(task.status(), Status::Pending(_));
+    let start = task.start();
+    let end = task.end();
     let urgency = urgency::calculate(task);
-    let active = match task {
-        Task::Pending(t) => t.start().is_some(),
-        Task::Completed(_) | Task::Deleted(_) | Task::Waiting(_) => false,
-    };
+    let active = task.start().is_some();
     let is_next = task.tags().contains(&"next".to_owned());
     let project_lowercase = task.project().join(".").to_lowercase();
     let project_suggestions = tasks
@@ -618,11 +585,11 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
         div![
             C!["pl-2"],
             span![C!["font-bold"], "Status: "],
-            match task {
-                Task::Pending(_) => "Pending",
-                Task::Deleted(_) => "Deleted",
-                Task::Completed(_) => "Completed",
-                Task::Waiting(_) => "Waiting",
+            match task.status() {
+                Status::Pending(_) => "Pending",
+                Status::Deleted(_) => "Deleted",
+                Status::Completed(_) => "Completed",
+                Status::Waiting(_) => "Waiting",
             }
         ],
         if let Some(urgency) = urgency {
@@ -839,16 +806,16 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             IF!(is_pending =>
                 div![ view_button("Complete", Msg::CompleteSelectedTask)]
             ),
-            IF!(matches!(task, Task::Pending(_)|Task::Waiting(_)) =>
+            IF!(matches!(task.status(), Status::Pending(_)|Status::Waiting(_)) =>
                 div![ view_button("Delete", Msg::DeleteSelectedTask)]
             ),
-            IF!(matches!(task, Task::Deleted(_)) =>
+            IF!(matches!(task.status(), Status::Deleted(_)) =>
                 div![ view_button("Permanently delete", Msg::DeleteSelectedTask)]
             ),
-            IF!(matches!(task, Task::Deleted(_)) =>
+            IF!(matches!(task.status(), Status::Deleted(_)) =>
                 div![ view_button("Undelete", Msg::MoveSelectedTaskToPending)]
             ),
-            IF!(matches!(task, Task::Completed(_)) =>
+            IF!(matches!(task.status(), Status::Completed(_)) =>
                 div![ view_button("Uncomplete", Msg::MoveSelectedTaskToPending)]
             ),
             view_button("Close", Msg::SelectTask(None))
@@ -1057,11 +1024,11 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                     age: duration_string(
                         (chrono::offset::Utc::now()).signed_duration_since(*t.entry()),
                     ),
-                    status: match t {
-                        Task::Pending(_) => "Pending".to_owned(),
-                        Task::Completed(_) => "Completed".to_owned(),
-                        Task::Deleted(_) => "Deleted".to_owned(),
-                        Task::Waiting(_) => "Waiting".to_owned(),
+                    status: match t.status() {
+                        Status::Pending(_) => "Pending".to_owned(),
+                        Status::Completed(_) => "Completed".to_owned(),
+                        Status::Deleted(_) => "Deleted".to_owned(),
+                        Status::Waiting(_) => "Waiting".to_owned(),
                     },
                     project: t.project().to_owned(),
                     description: t.description().to_owned(),
@@ -1069,15 +1036,8 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                     uuid: t.uuid(),
                     tags: t.tags().to_owned(),
                     priority: t.priority().to_owned(),
-                    active: match t {
-                        Task::Pending(t) => t.start().is_some(),
-                        Task::Completed(_) | Task::Deleted(_) | Task::Waiting(_) => false,
-                    },
-                    end: match t {
-                        Task::Pending(_) | Task::Waiting(_) => None,
-                        Task::Completed(t) => Some(*t.end()),
-                        Task::Deleted(t) => Some(*t.end()),
-                    },
+                    active: t.start().is_some(),
+                    end: t.end().cloned(),
                     due: t.due().to_owned(),
                 })
             } else {

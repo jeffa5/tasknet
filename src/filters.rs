@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::task::{Priority, Task};
+use crate::task::{Priority, Status, Task};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
@@ -38,11 +38,11 @@ impl Default for Filters {
 
 impl Filters {
     pub fn filter_task(&self, task: &Task) -> bool {
-        let filter_status = match task {
-            Task::Pending(_) => self.status_pending,
-            Task::Deleted(_) => self.status_deleted,
-            Task::Completed(_) => self.status_completed,
-            Task::Waiting(_) => self.status_waiting,
+        let filter_status = match task.status() {
+            Status::Pending(_) => self.status_pending,
+            Status::Deleted(_) => self.status_deleted,
+            Status::Completed(_) => self.status_completed,
+            Status::Waiting(_) => self.status_waiting,
         };
         let filter_project = task
             .project()
