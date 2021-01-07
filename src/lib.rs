@@ -307,7 +307,10 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 Urls::new(&model.base_url).home().go_and_push();
                 if let Some(task) = model.tasks.get_mut(&uuid) {
                     match task.status() {
-                        Status::Pending(_) | Status::Completed(_) | Status::Waiting(_)|Status::Recurring(_) => {
+                        Status::Pending(_)
+                        | Status::Completed(_)
+                        | Status::Waiting(_)
+                        | Status::Recurring(_) => {
                             task.delete();
                         }
                         Status::Deleted(_) => match window().confirm_with_message(
@@ -898,6 +901,7 @@ fn view_actions(model: &Model) -> Node<Msg> {
     ]
 }
 
+#[allow(clippy::too_many_lines)]
 fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
     div![
         C![
