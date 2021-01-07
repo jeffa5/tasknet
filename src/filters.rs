@@ -5,16 +5,29 @@ use crate::task::{Priority, Status, Task};
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Filters {
+    #[serde(default)]
     pub status_pending: bool,
+    #[serde(default)]
     pub status_completed: bool,
+    #[serde(default)]
     pub status_deleted: bool,
+    #[serde(default)]
     pub status_waiting: bool,
+    #[serde(default)]
+    pub status_recurring: bool,
+    #[serde(default)]
     pub project: Vec<String>,
+    #[serde(default)]
     pub tags: Vec<String>,
+    #[serde(default)]
     pub description_and_notes: String,
+    #[serde(default)]
     pub priority_none: bool,
+    #[serde(default)]
     pub priority_low: bool,
+    #[serde(default)]
     pub priority_medium: bool,
+    #[serde(default)]
     pub priority_high: bool,
 }
 
@@ -25,6 +38,7 @@ impl Default for Filters {
             status_completed: false,
             status_deleted: false,
             status_waiting: false,
+            status_recurring: false,
             project: Vec::new(),
             tags: Vec::new(),
             description_and_notes: String::new(),
@@ -43,6 +57,7 @@ impl Filters {
             Status::Deleted(_) => self.status_deleted,
             Status::Completed(_) => self.status_completed,
             Status::Waiting(_) => self.status_waiting,
+            Status::Recurring(_) => self.status_recurring,
         };
         let filter_project = task
             .project()

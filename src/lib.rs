@@ -156,6 +156,7 @@ enum Msg {
     FiltersStatusToggleDeleted,
     FiltersStatusToggleCompleted,
     FiltersStatusToggleWaiting,
+    FiltersStatusToggleRecurring,
     FiltersPriorityToggleNone,
     FiltersPriorityToggleLow,
     FiltersPriorityToggleMedium,
@@ -306,7 +307,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 Urls::new(&model.base_url).home().go_and_push();
                 if let Some(task) = model.tasks.get_mut(&uuid) {
                     match task.status() {
-                        Status::Pending(_) | Status::Completed(_) | Status::Waiting(_) => {
+                        Status::Pending(_) | Status::Completed(_) | Status::Waiting(_)|Status::Recurring(_) => {
                             task.delete();
                         }
                         Status::Deleted(_) => match window().confirm_with_message(
@@ -368,6 +369,9 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::FiltersStatusToggleWaiting => {
             model.filters.status_waiting = !model.filters.status_waiting
+        }
+        Msg::FiltersStatusToggleRecurring => {
+            model.filters.status_recurring = !model.filters.status_recurring
         }
         Msg::FiltersPriorityToggleNone => {
             model.filters.priority_none = !model.filters.priority_none
@@ -590,6 +594,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
                 Status::Deleted(_) => "Deleted",
                 Status::Completed(_) => "Completed",
                 Status::Waiting(_) => "Waiting",
+                Status::Recurring(_) => "Recurring",
             }
         ],
         if let Some(urgency) = urgency {
@@ -931,6 +936,12 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
                 filters.status_waiting,
                 Msg::FiltersStatusToggleWaiting
             ),
+            view_checkbox(
+                "filters-status-recurring",
+                "Recurring",
+                filters.status_recurring,
+                Msg::FiltersStatusToggleRecurring
+            ),
         ],
         div![
             C!["flex", "flex-col", "mr-8"],
@@ -1029,6 +1040,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                         Status::Completed(_) => "Completed".to_owned(),
                         Status::Deleted(_) => "Deleted".to_owned(),
                         Status::Waiting(_) => "Waiting".to_owned(),
+                        Status::Recurring(_) => "Recurring".to_owned(),
                     },
                     project: t.project().to_owned(),
                     description: t.description().to_owned(),

@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    num::NonZeroU16,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -25,7 +28,7 @@ pub enum Status {
     Deleted(Deleted),
     Completed(Completed),
     Waiting(Waiting),
-    // Recurring(Recurring), // TODO
+    Recurring(Recurring),
 }
 
 impl Task {
@@ -37,7 +40,6 @@ impl Task {
                 description: String::new(),
                 project: Vec::new(),
                 start: None,
-                until: None,
                 scheduled: None,
                 notes: String::new(),
                 tags: Vec::new(),
@@ -83,6 +85,7 @@ impl Task {
             Status::Deleted(ref t) => t.due(),
             Status::Completed(ref t) => t.due(),
             Status::Waiting(ref t) => t.due(),
+            Status::Recurring(ref t) => t.due(),
         }
     }
 
@@ -92,13 +95,17 @@ impl Task {
             Status::Deleted(ref mut t) => t.set_due(due),
             Status::Completed(ref mut t) => t.set_due(due),
             Status::Waiting(ref mut t) => t.set_due(due),
+            Status::Recurring(ref mut t) => t.set_due(due),
         }
     }
 
     pub fn complete(&mut self) {
         match self.status {
             Status::Pending(ref t) => self.status = Status::Completed(t.complete()),
-            Status::Deleted(_) | Status::Completed(_) | Status::Waiting(_) => {}
+            Status::Deleted(_)
+            | Status::Completed(_)
+            | Status::Waiting(_)
+            | Status::Recurring(_) => {}
         }
     }
 
@@ -106,13 +113,13 @@ impl Task {
         match self.status {
             Status::Pending(ref t) => self.status = Status::Deleted(t.delete()),
             Status::Waiting(ref t) => self.status = Status::Deleted(t.delete()),
-            Status::Deleted(_) | Status::Completed(_) => {}
+            Status::Recurring(_) | Status::Deleted(_) | Status::Completed(_) => {}
         }
     }
 
     pub fn restore(&mut self) {
         match self.status {
-            Status::Pending(_) | Status::Waiting(_) => {}
+            Status::Pending(_) | Status::Waiting(_) | Status::Recurring(_) => {}
             Status::Completed(ref t) => self.status = Status::Pending(t.uncomplete()),
             Status::Deleted(ref t) => self.status = Status::Pending(t.undelete()),
         }
@@ -148,7 +155,7 @@ impl Task {
 
     pub const fn end(&self) -> Option<&DateTime> {
         match self.status {
-            Status::Pending(_) | Status::Waiting(_) => None,
+            Status::Pending(_) | Status::Waiting(_) | Status::Recurring(_) => None,
             Status::Completed(ref t) => Some(t.end()),
             Status::Deleted(ref t) => Some(t.end()),
         }
@@ -269,14 +276,46 @@ impl Waiting {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Recurring {
+    recur: Recur,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    until: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    due: Option<DateTime>,
+}
+
+impl Recurring {
+    pub const fn due(&self) -> &Option<DateTime> {
+        &self.due
+    }
+
+    pub fn set_due(&mut self, due: Option<DateTime>) {
+        self.due = due
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Recur {
+    amount: NonZeroU16,
+    unit: RecurUnit,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum RecurUnit {
+    Year,
+    Month,
+    Week,
+    Day,
+    Hour,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct Core {
     uuid: uuid::Uuid,
     entry: DateTime,
     description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     start: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    until: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
     #[serde(skip_serializing_if = "String::is_empty")]
