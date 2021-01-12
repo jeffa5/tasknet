@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    num::NonZeroU16,
-};
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -15,309 +12,24 @@ type DateTime = chrono::DateTime<chrono::Utc>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Task {
-    #[serde(flatten)]
     status: Status,
-    #[serde(flatten)]
-    core: Core,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "status", rename_all = "lowercase")]
-pub enum Status {
-    Pending(Pending),
-    Deleted(Deleted),
-    Completed(Completed),
-    Waiting(Waiting),
-    Recurring(Recurring),
-}
-
-impl Task {
-    pub fn new() -> Self {
-        Self {
-            core: Core {
-                uuid: uuid::Uuid::new_v4(),
-                entry: now(),
-                description: String::new(),
-                project: Vec::new(),
-                start: None,
-                scheduled: None,
-                notes: String::new(),
-                tags: Vec::new(),
-                priority: None,
-                depends: HashSet::new(),
-                udas: HashMap::new(),
-            },
-            status: Status::Pending(Pending { due: None }),
-        }
-    }
-
-    pub const fn status(&self) -> &Status {
-        &self.status
-    }
-
-    pub const fn entry(&self) -> &DateTime {
-        &self.core.entry
-    }
-
-    pub const fn uuid(&self) -> uuid::Uuid {
-        self.core.uuid
-    }
-
-    pub fn description(&self) -> &str {
-        &self.core.description
-    }
-
-    pub fn set_description(&mut self, description: String) {
-        self.core.description = description
-    }
-
-    pub fn project(&self) -> &[String] {
-        &self.core.project
-    }
-
-    pub fn set_project(&mut self, project: Vec<String>) {
-        self.core.project = project
-    }
-
-    pub const fn due(&self) -> &Option<DateTime> {
-        match self.status {
-            Status::Pending(ref t) => t.due(),
-            Status::Deleted(ref t) => t.due(),
-            Status::Completed(ref t) => t.due(),
-            Status::Waiting(ref t) => t.due(),
-            Status::Recurring(ref t) => t.due(),
-        }
-    }
-
-    pub fn set_due(&mut self, due: Option<DateTime>) {
-        match self.status {
-            Status::Pending(ref mut t) => t.set_due(due),
-            Status::Deleted(ref mut t) => t.set_due(due),
-            Status::Completed(ref mut t) => t.set_due(due),
-            Status::Waiting(ref mut t) => t.set_due(due),
-            Status::Recurring(ref mut t) => t.set_due(due),
-        }
-    }
-
-    pub fn complete(&mut self) {
-        match self.status {
-            Status::Pending(ref t) => self.status = Status::Completed(t.complete()),
-            Status::Deleted(_)
-            | Status::Completed(_)
-            | Status::Waiting(_)
-            | Status::Recurring(_) => {}
-        }
-    }
-
-    pub fn delete(&mut self) {
-        match self.status {
-            Status::Pending(ref t) => self.status = Status::Deleted(t.delete()),
-            Status::Waiting(ref t) => self.status = Status::Deleted(t.delete()),
-            Status::Recurring(_) | Status::Deleted(_) | Status::Completed(_) => {}
-        }
-    }
-
-    pub fn restore(&mut self) {
-        match self.status {
-            Status::Pending(_) | Status::Waiting(_) | Status::Recurring(_) => {}
-            Status::Completed(ref t) => self.status = Status::Pending(t.uncomplete()),
-            Status::Deleted(ref t) => self.status = Status::Pending(t.undelete()),
-        }
-    }
-
-    pub fn tags(&self) -> &[String] {
-        &self.core.tags
-    }
-
-    pub fn set_tags(&mut self, tags: Vec<String>) {
-        self.core.tags = tags
-    }
-
-    pub const fn priority(&self) -> &Option<Priority> {
-        &self.core.priority
-    }
-
-    pub fn set_priority(&mut self, priority: Option<Priority>) {
-        self.core.priority = priority
-    }
-
-    pub fn set_notes(&mut self, notes: String) {
-        self.core.notes = notes
-    }
-
-    pub fn notes(&self) -> &str {
-        &self.core.notes
-    }
-
-    pub const fn start(&self) -> &Option<DateTime> {
-        &self.core.start
-    }
-
-    pub const fn end(&self) -> Option<&DateTime> {
-        match self.status {
-            Status::Pending(_) | Status::Waiting(_) | Status::Recurring(_) => None,
-            Status::Completed(ref t) => Some(t.end()),
-            Status::Deleted(ref t) => Some(t.end()),
-        }
-    }
-
-    pub fn activate(&mut self) {
-        self.core.tags.retain(|t| *t != "next");
-        self.core.start = Some(now())
-    }
-
-    pub fn deactivate(&mut self) {
-        self.core.start = None
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Pending {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    due: Option<DateTime>,
-}
-
-impl Pending {
-    pub fn delete(&self) -> Deleted {
-        Deleted {
-            end: now(),
-            due: self.due,
-        }
-    }
-
-    pub fn complete(&self) -> Completed {
-        Completed {
-            end: now(),
-            due: self.due,
-        }
-    }
-
-    pub const fn due(&self) -> &Option<DateTime> {
-        &self.due
-    }
-
-    pub fn set_due(&mut self, due: Option<DateTime>) {
-        self.due = due
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Deleted {
-    end: DateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    due: Option<DateTime>,
-}
-
-impl Deleted {
-    pub const fn due(&self) -> &Option<DateTime> {
-        &self.due
-    }
-
-    pub fn set_due(&mut self, due: Option<DateTime>) {
-        self.due = due
-    }
-
-    pub const fn undelete(&self) -> Pending {
-        Pending { due: self.due }
-    }
-
-    pub const fn end(&self) -> &DateTime {
-        &self.end
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Completed {
-    end: DateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    due: Option<DateTime>,
-}
-
-impl Completed {
-    pub const fn due(&self) -> &Option<DateTime> {
-        &self.due
-    }
-
-    pub fn set_due(&mut self, due: Option<DateTime>) {
-        self.due = due
-    }
-
-    pub const fn uncomplete(&self) -> Pending {
-        Pending { due: self.due }
-    }
-
-    pub const fn end(&self) -> &DateTime {
-        &self.end
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Waiting {
-    wait: DateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    due: Option<DateTime>,
-}
-
-impl Waiting {
-    pub const fn due(&self) -> &Option<DateTime> {
-        &self.due
-    }
-
-    pub fn set_due(&mut self, due: Option<DateTime>) {
-        self.due = due
-    }
-
-    pub fn delete(&self) -> Deleted {
-        Deleted {
-            end: now(),
-            due: self.due,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Recurring {
-    recur: Recur,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    until: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    due: Option<DateTime>,
-}
-
-impl Recurring {
-    pub const fn due(&self) -> &Option<DateTime> {
-        &self.due
-    }
-
-    pub fn set_due(&mut self, due: Option<DateTime>) {
-        self.due = due
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Recur {
-    amount: NonZeroU16,
-    unit: RecurUnit,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum RecurUnit {
-    Year,
-    Month,
-    Week,
-    Day,
-    Hour,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct Core {
     uuid: uuid::Uuid,
     entry: DateTime,
     description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     start: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    due: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    end: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    wait: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    recur: Option<Recur>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    until: Option<DateTime>,
     #[serde(skip_serializing_if = "String::is_empty")]
     #[serde(default)]
     notes: String,
@@ -335,6 +47,189 @@ struct Core {
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     #[serde(default)]
     udas: HashMap<String, UDA>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Status {
+    Pending,
+    Deleted,
+    Completed,
+    Waiting,
+    Recurring,
+}
+
+impl Task {
+    pub fn new() -> Self {
+        Self {
+            uuid: uuid::Uuid::new_v4(),
+            entry: now(),
+            description: String::new(),
+            project: Vec::new(),
+            start: None,
+            scheduled: None,
+            notes: String::new(),
+            tags: Vec::new(),
+            priority: None,
+            depends: HashSet::new(),
+            udas: HashMap::new(),
+            status: Status::Pending,
+            due: None,
+            end: None,
+            wait: None,
+            recur: None,
+            until: None,
+        }
+    }
+
+    pub const fn status(&self) -> &Status {
+        &self.status
+    }
+
+    pub const fn entry(&self) -> &DateTime {
+        &self.entry
+    }
+
+    pub const fn uuid(&self) -> uuid::Uuid {
+        self.uuid
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn set_description(&mut self, description: String) {
+        self.description = description
+    }
+
+    pub fn project(&self) -> &[String] {
+        &self.project
+    }
+
+    pub fn set_project(&mut self, project: Vec<String>) {
+        self.project = project
+    }
+
+    pub const fn due(&self) -> &Option<DateTime> {
+        &self.due
+    }
+
+    pub fn set_due(&mut self, due: Option<DateTime>) {
+        self.due = due
+    }
+
+    pub const fn recur(&self) -> &Option<Recur> {
+        &self.recur
+    }
+
+    pub fn set_recur(&mut self, recur: Option<Recur>) {
+        match recur {
+            None => {
+                if self.status == Status::Recurring {
+                    self.status = Status::Pending
+                }
+            }
+            Some(_) => self.status = Status::Recurring,
+        }
+        self.recur = recur
+    }
+
+    pub fn complete(&mut self) {
+        self.end = Some(now());
+        self.status = Status::Completed
+    }
+
+    pub fn delete(&mut self) {
+        self.end = Some(now());
+        self.status = Status::Deleted
+    }
+
+    pub fn restore(&mut self) {
+        match self.status {
+            Status::Pending | Status::Waiting | Status::Recurring => {}
+            Status::Completed | Status::Deleted => self.status = Status::Pending,
+        }
+    }
+
+    pub fn tags(&self) -> &[String] {
+        &self.tags
+    }
+
+    pub fn set_tags(&mut self, tags: Vec<String>) {
+        self.tags = tags
+    }
+
+    pub const fn priority(&self) -> &Option<Priority> {
+        &self.priority
+    }
+
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        self.priority = priority
+    }
+
+    pub fn set_notes(&mut self, notes: String) {
+        self.notes = notes
+    }
+
+    pub fn notes(&self) -> &str {
+        &self.notes
+    }
+
+    pub const fn start(&self) -> &Option<DateTime> {
+        &self.start
+    }
+
+    pub const fn end(&self) -> &Option<DateTime> {
+        match self.status {
+            Status::Pending | Status::Waiting | Status::Recurring => &None,
+            Status::Completed | Status::Deleted => &self.end,
+        }
+    }
+
+    pub fn activate(&mut self) {
+        self.tags.retain(|t| *t != "next");
+        self.start = Some(now())
+    }
+
+    pub fn deactivate(&mut self) {
+        self.start = None
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Recur {
+    pub amount: u16,
+    pub unit: RecurUnit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum RecurUnit {
+    Year,
+    Month,
+    Week,
+    Day,
+    Hour,
+}
+
+impl Default for RecurUnit {
+    fn default() -> Self {
+        Self::Week
+    }
+}
+
+impl std::convert::TryFrom<String> for RecurUnit {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.trim().to_lowercase().as_ref() {
+            "year" => Ok(Self::Year),
+            "month" => Ok(Self::Month),
+            "week" => Ok(Self::Week),
+            "day" => Ok(Self::Day),
+            "hour" => Ok(Self::Hour),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -53,11 +53,11 @@ impl Default for Filters {
 impl Filters {
     pub fn filter_task(&self, task: &Task) -> bool {
         let filter_status = match task.status() {
-            Status::Pending(_) => self.status_pending,
-            Status::Deleted(_) => self.status_deleted,
-            Status::Completed(_) => self.status_completed,
-            Status::Waiting(_) => self.status_waiting,
-            Status::Recurring(_) => self.status_recurring,
+            Status::Pending => self.status_pending,
+            Status::Deleted => self.status_deleted,
+            Status::Completed => self.status_completed,
+            Status::Waiting => self.status_waiting,
+            Status::Recurring => self.status_recurring,
         };
         let filter_project = task
             .project()

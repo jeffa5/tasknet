@@ -22,8 +22,8 @@ const SECONDS_IN_A_DAY: f64 = 86400.0;
 // https://github.com/GothenburgBitFactory/taskwarrior/blob/16529694eb0b06ed54331775e10bec32a72d01b1/src/Task.cpp#L1790
 pub fn calculate(task: &Task) -> Option<f64> {
     match task.status() {
-        Status::Deleted(_) | Status::Completed(_) | Status::Recurring(_) => None,
-        Status::Waiting(_) => Some(
+        Status::Deleted | Status::Completed | Status::Recurring => None,
+        Status::Waiting => Some(
             WAITING_COEFFICIENT
                 + urgency_age(*task.entry())
                 + urgency_project(task.project())
@@ -33,7 +33,7 @@ pub fn calculate(task: &Task) -> Option<f64> {
                 + urgency_priority(task.priority())
                 + urgency_notes(task.notes()),
         ),
-        Status::Pending(_) => Some(
+        Status::Pending => Some(
             urgency_age(*task.entry())
                 + urgency_project(task.project())
                 + urgency_active(task.start())

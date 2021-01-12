@@ -16,7 +16,7 @@ mod task;
 mod urgency;
 
 use filters::Filters;
-use task::{Priority, Status, Task};
+use task::{Priority, Recur, RecurUnit, Status, Task};
 
 const ESCAPE_KEY: &str = "Escape";
 
@@ -145,6 +145,8 @@ enum Msg {
     SelectedTaskNotesChanged(String),
     SelectedTaskDueDateChanged(String),
     SelectedTaskDueTimeChanged(String),
+    SelectedTaskRecurUnitChanged(String),
+    SelectedTaskRecurAmountChanged(String),
     CreateTask,
     DeleteSelectedTask,
     CompleteSelectedTask,
@@ -295,6 +297,35 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 }
             }
         }
+        Msg::SelectedTaskRecurAmountChanged(new_amount) => {
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    if let Ok(n) = new_amount.parse::<u16>() {
+                        if n > 0 {
+                            task.set_recur(Some(Recur {
+                                amount: n,
+                                unit: task.recur().as_ref().map_or(RecurUnit::Week, |r| r.unit),
+                            }))
+                        } else {
+                            task.set_recur(None)
+                        }
+                    }
+                }
+            }
+        }
+        Msg::SelectedTaskRecurUnitChanged(new_unit) => {
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    match RecurUnit::try_from(new_unit) {
+                        Ok(unit) => task.set_recur(Some(Recur {
+                            amount: task.recur().as_ref().map_or(1, |r| r.amount),
+                            unit,
+                        })),
+                        Err(()) => task.set_recur(None),
+                    }
+                }
+            }
+        }
         Msg::CreateTask => {
             let task = Task::new();
             let id = task.uuid();
@@ -307,13 +338,13 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 Urls::new(&model.base_url).home().go_and_push();
                 if let Some(task) = model.tasks.get_mut(&uuid) {
                     match task.status() {
-                        Status::Pending(_)
-                        | Status::Completed(_)
-                        | Status::Waiting(_)
-                        | Status::Recurring(_) => {
+                        Status::Pending
+                        | Status::Completed
+                        | Status::Waiting
+                        | Status::Recurring => {
                             task.delete();
                         }
-                        Status::Deleted(_) => match window().confirm_with_message(
+                        Status::Deleted => match window().confirm_with_message(
                             "Are you sure you want to permanently delete this task?",
                         ) {
                             Ok(true) => {
@@ -529,7 +560,7 @@ fn view_titlebar() -> Node<Msg> {
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
 fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
-    let is_pending = matches!(task.status(), Status::Pending(_));
+    let is_pending = matches!(task.status(), Status::Pending);
     let start = task.start();
     let end = task.end();
     let urgency = urgency::calculate(task);
@@ -593,11 +624,11 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             C!["pl-2"],
             span![C!["font-bold"], "Status: "],
             match task.status() {
-                Status::Pending(_) => "Pending",
-                Status::Deleted(_) => "Deleted",
-                Status::Completed(_) => "Completed",
-                Status::Waiting(_) => "Waiting",
-                Status::Recurring(_) => "Recurring",
+                Status::Pending => "Pending",
+                Status::Deleted => "Deleted",
+                Status::Completed => "Completed",
+                Status::Waiting => "Waiting",
+                Status::Recurring => "Recurring",
             }
         ],
         if let Some(urgency) = urgency {
@@ -780,6 +811,101 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
         ],
         div![
             C!["flex", "flex-col", "px-2", "mb-2"],
+            div![C!["font-bold"], "Recur"],
+            div![
+                span!["Every "],
+                input![
+                    attrs! {
+                        At::Type => "number",
+                        At::Value => task.recur().as_ref().map_or(0, |r|r.amount),
+                    },
+                    input_ev(Ev::Input, Msg::SelectedTaskRecurAmountChanged)
+                ],
+                span![" "],
+                select![
+                    C!["border", "bg-white"],
+                    option![
+                        attrs! {
+                            At::Value => "",
+                            At::Selected => if task.status() == &Status::Recurring {
+                                AtValue::Ignored
+                            } else {
+                                AtValue::None
+                            }
+                        },
+                        "None"
+                    ],
+                    option![
+                        attrs! {
+                            At::Value => "Year",
+                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
+                                if recur.unit == RecurUnit::Year {
+                                    AtValue::None
+                                } else {
+                                    AtValue::Ignored
+                                }
+                            })
+                        },
+                        "Years"
+                    ],
+                    option![
+                        attrs! {
+                            At::Value => "Month",
+                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
+                                if recur.unit == RecurUnit::Month {
+                                    AtValue::None
+                                } else {
+                                    AtValue::Ignored
+                                }
+                            })
+                        },
+                        "Months"
+                    ],
+                    option![
+                        attrs! {
+                            At::Value => "Week",
+                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
+                                if recur.unit == RecurUnit::Week {
+                                    AtValue::None
+                                } else {
+                                    AtValue::Ignored
+                                }
+                            })
+                        },
+                        "Weeks"
+                    ],
+                    option![
+                        attrs! {
+                            At::Value => "Day",
+                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
+                                if recur.unit == RecurUnit::Day {
+                                    AtValue::None
+                                } else {
+                                    AtValue::Ignored
+                                }
+                            })
+                        },
+                        "Days"
+                    ],
+                    option![
+                        attrs! {
+                            At::Value => "Hour",
+                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
+                                if recur.unit == RecurUnit::Hour {
+                                    AtValue::None
+                                } else {
+                                    AtValue::Ignored
+                                }
+                            })
+                        },
+                        "Hours"
+                    ],
+                    input_ev(Ev::Input, Msg::SelectedTaskRecurUnitChanged)
+                ]
+            ]
+        ],
+        div![
+            C!["flex", "flex-col", "px-2", "mb-2"],
             div![C!["font-bold"], "Notes"],
             div![
                 C!["flex", "flex-row"],
@@ -814,16 +940,16 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             IF!(is_pending =>
                 div![ view_button("Complete", Msg::CompleteSelectedTask)]
             ),
-            IF!(matches!(task.status(), Status::Pending(_)|Status::Waiting(_)) =>
+            IF!(matches!(task.status(), Status::Pending|Status::Waiting) =>
                 div![ view_button("Delete", Msg::DeleteSelectedTask)]
             ),
-            IF!(matches!(task.status(), Status::Deleted(_)) =>
+            IF!(matches!(task.status(), Status::Deleted) =>
                 div![ view_button("Permanently delete", Msg::DeleteSelectedTask)]
             ),
-            IF!(matches!(task.status(), Status::Deleted(_)) =>
+            IF!(matches!(task.status(), Status::Deleted) =>
                 div![ view_button("Undelete", Msg::MoveSelectedTaskToPending)]
             ),
-            IF!(matches!(task.status(), Status::Completed(_)) =>
+            IF!(matches!(task.status(), Status::Completed) =>
                 div![ view_button("Uncomplete", Msg::MoveSelectedTaskToPending)]
             ),
             view_button("Close", Msg::SelectTask(None))
@@ -1040,11 +1166,11 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                         (chrono::offset::Utc::now()).signed_duration_since(*t.entry()),
                     ),
                     status: match t.status() {
-                        Status::Pending(_) => "Pending".to_owned(),
-                        Status::Completed(_) => "Completed".to_owned(),
-                        Status::Deleted(_) => "Deleted".to_owned(),
-                        Status::Waiting(_) => "Waiting".to_owned(),
-                        Status::Recurring(_) => "Recurring".to_owned(),
+                        Status::Pending => "Pending".to_owned(),
+                        Status::Completed => "Completed".to_owned(),
+                        Status::Deleted => "Deleted".to_owned(),
+                        Status::Waiting => "Waiting".to_owned(),
+                        Status::Recurring => "Recurring".to_owned(),
                     },
                     project: t.project().to_owned(),
                     description: t.description().to_owned(),
@@ -1053,7 +1179,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                     tags: t.tags().to_owned(),
                     priority: t.priority().to_owned(),
                     active: t.start().is_some(),
-                    end: t.end().cloned(),
+                    end: t.end().to_owned(),
                     due: t.due().to_owned(),
                 })
             } else {
