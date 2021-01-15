@@ -566,7 +566,7 @@ fn view(model: &Model) -> Node<Msg> {
         div![
             C!["flex", "flex-col", "container", "mx-auto"],
             view_titlebar(),
-            view_actions(model),
+            view_filters(&model.filters, &model.tasks),
             view_tasks(&model.tasks, &model.filters),
         ]
     }
@@ -574,19 +574,21 @@ fn view(model: &Model) -> Node<Msg> {
 
 fn view_titlebar() -> Node<Msg> {
     div![
-        C!["flex", "justify-center", "mb-4"],
-        a![
-            C![
-                "bg-gray-200",
-                "py-2",
-                "px-4",
-                "mr-8",
-                "hover:bg-gray-300",
-                "text-lg"
-            ],
-            attrs! {At::Href => "/tasknet"},
-            "TaskNet"
+        C!["flex", "flex-row", "justify-between"],
+        div![
+            C!["flex", "flex-row", "justify-start"],
+            a![
+                C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300",],
+                attrs! {At::Href => "/tasknet"},
+                "TaskNet"
+            ]
         ],
+        nav![
+            C!["flex", "flex-row", "justify-end"],
+            view_button("Import Tasks", Msg::ImportTasks),
+            view_button("Export Tasks", Msg::ExportTasks),
+            view_button("Create", Msg::CreateTask),
+        ]
     ]
 }
 
@@ -1047,19 +1049,6 @@ fn view_button(text: &str, msg: Msg) -> Node<Msg> {
     ]
 }
 
-fn view_actions(model: &Model) -> Node<Msg> {
-    div![
-        C!["flex", "flex-row", "flex-wrap", "justify-around"],
-        view_filters(&model.filters, &model.tasks),
-        div![
-            C!["flex", "flex-col", "justify-around"],
-            view_button("Import Tasks", Msg::ImportTasks),
-            view_button("Export Tasks", Msg::ExportTasks),
-        ],
-        view_button("Create", Msg::CreateTask)
-    ]
-}
-
 #[allow(clippy::too_many_lines)]
 fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
     div![
@@ -1067,6 +1056,7 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             "flex",
             "flex-row",
             "flex-wrap",
+            "justify-center",
             "items-center",
             "bg-gray-100",
             "p-2",
@@ -1239,7 +1229,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
     let show_priority = tasks.iter().any(|t| t.priority.is_some());
     let show_due = tasks.iter().any(|t| t.due.is_some());
     div![
-        C!["mt-8"],
+        C!["mt-2", "px-2"],
         table![
             C!["table-auto", "w-full"],
             tr![
