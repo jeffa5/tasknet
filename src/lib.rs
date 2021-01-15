@@ -48,7 +48,8 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     });
 
     orders
-        .stream(streams::interval(1000, || Msg::OnTick))
+        .stream(streams::interval(1000, || Msg::OnRenderTick))
+        .stream(streams::interval(60000, || Msg::OnRecurTick))
         .stream(streams::window_event(Ev::KeyUp, |event| {
             let key_event: web_sys::KeyboardEvent = event.unchecked_into();
             match key_event.key().as_ref() {
@@ -153,7 +154,8 @@ enum Msg {
     StartSelectedTask,
     StopSelectedTask,
     MoveSelectedTaskToPending,
-    OnTick,
+    OnRenderTick,
+    OnRecurTick,
     FiltersStatusTogglePending,
     FiltersStatusToggleDeleted,
     FiltersStatusToggleCompleted,
@@ -389,8 +391,39 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 }
             }
         }
-        Msg::OnTick => {
-            // just re-render to show update ages
+        Msg::OnRenderTick => { /* just re-render to update the ages */ }
+        Msg::OnRecurTick => {
+            let recurring: Vec<_> = model
+                .tasks
+                .values()
+                .filter(|t| t.status() == &Status::Recurring)
+                .collect();
+            let mut new_tasks = Vec::new();
+            for r in recurring {
+                let mut children: Vec<_> = model
+                    .tasks
+                    .values()
+                    .filter(|t| t.parent().map_or(false, |p| p == r.uuid()))
+                    .collect();
+                children.sort_by_key(|c| c.entry());
+                let last_child = children.last();
+                if let Some(child) = last_child {
+                    // if child's entry is older than the recurring duration, create a new child
+                    if chrono::offset::Utc::now() - *child.entry()
+                        > r.recur().as_ref().unwrap().duration()
+                    {
+                        log!("old enough");
+                        let new_child = r.new_child();
+                        new_tasks.push(new_child)
+                    }
+                } else {
+                    let new_child = r.new_child();
+                    new_tasks.push(new_child)
+                }
+            }
+            for t in new_tasks {
+                model.tasks.insert(t.uuid(), t);
+            }
         }
         Msg::FiltersStatusTogglePending => {
             model.filters.status_pending = !model.filters.status_pending
@@ -940,7 +973,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             IF!(is_pending =>
                 div![ view_button("Complete", Msg::CompleteSelectedTask)]
             ),
-            IF!(matches!(task.status(), Status::Pending|Status::Waiting) =>
+            IF!(matches!(task.status(), Status::Pending|Status::Waiting|Status::Recurring) =>
                 div![ view_button("Delete", Msg::DeleteSelectedTask)]
             ),
             IF!(matches!(task.status(), Status::Deleted) =>

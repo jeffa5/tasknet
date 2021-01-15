@@ -29,6 +29,8 @@ pub struct Task {
     #[serde(skip_serializing_if = "Option::is_none")]
     recur: Option<Recur>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    parent: Option<uuid::Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<DateTime>,
     #[serde(skip_serializing_if = "String::is_empty")]
     #[serde(default)]
@@ -78,7 +80,35 @@ impl Task {
             end: None,
             wait: None,
             recur: None,
+            parent: None,
             until: None,
+        }
+    }
+
+    pub const fn parent(&self) -> &Option<uuid::Uuid> {
+        &self.parent
+    }
+
+    pub fn new_child(&self) -> Self {
+        Self {
+            uuid: uuid::Uuid::new_v4(),
+            entry: now(),
+            description: self.description.clone(),
+            project: self.project.clone(),
+            start: self.start,
+            scheduled: self.scheduled,
+            notes: self.notes.clone(),
+            tags: self.tags.clone(),
+            priority: self.priority.clone(),
+            depends: self.depends.clone(),
+            udas: self.udas.clone(),
+            status: Status::Pending,
+            due: self.due,
+            end: self.end,
+            wait: self.wait,
+            recur: self.recur.clone(),
+            parent: Some(self.uuid),
+            until: self.until,
         }
     }
 
@@ -202,6 +232,12 @@ pub struct Recur {
     pub unit: RecurUnit,
 }
 
+impl Recur {
+    pub fn duration(&self) -> chrono::Duration {
+        self.unit.duration() * (self.amount as i32)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum RecurUnit {
     Year,
@@ -209,6 +245,18 @@ pub enum RecurUnit {
     Week,
     Day,
     Hour,
+}
+
+impl RecurUnit {
+    fn duration(&self) -> chrono::Duration {
+        match self {
+            Self::Year => chrono::Duration::weeks(52),
+            Self::Month => chrono::Duration::weeks(4),
+            Self::Week => chrono::Duration::weeks(1),
+            Self::Day => chrono::Duration::days(1),
+            Self::Hour => chrono::Duration::hours(1),
+        }
+    }
 }
 
 impl Default for RecurUnit {
