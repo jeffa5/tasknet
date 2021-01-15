@@ -9,9 +9,29 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+
     - uses: actions/checkout@v2
+
+    - name: Install
+      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
     - name: Build site
-      run: cargo make site
+      run: wasm-pack build --target web --out-name package
+
+    - name: Build deployment pkg
+      run: |
+        mkdir -p deploy/pkg
+        mv pkg/package_bg.wasm deploy/pkg/.
+        mv pkg/package.js deploy/pkg/.
+
+    - name: Build statics
+      run: |
+        cp -r assets deploy/.
+        cp -r styles deploy/.
+        cp index.html deploy/.
+        cp service-worker.js deploy/.
+        cp tasknet.webmanifest deploy/.
+
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
       with:
