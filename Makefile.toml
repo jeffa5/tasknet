@@ -4,39 +4,6 @@ PORT = "8000"
 [config]
 skip_core_tasks = true
 
-# ---- SITE ----
-
-[tasks.site]
-description = "Build the site and move files to docs folder"
-dependencies = ["site_clean","build_release","site_pkg", "site_statics"]
-
-[tasks.site_serve]
-description = "Start server from docs folder"
-install_crate = { crate_name = "microserver", binary = "microserver", test_arg = "-h" }
-command = "microserver"
-args = ["--port", "${PORT}", "docs"]
-dependencies = ["site"]
-
-[tasks.site_clean]
-command = "rm"
-args = ["-rf", "docs"]
-
-[tasks.site_pkg]
-script = [
-"mkdir -p docs/pkg",
-"cp pkg/package_bg.wasm docs/pkg/.",
-"cp pkg/package.js docs/pkg/.",
-]
-
-[tasks.site_statics]
-script = [
-"cp -r assets docs/.",
-"cp -r styles docs/.",
-"cp index.html docs/.",
-"cp service-worker.js docs/.",
-"cp tasknet.webmanifest docs/.",
-]
-
 # ---- LOCAL ----
 
 [tasks.local]
@@ -100,12 +67,6 @@ description = "Build with wasm-pack"
 install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
 command = "wasm-pack"
 args = ["build", "--target", "web", "--out-name", "package", "--dev"]
-
-[tasks.build_release]
-description = "Build with wasm-pack in release mode"
-install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
-command = "wasm-pack"
-args = ["build", "--target", "web", "--out-name", "package"]
 
 # ---- LINT ----
 
