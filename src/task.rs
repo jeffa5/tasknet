@@ -234,7 +234,7 @@ pub struct Recur {
 
 impl Recur {
     pub fn duration(&self) -> chrono::Duration {
-        self.unit.duration() * (self.amount as i32)
+        self.unit.duration() * i32::from(self.amount)
     }
 }
 
@@ -248,7 +248,7 @@ pub enum RecurUnit {
 }
 
 impl RecurUnit {
-    fn duration(&self) -> chrono::Duration {
+    fn duration(self) -> chrono::Duration {
         match self {
             Self::Year => chrono::Duration::weeks(52),
             Self::Month => chrono::Duration::weeks(4),
