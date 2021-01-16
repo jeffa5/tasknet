@@ -9,46 +9,85 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  format:
+  check:
+    name: Check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Format
-      run: cargo fmt --verbose -- --check
-
-  build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --verbose
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
 
   test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: rustup component add rustfmt
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: rustup component add clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
 
   deploy:
+    name: Deploy
     needs:
-      - format
-      - build
+      - check
       - test
+      - format
+      - clippy
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Install
+    - name: Install wasm-pack
       run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-    - name: Build site
+    - name: Build wasm
       run: wasm-pack build --target web --out-name package
-    - name: Build deployment pkg
+    - name: Build site tree
       run: |
         mkdir -p deploy/pkg
         mv pkg/package_bg.wasm deploy/pkg/.
         mv pkg/package.js deploy/pkg/.
-    - name: Build statics
-      run: |
         cp -r assets deploy/.
         cp -r styles deploy/.
         cp index.html deploy/.
