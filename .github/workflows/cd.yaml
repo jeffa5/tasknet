@@ -24,6 +24,8 @@ jobs:
           command: check
 
   test:
+    needs:
+      - check
     name: Test
     runs-on: ubuntu-latest
     steps:
