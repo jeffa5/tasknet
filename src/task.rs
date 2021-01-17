@@ -152,6 +152,10 @@ impl Task {
         &self.scheduled
     }
 
+    pub fn set_scheduled(&mut self, scheduled: Option<DateTime>) {
+        self.scheduled = scheduled
+    }
+
     pub const fn recur(&self) -> &Option<Recur> {
         &self.recur
     }
