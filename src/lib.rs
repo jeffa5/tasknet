@@ -1290,6 +1290,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                     active: t.start().is_some(),
                     end: t.end().to_owned(),
                     due: t.due().to_owned(),
+                    scheduled: t.scheduled().to_owned(),
                 })
             } else {
                 None
@@ -1314,6 +1315,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
     let show_tags = tasks.iter().any(|t| !t.tags.is_empty());
     let show_priority = tasks.iter().any(|t| t.priority.is_some());
     let show_due = tasks.iter().any(|t| t.due.is_some());
+    let show_scheduled= tasks.iter().any(|t| t.scheduled.is_some());
     div![
         C!["mt-2", "px-2"],
         table![
@@ -1322,6 +1324,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                 C!["border-b-2"],
                 th!["Age"],
                 IF!(show_due => th![C!["border-l-2"], "Due"]),
+                IF!(show_scheduled => th![C!["border-l-2"], "Scheduled"]),
                 IF!(show_status => th![C!["border-l-2"], "Status"]),
                 IF!(show_project => th![C!["border-l-2"], "Project"]),
                 IF!(show_tags => th![C!["border-l-2"], "Tags"]),
@@ -1353,6 +1356,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                     mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
                     td![C!["text-center", "px-2"], t.age.clone()],
                     IF!(show_due => td![C!["border-l-2", "text-center", "px-2"], t.due.map(|due|duration_string(due.signed_duration_since(chrono::offset::Utc::now())))]),
+                    IF!(show_scheduled => td![C!["border-l-2", "text-center", "px-2"], t.scheduled.map(|scheduled|duration_string(scheduled.signed_duration_since(chrono::offset::Utc::now())))]),
                     IF!(show_status => td![C!["border-l-2","text-center", "px-2"], t.status]),
                     IF!(show_project => td![
                         C!["border-l-2", "text-left", "px-2"],
@@ -1409,6 +1413,7 @@ struct ViewableTask {
     urgency: Option<f64>,
     end: Option<chrono::DateTime<chrono::Utc>>,
     due: Option<chrono::DateTime<chrono::Utc>>,
+    scheduled: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 fn duration_string(duration: chrono::Duration) -> String {
