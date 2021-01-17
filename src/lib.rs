@@ -316,7 +316,9 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                                 Some(scheduled) => {
                                     let scheduled = scheduled
                                         .with_year(new_date.year())
-                                        .and_then(|scheduled| scheduled.with_month(new_date.month()))
+                                        .and_then(|scheduled| {
+                                            scheduled.with_month(new_date.month())
+                                        })
                                         .and_then(|scheduled| scheduled.with_day(new_date.day()));
                                     task.set_scheduled(scheduled)
                                 }
@@ -343,9 +345,9 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                                     task.set_scheduled(now)
                                 }
                                 Some(scheduled) => {
-                                    let scheduled = scheduled
-                                        .with_hour(new_time.hour())
-                                        .and_then(|scheduled| scheduled.with_minute(new_time.minute()));
+                                    let scheduled = scheduled.with_hour(new_time.hour()).and_then(
+                                        |scheduled| scheduled.with_minute(new_time.minute()),
+                                    );
                                     task.set_scheduled(scheduled)
                                 }
                             }
@@ -923,7 +925,9 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
                 if let Some(scheduled) = task.scheduled() {
                     span![
                         C!["ml-2"],
-                        duration_string(scheduled.signed_duration_since(chrono::offset::Utc::now()))
+                        duration_string(
+                            scheduled.signed_duration_since(chrono::offset::Utc::now())
+                        )
                     ]
                 } else {
                     empty![]
@@ -1315,7 +1319,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
     let show_tags = tasks.iter().any(|t| !t.tags.is_empty());
     let show_priority = tasks.iter().any(|t| t.priority.is_some());
     let show_due = tasks.iter().any(|t| t.due.is_some());
-    let show_scheduled= tasks.iter().any(|t| t.scheduled.is_some());
+    let show_scheduled = tasks.iter().any(|t| t.scheduled.is_some());
     div![
         C!["mt-2", "px-2"],
         table![
