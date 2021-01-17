@@ -146,6 +146,8 @@ enum Msg {
     SelectedTaskNotesChanged(String),
     SelectedTaskDueDateChanged(String),
     SelectedTaskDueTimeChanged(String),
+    SelectedTaskScheduledDateChanged(String),
+    SelectedTaskScheduledTimeChanged(String),
     SelectedTaskRecurUnitChanged(String),
     SelectedTaskRecurAmountChanged(String),
     CreateTask,
@@ -295,6 +297,62 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                             }
                         }
                         Err(_) => task.set_due(None),
+                    }
+                }
+            }
+        }
+        Msg::SelectedTaskScheduledDateChanged(new_date) => {
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
+                    match new_date {
+                        Ok(new_date) => {
+                            let scheduled = task.scheduled();
+                            match scheduled {
+                                None => task.set_scheduled(Some(chrono::DateTime::from_utc(
+                                    new_date.and_hms(0, 0, 0),
+                                    chrono::Utc,
+                                ))),
+                                Some(scheduled) => {
+                                    let scheduled = scheduled
+                                        .with_year(new_date.year())
+                                        .and_then(|scheduled| {
+                                            scheduled.with_month(new_date.month())
+                                        })
+                                        .and_then(|scheduled| scheduled.with_day(new_date.day()));
+                                    task.set_scheduled(scheduled)
+                                }
+                            }
+                        }
+                        Err(_) => task.set_scheduled(None),
+                    }
+                }
+            }
+        }
+        Msg::SelectedTaskScheduledTimeChanged(new_time) => {
+            if let Some(uuid) = model.selected_task {
+                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
+                    let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
+                    match new_time {
+                        Ok(new_time) => {
+                            let scheduled = task.scheduled();
+                            match scheduled {
+                                None => {
+                                    let now = chrono::offset::Utc::now();
+                                    let now = now
+                                        .with_hour(new_time.hour())
+                                        .and_then(|now| now.with_minute(new_time.minute()));
+                                    task.set_scheduled(now)
+                                }
+                                Some(scheduled) => {
+                                    let scheduled = scheduled.with_hour(new_time.hour()).and_then(
+                                        |scheduled| scheduled.with_minute(new_time.minute()),
+                                    );
+                                    task.set_scheduled(scheduled)
+                                }
+                            }
+                        }
+                        Err(_) => task.set_scheduled(None),
                     }
                 }
             }
@@ -846,6 +904,38 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
         ],
         div![
             C!["flex", "flex-col", "px-2", "mb-2"],
+            div![C!["font-bold"], "Scheduled"],
+            div![
+                C!["flex", "flex-row"],
+                input![
+                    C!["mr-4"],
+                    attrs! {
+                        At::Type => "date",
+                        At::Value => task.scheduled().map_or_else(String::new, |scheduled| scheduled.format("%Y-%m-%d").to_string()),
+                    },
+                    input_ev(Ev::Input, Msg::SelectedTaskScheduledDateChanged)
+                ],
+                input![
+                    attrs! {
+                        At::Type => "time",
+                        At::Value => task.scheduled().map_or_else(String::new, |scheduled| scheduled.format("%H:%M").to_string()),
+                    },
+                    input_ev(Ev::Input, Msg::SelectedTaskScheduledTimeChanged)
+                ],
+                if let Some(scheduled) = task.scheduled() {
+                    span![
+                        C!["ml-2"],
+                        duration_string(
+                            scheduled.signed_duration_since(chrono::offset::Utc::now())
+                        )
+                    ]
+                } else {
+                    empty![]
+                }
+            ]
+        ],
+        div![
+            C!["flex", "flex-col", "px-2", "mb-2"],
             div![C!["font-bold"], "Recur"],
             div![
                 span!["Every "],
@@ -1204,6 +1294,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                     active: t.start().is_some(),
                     end: t.end().to_owned(),
                     due: t.due().to_owned(),
+                    scheduled: t.scheduled().to_owned(),
                 })
             } else {
                 None
@@ -1228,6 +1319,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
     let show_tags = tasks.iter().any(|t| !t.tags.is_empty());
     let show_priority = tasks.iter().any(|t| t.priority.is_some());
     let show_due = tasks.iter().any(|t| t.due.is_some());
+    let show_scheduled = tasks.iter().any(|t| t.scheduled.is_some());
     div![
         C!["mt-2", "px-2"],
         table![
@@ -1236,6 +1328,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                 C!["border-b-2"],
                 th!["Age"],
                 IF!(show_due => th![C!["border-l-2"], "Due"]),
+                IF!(show_scheduled => th![C!["border-l-2"], "Scheduled"]),
                 IF!(show_status => th![C!["border-l-2"], "Status"]),
                 IF!(show_project => th![C!["border-l-2"], "Project"]),
                 IF!(show_tags => th![C!["border-l-2"], "Tags"]),
@@ -1267,6 +1360,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                     mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
                     td![C!["text-center", "px-2"], t.age.clone()],
                     IF!(show_due => td![C!["border-l-2", "text-center", "px-2"], t.due.map(|due|duration_string(due.signed_duration_since(chrono::offset::Utc::now())))]),
+                    IF!(show_scheduled => td![C!["border-l-2", "text-center", "px-2"], t.scheduled.map(|scheduled|duration_string(scheduled.signed_duration_since(chrono::offset::Utc::now())))]),
                     IF!(show_status => td![C!["border-l-2","text-center", "px-2"], t.status]),
                     IF!(show_project => td![
                         C!["border-l-2", "text-left", "px-2"],
@@ -1323,6 +1417,7 @@ struct ViewableTask {
     urgency: Option<f64>,
     end: Option<chrono::DateTime<chrono::Utc>>,
     due: Option<chrono::DateTime<chrono::Utc>>,
+    scheduled: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 fn duration_string(duration: chrono::Duration) -> String {
