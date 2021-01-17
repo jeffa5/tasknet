@@ -148,6 +148,10 @@ impl Task {
         self.due = due
     }
 
+    pub const fn scheduled(&self) -> &Option<DateTime> {
+        &self.scheduled
+    }
+
     pub const fn recur(&self) -> &Option<Recur> {
         &self.recur
     }

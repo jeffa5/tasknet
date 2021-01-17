@@ -6,7 +6,7 @@ const DUE_COEFFICIENT: f64 = 12.0;
 const HIGH_PRIORITY_COEFFICIENT: f64 = 6.0;
 const MEDIUM_PRIORITY_COEFFICIENT: f64 = 3.9;
 const LOW_PRIORITY_COEFFICIENT: f64 = 1.8;
-// urgency.scheduled.coefficient               5.0 # scheduled tasks
+const SCHEDULED_COEFFICIENT: f64 = 5.0;
 const ACTIVE_COEFFICIENT: f64 = 4.0;
 const AGE_COEFFICIENT: f64 = 2.0;
 const NOTES_COEFFICIENT: f64 = 1.0;
@@ -28,6 +28,7 @@ pub fn calculate(task: &Task) -> Option<f64> {
                 + urgency_age(*task.entry())
                 + urgency_project(task.project())
                 + urgency_due(task.due())
+                + urgency_scheduled(task.scheduled())
                 + urgency_tags(task.tags())
                 + urgency_next(task.tags())
                 + urgency_priority(task.priority())
@@ -38,6 +39,7 @@ pub fn calculate(task: &Task) -> Option<f64> {
                 + urgency_project(task.project())
                 + urgency_active(task.start())
                 + urgency_due(task.due())
+                + urgency_scheduled(task.scheduled())
                 + urgency_tags(task.tags())
                 + urgency_next(task.tags())
                 + urgency_priority(task.priority())
@@ -83,6 +85,22 @@ fn urgency_due(due: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
         } else {
             0.2
         }) * DUE_COEFFICIENT
+    })
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn urgency_scheduled(scheduled: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
+    scheduled.map_or(0.0, |scheduled| {
+        let days_overdue = (chrono::offset::Utc::now())
+            .signed_duration_since(scheduled)
+            .num_days();
+        (if days_overdue > 7 {
+            1.0
+        } else if days_overdue >= -14 {
+            ((days_overdue as f64 + 14.0) * 0.8 / 21.0) + 0.2
+        } else {
+            0.2
+        }) * SCHEDULED_COEFFICIENT
     })
 }
 
