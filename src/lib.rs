@@ -1321,7 +1321,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
     let show_due = tasks.iter().any(|t| t.due.is_some());
     let show_scheduled = tasks.iter().any(|t| t.scheduled.is_some());
     div![
-        C!["mt-2", "px-2"],
+        C!["mt-2", "px-2", "pb-2"],
         table![
             C!["table-auto", "w-full"],
             tr![
