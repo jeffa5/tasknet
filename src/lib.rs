@@ -73,27 +73,12 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         }
         Err(_) => Filters::default(),
     };
-    let selected_task = url.search().get(VIEW_TASK_SEARCH_KEY).and_then(|v| {
-        uuid::Uuid::parse_str(v.first().unwrap_or(&String::new()))
-            .map(|uuid| {
-                if tasks.contains_key(&uuid) {
-                    Some(uuid)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(None)
-    });
-    if selected_task.is_none() {
-        url.clone()
-            .set_search(UrlSearch::default())
-            .go_and_replace();
-    }
+    let page = Page::init(url, &tasks);
     Model {
         tasks,
-        selected_task,
         filters,
         base_url: url.to_base_url(),
+        page,
     }
 }
 
@@ -104,9 +89,9 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 #[derive(Debug)]
 pub struct Model {
     tasks: HashMap<uuid::Uuid, Task>,
-    selected_task: Option<uuid::Uuid>,
     filters: Filters,
     base_url: Url,
+    page:Page,
 }
 
 // ------ ------
@@ -126,6 +111,38 @@ impl<'a> Urls<'a> {
             .add_path_part("tasknet")
             .add_hash_path_part(VIEW_TASK)
             .add_hash_path_part(uuid.to_string())
+    }
+}
+
+// ------ ------
+//     Pages
+// ------ ------
+
+#[derive(Debug)]
+enum Page {
+    Home,
+    ViewTask(pages::view_task::Model),
+}
+
+impl Page {
+    fn init(url: Url, tasks: &HashMap<uuid::Uuid, Task>) -> Page {
+        match url.next_hash_path_part() {
+            Some(VIEW_TASK) => match url.next_hash_path_part() {
+                Some(uuid) => {
+                    if let Ok(uuid) = uuid::Uuid::parse_str(uuid) {
+                        if tasks.get(&uuid).is_some() {
+                            Page::ViewTask(pages::view_task::init(uuid))
+                        } else {
+                            Page::Home
+                        }
+                    } else {
+                        Page::Home
+                    }
+                }
+                _ => Page::Home,
+            },
+            None | Some(_) => Page::Home,
+        }
     }
 }
 

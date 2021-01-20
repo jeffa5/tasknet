@@ -6,8 +6,21 @@ use seed::{prelude::*, *};
 use crate::{
     components::{duration_string, view_button, view_text_input},
     task::{Priority, RecurUnit, Status, Task},
-    urgency, Model, Msg,
+    urgency,
 };
+
+pub fn init(uuid: uuid::Uuid) -> Model {
+    Model {
+        selected_task: uuid,
+    }
+}
+
+#[derive(Debug)]
+pub struct Model {
+    selected_task: uuid::Uuid,
+}
+
+pub enum Msg {}
 
 pub fn view(model: &Model, task: &Task) -> Node<Msg> {
     div![
