@@ -54,6 +54,7 @@ pub enum Msg {
     FiltersReset,
     FiltersSave,
     SelectedContextChanged(String),
+    ContextsRemove,
 }
 
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
@@ -125,17 +126,11 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                                 ))
                                 .unwrap_or_else(|e| log!(e))
                         } else {
-                            let mut dups = Vec::new();
-                            for (name, filters) in model.contexts.iter() {
-                                if filters == &model.filters {
-                                    dups.push(name.clone())
-                                }
-                            }
-                            for name in dups {
-                                model.contexts.remove(&name);
-                            }
+                            let current_filters = model.filters.clone();
+                            model
+                                .contexts
+                                .retain(|_, filters| filters != &current_filters);
                             model.contexts.insert(name, model.filters.clone());
-                            // TODO: check for matching values
                         }
                     }
                 }
