@@ -148,6 +148,12 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                 model.filters = filters.clone()
             }
         }
+        Msg::ContextsRemove => {
+            let current_filters = model.filters.clone();
+            model
+                .contexts
+                .retain(|_, filters| filters != &current_filters);
+        }
     }
     LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
         .expect("save filters to LocalStorage");
@@ -427,6 +433,7 @@ fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> 
             C!["flex", "flex-col"],
             view_button("Reset Filters", GMsg::Home(Msg::FiltersReset)),
             view_button("Save to context", GMsg::Home(Msg::FiltersSave)),
+            view_button("Remove context", GMsg::Home(Msg::ContextsRemove)),
         ],
         div![
             C!["flex", "flex-col"],
