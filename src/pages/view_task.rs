@@ -19,7 +19,7 @@ pub fn init(uuid: uuid::Uuid, orders: &mut impl Orders<GMsg>) -> Model {
     orders.stream(streams::window_event(Ev::KeyUp, |event| {
         let key_event: web_sys::KeyboardEvent = event.unchecked_into();
         match key_event.key().as_ref() {
-            ESCAPE_KEY => Some(Msg::EscapeKey),
+            ESCAPE_KEY => Some(GMsg::ViewTask(Msg::EscapeKey)),
             _ => None,
         }
     }));
@@ -237,7 +237,7 @@ pub fn update(
             }
         }
         Msg::DeleteSelectedTask => {
-            Urls::new(&global_model.base_url).home().go_and_push();
+            Urls::new(&global_model.base_url).home().go_and_load();
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
                 match task.status() {
                     Status::Pending | Status::Completed | Status::Waiting | Status::Recurring => {
@@ -256,31 +256,31 @@ pub fn update(
             }
         }
         Msg::CompleteSelectedTask => {
-            Urls::new(&global_model.base_url).home().go_and_push();
+            Urls::new(&global_model.base_url).home().go_and_load();
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
                 task.complete()
             }
         }
         Msg::StartSelectedTask => {
-            Urls::new(&global_model.base_url).home().go_and_push();
+            Urls::new(&global_model.base_url).home().go_and_load();
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
                 task.activate()
             }
         }
         Msg::StopSelectedTask => {
-            Urls::new(&global_model.base_url).home().go_and_push();
+            Urls::new(&global_model.base_url).home().go_and_load();
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
                 task.deactivate()
             }
         }
         Msg::MoveSelectedTaskToPending => {
-            Urls::new(&global_model.base_url).home().go_and_push();
+            Urls::new(&global_model.base_url).home().go_and_load();
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
                 task.restore()
             }
         }
         Msg::EscapeKey => {
-            Urls::new(&global_model.base_url).home().go_and_push();
+            Urls::new(&global_model.base_url).home().go_and_load();
         }
     }
 }
@@ -290,10 +290,7 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
         .tasks
         .get(&model.selected_task)
         .expect("the given task to exist");
-    div![
-        C!["flex", "flex-col", "container", "mx-auto"],
-        view_selected_task(task, &global_model.tasks),
-    ]
+    div![view_selected_task(task, &global_model.tasks),]
 }
 
 #[allow(clippy::too_many_lines)]
@@ -423,13 +420,17 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                         At::Value => task.tags().join(" "),
                         At::AutoFocus => AtValue::Ignored
                     },
-                    input_ev(Ev::Input, Msg::SelectedTaskTagsChanged)
+                    input_ev(Ev::Input, |s| GMsg::ViewTask(Msg::SelectedTaskTagsChanged(
+                        s
+                    )))
                 ],
                 if task.tags().join(" ").is_empty() {
                     pre![" "]
                 } else {
                     button![
-                        mouse_ev(Ev::Click, |_| Msg::SelectedTaskTagsChanged(String::new())),
+                        mouse_ev(Ev::Click, |_| GMsg::ViewTask(Msg::SelectedTaskTagsChanged(
+                            String::new()
+                        ))),
                         div![C!["text-red-600"], "X"]
                     ]
                 }
@@ -445,7 +446,10 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                             C!["mr-2", "mt-2", "px-1", "bg-gray-200"],
                             mouse_ev(Ev::Click, move |_| {
                                 if tags.ends_with(' ') || tags.is_empty() {
-                                    Msg::SelectedTaskTagsChanged(format!("{} {}", tags, sug_clone))
+                                    GMsg::ViewTask(Msg::SelectedTaskTagsChanged(format!(
+                                        "{} {}",
+                                        tags, sug_clone
+                                    )))
                                 } else {
                                     let split_tags = tags.split_whitespace().collect::<Vec<_>>();
                                     let tags = split_tags
@@ -454,7 +458,10 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                                         .map(|s| s.to_owned())
                                         .collect::<Vec<_>>()
                                         .join(" ");
-                                    Msg::SelectedTaskTagsChanged(format!("{} {}", tags, sug_clone))
+                                    GMsg::ViewTask(Msg::SelectedTaskTagsChanged(format!(
+                                        "{} {}",
+                                        tags, sug_clone
+                                    )))
                                 }
                             }),
                             sug
@@ -514,7 +521,9 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                         },
                         "High"
                     ],
-                    input_ev(Ev::Input, Msg::SelectedTaskPriorityChanged)
+                    input_ev(Ev::Input, |s| GMsg::ViewTask(
+                        Msg::SelectedTaskPriorityChanged(s)
+                    ))
                 ],
             ]
         ],
@@ -529,14 +538,18 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                         At::Type => "date",
                         At::Value => task.due().map_or_else(String::new, |due| due.format("%Y-%m-%d").to_string()),
                     },
-                    input_ev(Ev::Input, Msg::SelectedTaskDueDateChanged)
+                    input_ev(Ev::Input, |s| GMsg::ViewTask(
+                        Msg::SelectedTaskDueDateChanged(s)
+                    ))
                 ],
                 input![
                     attrs! {
                         At::Type => "time",
                         At::Value => task.due().map_or_else(String::new, |due| due.format("%H:%M").to_string()),
                     },
-                    input_ev(Ev::Input, Msg::SelectedTaskDueTimeChanged)
+                    input_ev(Ev::Input, |s| GMsg::ViewTask(
+                        Msg::SelectedTaskDueTimeChanged(s)
+                    ))
                 ],
                 if let Some(due) = task.due() {
                     span![
@@ -559,14 +572,18 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                         At::Type => "date",
                         At::Value => task.scheduled().map_or_else(String::new, |scheduled| scheduled.format("%Y-%m-%d").to_string()),
                     },
-                    input_ev(Ev::Input, Msg::SelectedTaskScheduledDateChanged)
+                    input_ev(Ev::Input, |s| GMsg::ViewTask(
+                        Msg::SelectedTaskScheduledDateChanged(s)
+                    ))
                 ],
                 input![
                     attrs! {
                         At::Type => "time",
                         At::Value => task.scheduled().map_or_else(String::new, |scheduled| scheduled.format("%H:%M").to_string()),
                     },
-                    input_ev(Ev::Input, Msg::SelectedTaskScheduledTimeChanged)
+                    input_ev(Ev::Input, |s| GMsg::ViewTask(
+                        Msg::SelectedTaskScheduledTimeChanged(s)
+                    ))
                 ],
                 if let Some(scheduled) = task.scheduled() {
                     span![
@@ -590,7 +607,9 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                         At::Type => "number",
                         At::Value => task.recur().as_ref().map_or(0, |r|r.amount),
                     },
-                    input_ev(Ev::Input, Msg::SelectedTaskRecurAmountChanged)
+                    input_ev(Ev::Input, |s| GMsg::ViewTask(
+                        Msg::SelectedTaskRecurAmountChanged(s)
+                    ))
                 ],
                 span![" "],
                 select![
@@ -671,7 +690,9 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                         },
                         "Hours"
                     ],
-                    input_ev(Ev::Input, Msg::SelectedTaskRecurUnitChanged)
+                    input_ev(Ev::Input, |s| GMsg::ViewTask(
+                        Msg::SelectedTaskRecurUnitChanged(s)
+                    ))
                 ]
             ]
         ],
@@ -685,13 +706,17 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                     attrs! {
                         At::Value => task.notes(),
                     },
-                    input_ev(Ev::Input, Msg::SelectedTaskNotesChanged)
+                    input_ev(Ev::Input, |s| GMsg::ViewTask(
+                        Msg::SelectedTaskNotesChanged(s)
+                    ))
                 ],
                 if task.notes().is_empty() {
                     pre![" "]
                 } else {
                     button![
-                        mouse_ev(Ev::Click, |_| Msg::SelectedTaskNotesChanged(String::new())),
+                        mouse_ev(Ev::Click, |_| GMsg::ViewTask(
+                            Msg::SelectedTaskNotesChanged(String::new())
+                        )),
                         div![C!["text-red-600"], "X"]
                     ]
                 }

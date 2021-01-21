@@ -88,13 +88,12 @@ struct_urls!();
 impl<'a> Urls<'a> {
     #[must_use]
     pub fn home(self) -> Url {
-        self.base_url().add_path_part("tasknet")
+        self.base_url()
     }
 
     #[must_use]
     pub fn view_task(self, uuid: &uuid::Uuid) -> Url {
         self.base_url()
-            .add_path_part("tasknet")
             .add_hash_path_part(VIEW_TASK)
             .add_hash_path_part(uuid.to_string())
     }
@@ -158,22 +157,20 @@ pub enum Msg {
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::SelectTask(None) => {
-            Urls::new(&model.global.base_url).home().go_and_push();
+            Urls::new(&model.global.base_url).home().go_and_load();
         }
         Msg::SelectTask(Some(uuid)) => {
             Urls::new(&model.global.base_url)
                 .view_task(&uuid)
-                .go_and_push();
-            model.page = Page::ViewTask(pages::view_task::init(uuid, orders))
+                .go_and_load();
         }
         Msg::CreateTask => {
             let task = Task::new();
             let id = task.uuid();
             model.global.tasks.insert(task.uuid(), task);
-            model.page = Page::ViewTask(pages::view_task::init(id, orders));
             Urls::new(&model.global.base_url)
                 .view_task(&id)
-                .go_and_push();
+                .go_and_load();
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
@@ -273,6 +270,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
 fn view(model: &Model) -> Node<Msg> {
     div![
+        C!["flex", "flex-col", "container", "mx-auto"],
         view_titlebar(),
         match &model.page {
             Page::Home(lm) => pages::home::view(&model.global, lm),

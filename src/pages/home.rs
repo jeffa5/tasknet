@@ -109,7 +109,6 @@ pub struct Model {
 
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
-        C!["flex", "flex-col", "container", "mx-auto"],
         view_filters(&model.filters, &global_model.tasks),
         view_tasks(&global_model.tasks, &model.filters),
     ]
