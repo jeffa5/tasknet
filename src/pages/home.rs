@@ -117,7 +117,17 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
             match window().prompt_with_message("Name for the context (saved filters)") {
                 Ok(Some(content)) => {
                     if !content.is_empty() {
-                        model.contexts.insert(content, model.filters.clone());
+                        if content.to_lowercase() == "custom" {
+                            window()
+                                .alert_with_message(&format!(
+                                    "Cannot use name '{}' for context",
+                                    content
+                                ))
+                                .unwrap_or_else(|e| log!(e))
+                        } else {
+                            model.contexts.insert(content, model.filters.clone());
+                            // TODO: check for matching values
+                        }
                     }
                 }
                 Ok(None) => {}
@@ -130,8 +140,8 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
             }
         }
         Msg::SelectedContextChanged(c) => {
-            if let Some(context) = model.contexts.get(&c) {
-                model.filters = context.clone()
+            if let Some(filters) = model.contexts.get(&c) {
+                model.filters = filters.clone()
             }
         }
     }
@@ -410,24 +420,29 @@ fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> 
             view_button("Reset Filters", GMsg::Home(Msg::FiltersReset)),
             view_button("Save Filters", GMsg::Home(Msg::FiltersSave)),
         ],
-        select![
-            C!["border", "bg-white"],
-            model
-                .contexts
-                .iter()
-                .map(|(name, filters)| option![
-                    attrs! {
-                        At::Value => name,
-                        At::Selected => if filters == &model.filters{
-                            AtValue::None
-                        } else {
-                            AtValue::Ignored
-                        }
-                    },
-                    name
-                ])
-                .collect::<Vec<_>>(),
-            input_ev(Ev::Input, |s| GMsg::Home(Msg::SelectedContextChanged(s)))
-        ],
+        div![
+            C!["flex", "flex-col"],
+            div![C!["font-bold"], "Context"],
+            select![
+                C!["border", "bg-white"],
+                option!["Custom"],
+                model
+                    .contexts
+                    .iter()
+                    .map(|(name, filters)| option![
+                        attrs! {
+                            At::Value => name,
+                            At::Selected => if filters == &model.filters{
+                                AtValue::None
+                            } else {
+                                AtValue::Ignored
+                            }
+                        },
+                        name
+                    ])
+                    .collect::<Vec<_>>(),
+                input_ev(Ev::Input, |s| GMsg::Home(Msg::SelectedContextChanged(s)))
+            ],
+        ]
     ]
 }
