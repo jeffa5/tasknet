@@ -157,20 +157,16 @@ pub enum Msg {
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::SelectTask(None) => {
-            Urls::new(&model.global.base_url).home().go_and_load();
+            orders.request_url(Urls::new(&model.global.base_url).home());
         }
         Msg::SelectTask(Some(uuid)) => {
-            Urls::new(&model.global.base_url)
-                .view_task(&uuid)
-                .go_and_load();
+            orders.request_url(Urls::new(&model.global.base_url).view_task(&uuid));
         }
         Msg::CreateTask => {
             let task = Task::new();
             let id = task.uuid();
             model.global.tasks.insert(task.uuid(), task);
-            Urls::new(&model.global.base_url)
-                .view_task(&id)
-                .go_and_load();
+            orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {

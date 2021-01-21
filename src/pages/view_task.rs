@@ -60,7 +60,7 @@ pub fn update(
     msg: Msg,
     global_model: &mut GlobalModel,
     model: &mut Model,
-    _orders: &mut impl Orders<GMsg>,
+    orders: &mut impl Orders<GMsg>,
 ) {
     match msg {
         Msg::SelectedTaskDescriptionChanged(new_description) => {
@@ -237,7 +237,7 @@ pub fn update(
             }
         }
         Msg::DeleteSelectedTask => {
-            Urls::new(&global_model.base_url).home().go_and_load();
+            orders.request_url(Urls::new(&global_model.base_url).home());
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
                 match task.status() {
                     Status::Pending | Status::Completed | Status::Waiting | Status::Recurring => {
@@ -256,31 +256,31 @@ pub fn update(
             }
         }
         Msg::CompleteSelectedTask => {
-            Urls::new(&global_model.base_url).home().go_and_load();
+            orders.request_url(Urls::new(&global_model.base_url).home());
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
                 task.complete()
             }
         }
         Msg::StartSelectedTask => {
-            Urls::new(&global_model.base_url).home().go_and_load();
+            orders.request_url(Urls::new(&global_model.base_url).home());
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
                 task.activate()
             }
         }
         Msg::StopSelectedTask => {
-            Urls::new(&global_model.base_url).home().go_and_load();
+            orders.request_url(Urls::new(&global_model.base_url).home());
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
                 task.deactivate()
             }
         }
         Msg::MoveSelectedTaskToPending => {
-            Urls::new(&global_model.base_url).home().go_and_load();
+            orders.request_url(Urls::new(&global_model.base_url).home());
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
                 task.restore()
             }
         }
         Msg::EscapeKey => {
-            Urls::new(&global_model.base_url).home().go_and_load();
+            orders.request_url(Urls::new(&global_model.base_url).home());
         }
     }
 }
