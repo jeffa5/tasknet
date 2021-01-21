@@ -431,7 +431,7 @@ fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> 
         div![
             C!["flex", "flex-col"],
             view_button("Reset Filters", GMsg::Home(Msg::FiltersReset)),
-            view_button("Save Filters", GMsg::Home(Msg::FiltersSave)),
+            view_button("Save to context", GMsg::Home(Msg::FiltersSave)),
         ],
         div![
             C!["flex", "flex-col"],
