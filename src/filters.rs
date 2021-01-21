@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::task::{Priority, Status, Task};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Filters {
     #[serde(default)]
