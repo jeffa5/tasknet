@@ -115,17 +115,17 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
         Msg::FiltersReset => model.filters = Filters::default(),
         Msg::FiltersSave => {
             match window().prompt_with_message("Name for the context (saved filters)") {
-                Ok(Some(content)) => {
-                    if !content.is_empty() {
-                        if content.to_lowercase() == "custom" {
+                Ok(Some(name)) => {
+                    if !name.is_empty() {
+                        if name.to_lowercase() == "custom" {
                             window()
                                 .alert_with_message(&format!(
                                     "Cannot use name '{}' for context",
-                                    content
+                                    name
                                 ))
                                 .unwrap_or_else(|e| log!(e))
                         } else {
-                            model.contexts.insert(content, model.filters.clone());
+                            model.contexts.insert(name, model.filters.clone());
                             // TODO: check for matching values
                         }
                     }
