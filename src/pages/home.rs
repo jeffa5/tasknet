@@ -153,7 +153,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
 
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
-        view_filters(&model, &global_model.tasks),
+        view_filters(model, &global_model.tasks),
         view_tasks(&global_model.tasks, &model.filters),
     ]
 }
@@ -312,6 +312,10 @@ struct ViewableTask {
 
 #[allow(clippy::too_many_lines)]
 fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> {
+    let no_context_match = !model
+        .contexts
+        .values()
+        .any(|filters| filters == &model.filters);
     div![
         C![
             "flex",
@@ -425,7 +429,17 @@ fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> 
             div![C!["font-bold"], "Context"],
             select![
                 C!["border", "bg-white"],
-                option!["Custom"],
+                option![
+                    attrs! {
+                        At::Value => "custom",
+                        At::Selected => if no_context_match {
+                            AtValue::None
+                        }else {
+                            AtValue::Ignored
+                        }
+                    },
+                    "Custom"
+                ],
                 model
                     .contexts
                     .iter()
