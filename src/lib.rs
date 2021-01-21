@@ -153,23 +153,7 @@ impl Page {
 #[derive(Clone)]
 pub enum Msg {
     SelectTask(Option<uuid::Uuid>),
-    SelectedTaskDescriptionChanged(String),
-    SelectedTaskProjectChanged(String),
-    SelectedTaskTagsChanged(String),
-    SelectedTaskPriorityChanged(String),
-    SelectedTaskNotesChanged(String),
-    SelectedTaskDueDateChanged(String),
-    SelectedTaskDueTimeChanged(String),
-    SelectedTaskScheduledDateChanged(String),
-    SelectedTaskScheduledTimeChanged(String),
-    SelectedTaskRecurUnitChanged(String),
-    SelectedTaskRecurAmountChanged(String),
     CreateTask,
-    DeleteSelectedTask,
-    CompleteSelectedTask,
-    StartSelectedTask,
-    StopSelectedTask,
-    MoveSelectedTaskToPending,
     OnRenderTick,
     OnRecurTick,
     FiltersStatusTogglePending,
@@ -189,6 +173,7 @@ pub enum Msg {
     EscapeKey,
     ImportTasks,
     ExportTasks,
+    ViewTask(pages::view_task::Msg),
 }
 
 #[allow(clippy::too_many_lines)]
@@ -197,208 +182,11 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::SelectTask(None) => {
             Urls::new(&model.base_url).home().go_and_push();
-            model.selected_task = None
+            model.page = Page::Home
         }
         Msg::SelectTask(Some(uuid)) => {
             Urls::new(&model.base_url).view_task(&uuid).go_and_push();
-            model.selected_task = Some(uuid)
-        }
-        Msg::SelectedTaskDescriptionChanged(new_description) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_description(new_description);
-                }
-            }
-        }
-        Msg::SelectedTaskProjectChanged(new_project) => {
-            let new_project = new_project.trim();
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_project(if new_project.is_empty() {
-                        Vec::new()
-                    } else {
-                        new_project
-                            .split('.')
-                            .map(std::borrow::ToOwned::to_owned)
-                            .collect()
-                    })
-                }
-            }
-        }
-        Msg::SelectedTaskTagsChanged(new_tags) => {
-            let new_end = new_tags.ends_with(' ');
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_tags(if new_tags.is_empty() {
-                        Vec::new()
-                    } else {
-                        let mut tags: Vec<_> = new_tags
-                            .split_whitespace()
-                            .map(|s| s.trim().to_owned())
-                            .collect();
-                        if new_end {
-                            tags.push(String::new())
-                        }
-                        tags
-                    })
-                }
-            }
-        }
-        Msg::SelectedTaskPriorityChanged(new_priority) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_priority(match Priority::try_from(new_priority) {
-                        Ok(p) => Some(p),
-                        Err(()) => None,
-                    });
-                }
-            }
-        }
-        Msg::SelectedTaskNotesChanged(new_notes) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_notes(new_notes)
-                }
-            }
-        }
-        Msg::SelectedTaskDueDateChanged(new_date) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
-                    match new_date {
-                        Ok(new_date) => {
-                            let due = task.due();
-                            match due {
-                                None => task.set_due(Some(chrono::DateTime::from_utc(
-                                    new_date.and_hms(0, 0, 0),
-                                    chrono::Utc,
-                                ))),
-                                Some(due) => {
-                                    let due = due
-                                        .with_year(new_date.year())
-                                        .and_then(|due| due.with_month(new_date.month()))
-                                        .and_then(|due| due.with_day(new_date.day()));
-                                    task.set_due(due)
-                                }
-                            }
-                        }
-                        Err(_) => task.set_due(None),
-                    }
-                }
-            }
-        }
-        Msg::SelectedTaskDueTimeChanged(new_time) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
-                    match new_time {
-                        Ok(new_time) => {
-                            let due = task.due();
-                            match due {
-                                None => {
-                                    let now = chrono::offset::Utc::now();
-                                    let now = now
-                                        .with_hour(new_time.hour())
-                                        .and_then(|now| now.with_minute(new_time.minute()));
-                                    task.set_due(now)
-                                }
-                                Some(due) => {
-                                    let due = due
-                                        .with_hour(new_time.hour())
-                                        .and_then(|due| due.with_minute(new_time.minute()));
-                                    task.set_due(due)
-                                }
-                            }
-                        }
-                        Err(_) => task.set_due(None),
-                    }
-                }
-            }
-        }
-        Msg::SelectedTaskScheduledDateChanged(new_date) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
-                    match new_date {
-                        Ok(new_date) => {
-                            let scheduled = task.scheduled();
-                            match scheduled {
-                                None => task.set_scheduled(Some(chrono::DateTime::from_utc(
-                                    new_date.and_hms(0, 0, 0),
-                                    chrono::Utc,
-                                ))),
-                                Some(scheduled) => {
-                                    let scheduled = scheduled
-                                        .with_year(new_date.year())
-                                        .and_then(|scheduled| {
-                                            scheduled.with_month(new_date.month())
-                                        })
-                                        .and_then(|scheduled| scheduled.with_day(new_date.day()));
-                                    task.set_scheduled(scheduled)
-                                }
-                            }
-                        }
-                        Err(_) => task.set_scheduled(None),
-                    }
-                }
-            }
-        }
-        Msg::SelectedTaskScheduledTimeChanged(new_time) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
-                    match new_time {
-                        Ok(new_time) => {
-                            let scheduled = task.scheduled();
-                            match scheduled {
-                                None => {
-                                    let now = chrono::offset::Utc::now();
-                                    let now = now
-                                        .with_hour(new_time.hour())
-                                        .and_then(|now| now.with_minute(new_time.minute()));
-                                    task.set_scheduled(now)
-                                }
-                                Some(scheduled) => {
-                                    let scheduled = scheduled.with_hour(new_time.hour()).and_then(
-                                        |scheduled| scheduled.with_minute(new_time.minute()),
-                                    );
-                                    task.set_scheduled(scheduled)
-                                }
-                            }
-                        }
-                        Err(_) => task.set_scheduled(None),
-                    }
-                }
-            }
-        }
-        Msg::SelectedTaskRecurAmountChanged(new_amount) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    if let Ok(n) = new_amount.parse::<u16>() {
-                        if n > 0 {
-                            task.set_recur(Some(Recur {
-                                amount: n,
-                                unit: task.recur().as_ref().map_or(RecurUnit::Week, |r| r.unit),
-                            }))
-                        } else {
-                            task.set_recur(None)
-                        }
-                    }
-                }
-            }
-        }
-        Msg::SelectedTaskRecurUnitChanged(new_unit) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    match RecurUnit::try_from(new_unit) {
-                        Ok(unit) => task.set_recur(Some(Recur {
-                            amount: task.recur().as_ref().map_or(1, |r| r.amount),
-                            unit,
-                        })),
-                        Err(()) => task.set_recur(None),
-                    }
-                }
-            }
+            model.page = Page::ViewTask(pages::view_task::init(uuid))
         }
         Msg::CreateTask => {
             let task = Task::new();
@@ -406,62 +194,6 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             model.tasks.insert(task.uuid(), task);
             model.selected_task = Some(id);
             Urls::new(&model.base_url).view_task(&id).go_and_push();
-        }
-        Msg::DeleteSelectedTask => {
-            if let Some(uuid) = model.selected_task.take() {
-                Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.get_mut(&uuid) {
-                    match task.status() {
-                        Status::Pending
-                        | Status::Completed
-                        | Status::Waiting
-                        | Status::Recurring => {
-                            task.delete();
-                        }
-                        Status::Deleted => match window().confirm_with_message(
-                            "Are you sure you want to permanently delete this task?",
-                        ) {
-                            Ok(true) => {
-                                /* already removed from set so just don't add it back */
-                                model.tasks.remove(&uuid);
-                            }
-                            Ok(false) | Err(_) => {}
-                        },
-                    }
-                }
-            }
-        }
-        Msg::CompleteSelectedTask => {
-            if let Some(uuid) = model.selected_task.take() {
-                Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.get_mut(&uuid) {
-                    task.complete()
-                }
-            }
-        }
-        Msg::StartSelectedTask => {
-            if let Some(uuid) = model.selected_task.take() {
-                Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.get_mut(&uuid) {
-                    task.activate()
-                }
-            }
-        }
-        Msg::StopSelectedTask => {
-            if let Some(uuid) = model.selected_task.take() {
-                Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.get_mut(&uuid) {
-                    task.deactivate()
-                }
-            }
-        }
-        Msg::MoveSelectedTaskToPending => {
-            if let Some(uuid) = model.selected_task.take() {
-                Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.get_mut(&uuid) {
-                    task.restore()
-                }
-            }
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
@@ -613,6 +345,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 Err(e) => log!(e),
             }
         }
+        Msg::ViewTask(msg) => {pages::view_task::update(msg, model.page)}
     }
     LocalStorage::insert(TASKS_STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
     LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
