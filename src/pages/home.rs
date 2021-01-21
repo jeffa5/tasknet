@@ -10,6 +10,7 @@ use crate::{
 };
 
 const FILTERS_STORAGE_KEY: &str = "tasknet-filters";
+const CONTEXTS_STORAGE_KEY: &str = "tasknet-contexts";
 
 pub fn init() -> Model {
     let filters = match LocalStorage::get(FILTERS_STORAGE_KEY) {
@@ -19,8 +20,14 @@ pub fn init() -> Model {
         }
         Err(_) => Filters::default(),
     };
-
-    Model { filters }
+    let contexts = match LocalStorage::get(CONTEXTS_STORAGE_KEY) {
+        Ok(contexts) => contexts,
+        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
+            panic!("failed to parse filters: {:?}", err)
+        }
+        Err(_) => Vec::new(),
+    };
+    Model { filters, contexts }
 }
 
 #[derive(Clone)]
@@ -39,6 +46,7 @@ pub enum Msg {
     FiltersTagsChanged(String),
     FiltersDescriptionChanged(String),
     FiltersReset,
+    FiltersSave,
 }
 
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
@@ -98,6 +106,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
             model.filters.description_and_notes = new_description
         }
         Msg::FiltersReset => model.filters = Filters::default(),
+        Msg::FiltersSave => {}
     }
     LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
         .expect("save filters to LocalStorage");
@@ -106,6 +115,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
 #[derive(Debug)]
 pub struct Model {
     filters: Filters,
+    contexts: Vec<Filters>,
 }
 
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
@@ -370,5 +380,6 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             tasks.len()
         ],
         view_button("Reset Filters", GMsg::Home(Msg::FiltersReset)),
+        view_button("Save Filters", GMsg::Home(Msg::FiltersSave)),
     ]
 }
