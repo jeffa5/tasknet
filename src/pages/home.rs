@@ -113,7 +113,22 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
             model.filters.description_and_notes = new_description
         }
         Msg::FiltersReset => model.filters = Filters::default(),
-        Msg::FiltersSave => {}
+        Msg::FiltersSave => {
+            match window().prompt_with_message("Name for the context (saved filters)") {
+                Ok(Some(content)) => {
+                    if !content.is_empty() {
+                        model.contexts.insert(content, model.filters.clone());
+                    }
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    log!(e);
+                    window()
+                        .alert_with_message("Failed to save filters")
+                        .unwrap_or_else(|e| log!(e));
+                }
+            }
+        }
         Msg::SelectedContextChanged(c) => {
             if let Some(context) = model.contexts.get(&c) {
                 model.filters = context.clone()
@@ -122,6 +137,8 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
     }
     LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
         .expect("save filters to LocalStorage");
+    LocalStorage::insert(CONTEXTS_STORAGE_KEY, &model.contexts)
+        .expect("save contexts to LocalStorage");
 }
 
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
@@ -407,7 +424,7 @@ fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> 
                             AtValue::Ignored
                         }
                     },
-                    "None"
+                    name
                 ])
                 .collect::<Vec<_>>(),
             input_ev(Ev::Input, |s| GMsg::Home(Msg::SelectedContextChanged(s)))
