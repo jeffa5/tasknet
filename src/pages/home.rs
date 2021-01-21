@@ -24,6 +24,7 @@ pub fn init() -> Model {
 }
 
 #[derive(Clone)]
+#[allow(clippy::pub_enum_variant_names)]
 pub enum Msg {
     FiltersStatusTogglePending,
     FiltersStatusToggleDeleted,
