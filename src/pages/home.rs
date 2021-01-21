@@ -125,6 +125,15 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                                 ))
                                 .unwrap_or_else(|e| log!(e))
                         } else {
+                            let mut dups = Vec::new();
+                            for (name, filters) in model.contexts.iter() {
+                                if filters == &model.filters {
+                                    dups.push(name.clone())
+                                }
+                            }
+                            for name in dups {
+                                model.contexts.remove(&name);
+                            }
                             model.contexts.insert(name, model.filters.clone());
                             // TODO: check for matching values
                         }
