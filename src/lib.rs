@@ -17,7 +17,6 @@ use components::view_button;
 use filters::Filters;
 use task::{Recur, Status, Task};
 
-
 const VIEW_TASK: &str = "view";
 const TASKS_STORAGE_KEY: &str = "tasknet-tasks";
 
@@ -112,7 +111,11 @@ enum Page {
 }
 
 impl Page {
-    fn init(mut url: Url, tasks: &HashMap<uuid::Uuid, Task>, orders: &mut impl Orders<Msg>) -> Self {
+    fn init(
+        mut url: Url,
+        tasks: &HashMap<uuid::Uuid, Task>,
+        orders: &mut impl Orders<Msg>,
+    ) -> Self {
         match url.next_hash_path_part() {
             Some(VIEW_TASK) => match url.next_hash_path_part() {
                 Some(uuid) => {
@@ -123,16 +126,12 @@ impl Page {
                             Self::Home(pages::home::init())
                         }
                     } else {
-                            Self::Home(pages::home::init())
+                        Self::Home(pages::home::init())
                     }
                 }
-                None =>
-                            Self::Home(pages::home::init())
-                    ,
+                None => Self::Home(pages::home::init()),
             },
-            None | Some(_) => {
-                            Self::Home(pages::home::init())
-            }
+            None | Some(_) => Self::Home(pages::home::init()),
         }
     }
 }
@@ -165,13 +164,13 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             Urls::new(&model.global.base_url)
                 .view_task(&uuid)
                 .go_and_push();
-            model.page = Page::ViewTask(pages::view_task::init(uuid,orders))
+            model.page = Page::ViewTask(pages::view_task::init(uuid, orders))
         }
         Msg::CreateTask => {
             let task = Task::new();
             let id = task.uuid();
             model.global.tasks.insert(task.uuid(), task);
-            model.page = Page::ViewTask(pages::view_task::init(id,orders));
+            model.page = Page::ViewTask(pages::view_task::init(id, orders));
             Urls::new(&model.global.base_url)
                 .view_task(&id)
                 .go_and_push();
@@ -212,7 +211,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 model.global.tasks.insert(t.uuid(), t);
             }
         }
-        Msg::UrlChanged(subs::UrlChanged(url)) => model.page = Page::init(url, &model.global.tasks,orders),
+        Msg::UrlChanged(subs::UrlChanged(url)) => {
+            model.page = Page::init(url, &model.global.tasks, orders)
+        }
         Msg::ImportTasks => match window().prompt_with_message("Paste the tasks json here") {
             Ok(Some(content)) => {
                 match serde_json::from_str::<HashMap<uuid::Uuid, Task>>(&content) {
@@ -253,13 +254,12 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {
-                pages::view_task::update(msg, &mut model.global,  lm, orders)
+                pages::view_task::update(msg, &mut model.global, lm, orders)
             }
         }
         Msg::Home(msg) => {
-
             if let Page::Home(lm) = &mut model.page {
-                pages::home::update(msg,   lm, orders)
+                pages::home::update(msg, lm, orders)
             }
         }
     }
