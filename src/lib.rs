@@ -1,10 +1,9 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 
-use std::{collections::HashMap, convert::TryFrom};
+use std::collections::HashMap;
 
 use apply::Apply;
-use chrono::{Datelike, Timelike};
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
@@ -16,14 +15,11 @@ mod urgency;
 
 use components::view_button;
 use filters::Filters;
-use task::{Priority, Recur, RecurUnit, Status, Task};
+use task::{Recur, Status, Task};
 
-const ESCAPE_KEY: &str = "Escape";
 
 const VIEW_TASK: &str = "view";
-const VIEW_TASK_SEARCH_KEY: &str = "viewtask";
 const TASKS_STORAGE_KEY: &str = "tasknet-tasks";
-const FILTERS_STORAGE_KEY: &str = "tasknet-filters";
 
 // ------ ------
 //     Init
@@ -51,13 +47,6 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders
         .stream(streams::interval(1000, || Msg::OnRenderTick))
         .stream(streams::interval(60000, || Msg::OnRecurTick))
-        .stream(streams::window_event(Ev::KeyUp, |event| {
-            let key_event: web_sys::KeyboardEvent = event.unchecked_into();
-            match key_event.key().as_ref() {
-                ESCAPE_KEY => Some(Msg::EscapeKey),
-                _ => None,
-            }
-        }))
         .subscribe(Msg::UrlChanged);
     let tasks = match LocalStorage::get(TASKS_STORAGE_KEY) {
         Ok(tasks) => tasks,
@@ -66,18 +55,12 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         }
         Err(_) => HashMap::new(),
     };
-    let filters = match LocalStorage::get(FILTERS_STORAGE_KEY) {
-        Ok(filters) => filters,
-        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
-            panic!("failed to parse filters: {:?}", err)
-        }
-        Err(_) => Filters::default(),
-    };
-    let page = Page::init(url, &tasks);
+    let page = Page::init(url.clone(), &tasks, orders);
     Model {
-        tasks,
-        filters,
-        base_url: url.to_base_url(),
+        global: GlobalModel {
+            tasks,
+            base_url: url.to_hash_base_url(),
+        },
         page,
     }
 }
@@ -87,11 +70,15 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 // ------ ------
 
 #[derive(Debug)]
-pub struct Model {
+pub struct GlobalModel {
     tasks: HashMap<uuid::Uuid, Task>,
-    filters: Filters,
     base_url: Url,
-    page:Page,
+}
+
+#[derive(Debug)]
+pub struct Model {
+    global: GlobalModel,
+    page: Page,
 }
 
 // ------ ------
@@ -120,28 +107,32 @@ impl<'a> Urls<'a> {
 
 #[derive(Debug)]
 enum Page {
-    Home,
+    Home(pages::home::Model),
     ViewTask(pages::view_task::Model),
 }
 
 impl Page {
-    fn init(url: Url, tasks: &HashMap<uuid::Uuid, Task>) -> Page {
+    fn init(mut url: Url, tasks: &HashMap<uuid::Uuid, Task>, orders: &mut impl Orders<Msg>) -> Self {
         match url.next_hash_path_part() {
             Some(VIEW_TASK) => match url.next_hash_path_part() {
                 Some(uuid) => {
                     if let Ok(uuid) = uuid::Uuid::parse_str(uuid) {
                         if tasks.get(&uuid).is_some() {
-                            Page::ViewTask(pages::view_task::init(uuid))
+                            Self::ViewTask(pages::view_task::init(uuid, orders))
                         } else {
-                            Page::Home
+                            Self::Home(pages::home::init())
                         }
                     } else {
-                        Page::Home
+                            Self::Home(pages::home::init())
                     }
                 }
-                _ => Page::Home,
+                None =>
+                            Self::Home(pages::home::init())
+                    ,
             },
-            None | Some(_) => Page::Home,
+            None | Some(_) => {
+                            Self::Home(pages::home::init())
+            }
         }
     }
 }
@@ -156,48 +147,39 @@ pub enum Msg {
     CreateTask,
     OnRenderTick,
     OnRecurTick,
-    FiltersStatusTogglePending,
-    FiltersStatusToggleDeleted,
-    FiltersStatusToggleCompleted,
-    FiltersStatusToggleWaiting,
-    FiltersStatusToggleRecurring,
-    FiltersPriorityToggleNone,
-    FiltersPriorityToggleLow,
-    FiltersPriorityToggleMedium,
-    FiltersPriorityToggleHigh,
-    FiltersProjectChanged(String),
-    FiltersTagsChanged(String),
-    FiltersDescriptionChanged(String),
-    FiltersReset,
     UrlChanged(subs::UrlChanged),
-    EscapeKey,
     ImportTasks,
     ExportTasks,
+    Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
 }
 
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
-fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
+fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::SelectTask(None) => {
-            Urls::new(&model.base_url).home().go_and_push();
-            model.page = Page::Home
+            Urls::new(&model.global.base_url).home().go_and_push();
         }
         Msg::SelectTask(Some(uuid)) => {
-            Urls::new(&model.base_url).view_task(&uuid).go_and_push();
-            model.page = Page::ViewTask(pages::view_task::init(uuid))
+            Urls::new(&model.global.base_url)
+                .view_task(&uuid)
+                .go_and_push();
+            model.page = Page::ViewTask(pages::view_task::init(uuid,orders))
         }
         Msg::CreateTask => {
             let task = Task::new();
             let id = task.uuid();
-            model.tasks.insert(task.uuid(), task);
-            model.selected_task = Some(id);
-            Urls::new(&model.base_url).view_task(&id).go_and_push();
+            model.global.tasks.insert(task.uuid(), task);
+            model.page = Page::ViewTask(pages::view_task::init(id,orders));
+            Urls::new(&model.global.base_url)
+                .view_task(&id)
+                .go_and_push();
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
             let recurring: Vec<_> = model
+                .global
                 .tasks
                 .values()
                 .filter(|t| t.status() == &Status::Recurring)
@@ -205,6 +187,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let mut new_tasks = Vec::new();
             for r in recurring {
                 let mut children: Vec<_> = model
+                    .global
                     .tasks
                     .values()
                     .filter(|t| t.parent().map_or(false, |p| p == r.uuid()))
@@ -226,93 +209,16 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 }
             }
             for t in new_tasks {
-                model.tasks.insert(t.uuid(), t);
+                model.global.tasks.insert(t.uuid(), t);
             }
         }
-        Msg::FiltersStatusTogglePending => {
-            model.filters.status_pending = !model.filters.status_pending
-        }
-        Msg::FiltersStatusToggleDeleted => {
-            model.filters.status_deleted = !model.filters.status_deleted
-        }
-        Msg::FiltersStatusToggleCompleted => {
-            model.filters.status_completed = !model.filters.status_completed
-        }
-        Msg::FiltersStatusToggleWaiting => {
-            model.filters.status_waiting = !model.filters.status_waiting
-        }
-        Msg::FiltersStatusToggleRecurring => {
-            model.filters.status_recurring = !model.filters.status_recurring
-        }
-        Msg::FiltersPriorityToggleNone => {
-            model.filters.priority_none = !model.filters.priority_none
-        }
-        Msg::FiltersPriorityToggleLow => model.filters.priority_low = !model.filters.priority_low,
-        Msg::FiltersPriorityToggleMedium => {
-            model.filters.priority_medium = !model.filters.priority_medium
-        }
-        Msg::FiltersPriorityToggleHigh => {
-            model.filters.priority_high = !model.filters.priority_high
-        }
-        Msg::FiltersProjectChanged(new_project) => {
-            let new_project = new_project.trim();
-            model.filters.project = if new_project.is_empty() {
-                Vec::new()
-            } else {
-                new_project
-                    .split('.')
-                    .map(std::borrow::ToOwned::to_owned)
-                    .collect()
-            }
-        }
-        Msg::FiltersTagsChanged(new_tags) => {
-            let new_end = new_tags.ends_with(' ');
-            model.filters.tags = if new_tags.is_empty() {
-                Vec::new()
-            } else {
-                let mut tags: Vec<_> = new_tags
-                    .split_whitespace()
-                    .map(|s| s.trim().to_owned())
-                    .collect();
-                if new_end {
-                    tags.push(String::new())
-                }
-                tags
-            }
-        }
-        Msg::FiltersDescriptionChanged(new_description) => {
-            model.filters.description_and_notes = new_description
-        }
-        Msg::FiltersReset => model.filters = Filters::default(),
-        Msg::UrlChanged(subs::UrlChanged(url)) => {
-            let selected_task = url.search().get(VIEW_TASK_SEARCH_KEY).and_then(|v| {
-                uuid::Uuid::parse_str(v.first().unwrap_or(&String::new()))
-                    .map(|uuid| {
-                        if model.tasks.contains_key(&uuid) {
-                            Some(uuid)
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or(None)
-            });
-            if selected_task.is_none() {
-                url.set_search(UrlSearch::default()).go_and_replace();
-            }
-            model.selected_task = selected_task
-        }
-        Msg::EscapeKey => {
-            if model.selected_task.is_some() {
-                Urls::new(&model.base_url).home().go_and_push();
-                model.selected_task = None
-            }
-        }
+        Msg::UrlChanged(subs::UrlChanged(url)) => model.page = Page::init(url, &model.global.tasks,orders),
         Msg::ImportTasks => match window().prompt_with_message("Paste the tasks json here") {
             Ok(Some(content)) => {
                 match serde_json::from_str::<HashMap<uuid::Uuid, Task>>(&content) {
                     Ok(tasks) => {
                         for (id, task) in tasks {
-                            model.tasks.insert(id, task);
+                            model.global.tasks.insert(id, task);
                         }
                     }
                     Err(e) => {
@@ -332,7 +238,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             }
         },
         Msg::ExportTasks => {
-            let json = serde_json::to_string(&model.tasks);
+            let json = serde_json::to_string(&model.global.tasks);
             match json {
                 Ok(json) => {
                     window()
@@ -345,11 +251,20 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 Err(e) => log!(e),
             }
         }
-        Msg::ViewTask(msg) => {pages::view_task::update(msg, model.page)}
+        Msg::ViewTask(msg) => {
+            if let Page::ViewTask(lm) = &mut model.page {
+                pages::view_task::update(msg, &mut model.global,  lm, orders)
+            }
+        }
+        Msg::Home(msg) => {
+
+            if let Page::Home(lm) = &mut model.page {
+                pages::home::update(msg,   lm, orders)
+            }
+        }
     }
-    LocalStorage::insert(TASKS_STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
-    LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
-        .expect("save filters to LocalStorage");
+    LocalStorage::insert(TASKS_STORAGE_KEY, &model.global.tasks)
+        .expect("save tasks to LocalStorage");
 }
 
 // ------ ------
@@ -359,13 +274,10 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
 fn view(model: &Model) -> Node<Msg> {
     div![
         view_titlebar(),
-        model.selected_task.map_or_else(
-            || pages::home::view(model),
-            |uuid| model.tasks.get(&uuid).map_or_else(
-                || pages::home::view(model),
-                |task| pages::view_task::view(model, task)
-            )
-        )
+        match &model.page {
+            Page::Home(lm) => pages::home::view(&model.global, lm),
+            Page::ViewTask(lm) => pages::view_task::view(&model.global, lm),
+        },
     ]
 }
 

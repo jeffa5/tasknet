@@ -6,19 +6,117 @@ use seed::{prelude::*, *};
 use crate::{
     components::{duration_string, view_button, view_checkbox, view_text_input},
     task::{Priority, Status, Task},
-    urgency, Filters, Model, Msg,
+    urgency, Filters, GlobalModel, Msg as GMsg,
 };
 
-pub fn view(model: &Model) -> Node<Msg> {
+const FILTERS_STORAGE_KEY: &str = "tasknet-filters";
+
+pub fn init() -> Model {
+    let filters = match LocalStorage::get(FILTERS_STORAGE_KEY) {
+        Ok(filters) => filters,
+        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
+            panic!("failed to parse filters: {:?}", err)
+        }
+        Err(_) => Filters::default(),
+    };
+
+    Model { filters }
+}
+
+#[derive(Clone)]
+pub enum Msg {
+    FiltersStatusTogglePending,
+    FiltersStatusToggleDeleted,
+    FiltersStatusToggleCompleted,
+    FiltersStatusToggleWaiting,
+    FiltersStatusToggleRecurring,
+    FiltersPriorityToggleNone,
+    FiltersPriorityToggleLow,
+    FiltersPriorityToggleMedium,
+    FiltersPriorityToggleHigh,
+    FiltersProjectChanged(String),
+    FiltersTagsChanged(String),
+    FiltersDescriptionChanged(String),
+    FiltersReset,
+}
+
+pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
+    match msg {
+        Msg::FiltersStatusTogglePending => {
+            model.filters.status_pending = !model.filters.status_pending
+        }
+        Msg::FiltersStatusToggleDeleted => {
+            model.filters.status_deleted = !model.filters.status_deleted
+        }
+        Msg::FiltersStatusToggleCompleted => {
+            model.filters.status_completed = !model.filters.status_completed
+        }
+        Msg::FiltersStatusToggleWaiting => {
+            model.filters.status_waiting = !model.filters.status_waiting
+        }
+        Msg::FiltersStatusToggleRecurring => {
+            model.filters.status_recurring = !model.filters.status_recurring
+        }
+        Msg::FiltersPriorityToggleNone => {
+            model.filters.priority_none = !model.filters.priority_none
+        }
+        Msg::FiltersPriorityToggleLow => model.filters.priority_low = !model.filters.priority_low,
+        Msg::FiltersPriorityToggleMedium => {
+            model.filters.priority_medium = !model.filters.priority_medium
+        }
+        Msg::FiltersPriorityToggleHigh => {
+            model.filters.priority_high = !model.filters.priority_high
+        }
+        Msg::FiltersProjectChanged(new_project) => {
+            let new_project = new_project.trim();
+            model.filters.project = if new_project.is_empty() {
+                Vec::new()
+            } else {
+                new_project
+                    .split('.')
+                    .map(std::borrow::ToOwned::to_owned)
+                    .collect()
+            }
+        }
+        Msg::FiltersTagsChanged(new_tags) => {
+            let new_end = new_tags.ends_with(' ');
+            model.filters.tags = if new_tags.is_empty() {
+                Vec::new()
+            } else {
+                let mut tags: Vec<_> = new_tags
+                    .split_whitespace()
+                    .map(|s| s.trim().to_owned())
+                    .collect();
+                if new_end {
+                    tags.push(String::new())
+                }
+                tags
+            }
+        }
+        Msg::FiltersDescriptionChanged(new_description) => {
+            model.filters.description_and_notes = new_description
+        }
+        Msg::FiltersReset => model.filters = Filters::default(),
+    }
+    LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
+        .expect("save filters to LocalStorage");
+}
+
+#[derive(Debug)]
+pub struct Model {
+    filters: Filters,
+}
+
+pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
         C!["flex", "flex-col", "container", "mx-auto"],
-        view_filters(&model.filters, &model.tasks),
-        view_tasks(&model.tasks, &model.filters),
+        view_filters(&model.filters, &global_model.tasks),
+        view_tasks(&global_model.tasks, &model.filters),
     ]
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg> {
+fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<GMsg> {
     let mut tasks: Vec<_> = tasks
         .values()
         .filter_map(|t| {
@@ -106,7 +204,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg>
                             vec!["hover:bg-gray-200"]
                         }
                     ],
-                    mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
+                    mouse_ev(Ev::Click, move |_| { GMsg::SelectTask(Some(id)) }),
                     td![C!["text-center", "px-2"], t.age.clone()],
                     IF!(show_due => td![C!["border-l-2", "text-center", "px-2"], t.due.map(|due|duration_string(due.signed_duration_since(chrono::offset::Utc::now())))]),
                     IF!(show_scheduled => td![C!["border-l-2", "text-center", "px-2"], t.scheduled.map(|scheduled|duration_string(scheduled.signed_duration_since(chrono::offset::Utc::now())))]),
@@ -170,7 +268,7 @@ struct ViewableTask {
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
+fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> {
     div![
         C![
             "flex",
@@ -189,31 +287,31 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
                 "filters-status-pending",
                 "Pending",
                 filters.status_pending,
-                Msg::FiltersStatusTogglePending
+                GMsg::Home(Msg::FiltersStatusTogglePending)
             ),
             view_checkbox(
                 "filters-status-deleted",
                 "Deleted",
                 filters.status_deleted,
-                Msg::FiltersStatusToggleDeleted
+                GMsg::Home(Msg::FiltersStatusToggleDeleted)
             ),
             view_checkbox(
                 "filters-status-completed",
                 "Completed",
                 filters.status_completed,
-                Msg::FiltersStatusToggleCompleted
+                GMsg::Home(Msg::FiltersStatusToggleCompleted)
             ),
             view_checkbox(
                 "filters-status-waiting",
                 "Waiting",
                 filters.status_waiting,
-                Msg::FiltersStatusToggleWaiting
+                GMsg::Home(Msg::FiltersStatusToggleWaiting)
             ),
             view_checkbox(
                 "filters-status-recurring",
                 "Recurring",
                 filters.status_recurring,
-                Msg::FiltersStatusToggleRecurring
+                GMsg::Home(Msg::FiltersStatusToggleRecurring)
             ),
         ],
         div![
@@ -223,25 +321,25 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
                 "filters-priority-none",
                 "None",
                 filters.priority_none,
-                Msg::FiltersPriorityToggleNone
+                GMsg::Home(Msg::FiltersPriorityToggleNone)
             ),
             view_checkbox(
                 "filters-priority-low",
                 "Low",
                 filters.priority_low,
-                Msg::FiltersPriorityToggleLow
+                GMsg::Home(Msg::FiltersPriorityToggleLow)
             ),
             view_checkbox(
                 "filters-priority-medium",
                 "Medium",
                 filters.priority_medium,
-                Msg::FiltersPriorityToggleMedium
+                GMsg::Home(Msg::FiltersPriorityToggleMedium)
             ),
             view_checkbox(
                 "filters-priority-high",
                 "High",
                 filters.priority_high,
-                Msg::FiltersPriorityToggleHigh
+                GMsg::Home(Msg::FiltersPriorityToggleHigh)
             ),
         ],
         view_text_input(
@@ -249,21 +347,21 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             &filters.description_and_notes,
             false,
             BTreeSet::new(),
-            Msg::FiltersDescriptionChanged
+            |s| GMsg::Home(Msg::FiltersDescriptionChanged(s))
         ),
         view_text_input(
             "Project",
             &filters.project.join("."),
             false,
             BTreeSet::new(),
-            Msg::FiltersProjectChanged
+            |s| GMsg::Home(Msg::FiltersProjectChanged(s))
         ),
         view_text_input(
             "Tags",
             &filters.tags.join(" "),
             false,
             BTreeSet::new(),
-            Msg::FiltersTagsChanged
+            |s| GMsg::Home(Msg::FiltersTagsChanged(s))
         ),
         div![
             C!["mr-2"],
@@ -271,6 +369,6 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Ms
             "/",
             tasks.len()
         ],
-        view_button("Reset Filters", Msg::FiltersReset),
+        view_button("Reset Filters", GMsg::Home(Msg::FiltersReset)),
     ]
 }
