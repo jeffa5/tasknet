@@ -20,7 +20,6 @@
           cargo-make
           cargo-watch
           wasm-pack
-          rust-analyzer
           pkgconfig
           openssl
 
