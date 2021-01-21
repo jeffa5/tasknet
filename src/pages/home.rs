@@ -25,9 +25,15 @@ pub fn init() -> Model {
         Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
             panic!("failed to parse filters: {:?}", err)
         }
-        Err(_) => Vec::new(),
+        Err(_) => HashMap::new(),
     };
     Model { filters, contexts }
+}
+
+#[derive(Debug)]
+pub struct Model {
+    filters: Filters,
+    contexts: HashMap<String, Filters>,
 }
 
 #[derive(Clone)]
@@ -47,6 +53,7 @@ pub enum Msg {
     FiltersDescriptionChanged(String),
     FiltersReset,
     FiltersSave,
+    SelectedContextChanged(String),
 }
 
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
@@ -107,20 +114,19 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
         }
         Msg::FiltersReset => model.filters = Filters::default(),
         Msg::FiltersSave => {}
+        Msg::SelectedContextChanged(c) => {
+            if let Some(context) = model.contexts.get(&c) {
+                model.filters = context.clone()
+            }
+        }
     }
     LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
         .expect("save filters to LocalStorage");
 }
 
-#[derive(Debug)]
-pub struct Model {
-    filters: Filters,
-    contexts: Vec<Filters>,
-}
-
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
-        view_filters(&model.filters, &global_model.tasks),
+        view_filters(&model, &global_model.tasks),
         view_tasks(&global_model.tasks, &model.filters),
     ]
 }
@@ -278,7 +284,7 @@ struct ViewableTask {
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> {
+fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> {
     div![
         C![
             "flex",
@@ -296,31 +302,31 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             view_checkbox(
                 "filters-status-pending",
                 "Pending",
-                filters.status_pending,
+                model.filters.status_pending,
                 GMsg::Home(Msg::FiltersStatusTogglePending)
             ),
             view_checkbox(
                 "filters-status-deleted",
                 "Deleted",
-                filters.status_deleted,
+                model.filters.status_deleted,
                 GMsg::Home(Msg::FiltersStatusToggleDeleted)
             ),
             view_checkbox(
                 "filters-status-completed",
                 "Completed",
-                filters.status_completed,
+                model.filters.status_completed,
                 GMsg::Home(Msg::FiltersStatusToggleCompleted)
             ),
             view_checkbox(
                 "filters-status-waiting",
                 "Waiting",
-                filters.status_waiting,
+                model.filters.status_waiting,
                 GMsg::Home(Msg::FiltersStatusToggleWaiting)
             ),
             view_checkbox(
                 "filters-status-recurring",
                 "Recurring",
-                filters.status_recurring,
+                model.filters.status_recurring,
                 GMsg::Home(Msg::FiltersStatusToggleRecurring)
             ),
         ],
@@ -330,56 +336,81 @@ fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             view_checkbox(
                 "filters-priority-none",
                 "None",
-                filters.priority_none,
+                model.filters.priority_none,
                 GMsg::Home(Msg::FiltersPriorityToggleNone)
             ),
             view_checkbox(
                 "filters-priority-low",
                 "Low",
-                filters.priority_low,
+                model.filters.priority_low,
                 GMsg::Home(Msg::FiltersPriorityToggleLow)
             ),
             view_checkbox(
                 "filters-priority-medium",
                 "Medium",
-                filters.priority_medium,
+                model.filters.priority_medium,
                 GMsg::Home(Msg::FiltersPriorityToggleMedium)
             ),
             view_checkbox(
                 "filters-priority-high",
                 "High",
-                filters.priority_high,
+                model.filters.priority_high,
                 GMsg::Home(Msg::FiltersPriorityToggleHigh)
             ),
         ],
         view_text_input(
             "Description & Notes",
-            &filters.description_and_notes,
+            &model.filters.description_and_notes,
             false,
             BTreeSet::new(),
             |s| GMsg::Home(Msg::FiltersDescriptionChanged(s))
         ),
         view_text_input(
             "Project",
-            &filters.project.join("."),
+            &model.filters.project.join("."),
             false,
             BTreeSet::new(),
             |s| GMsg::Home(Msg::FiltersProjectChanged(s))
         ),
         view_text_input(
             "Tags",
-            &filters.tags.join(" "),
+            &model.filters.tags.join(" "),
             false,
             BTreeSet::new(),
             |s| GMsg::Home(Msg::FiltersTagsChanged(s))
         ),
         div![
             C!["mr-2"],
-            tasks.values().filter(|t| filters.filter_task(t)).count(),
+            tasks
+                .values()
+                .filter(|t| model.filters.filter_task(t))
+                .count(),
             "/",
             tasks.len()
         ],
-        view_button("Reset Filters", GMsg::Home(Msg::FiltersReset)),
-        view_button("Save Filters", GMsg::Home(Msg::FiltersSave)),
+        div![
+            C!["flex", "flex-col"],
+            view_button("Reset Filters", GMsg::Home(Msg::FiltersReset)),
+            view_button("Save Filters", GMsg::Home(Msg::FiltersSave)),
+        ],
+        select![
+            C!["border", "bg-white"],
+            model
+                .contexts
+                .iter()
+                .map(|(name, filters)| option![
+                    attrs! {
+                        At::Value => name,
+                        At::Selected => if filters == &model.filters{
+                            AtValue::None
+                        } else {
+                            AtValue::Ignored
+                        }
+                    },
+                    "None"
+                ])
+                .collect::<Vec<_>>(),
+            input_ev(Ev::Input, |s| GMsg::Home(Msg::SelectedContextChanged(s)))
+        ],
     ]
 }
