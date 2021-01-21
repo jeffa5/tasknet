@@ -1,28 +1,24 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 
-use std::{
-    collections::{BTreeSet, HashMap, HashSet},
-    convert::TryFrom,
-};
+use std::collections::HashMap;
 
 use apply::Apply;
-use chrono::{Datelike, Timelike};
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
+mod components;
 mod filters;
+mod pages;
 mod task;
 mod urgency;
 
+use components::view_button;
 use filters::Filters;
-use task::{Priority, Recur, RecurUnit, Status, Task};
+use task::{Recur, Status, Task};
 
-const ESCAPE_KEY: &str = "Escape";
-
-const VIEW_TASK_SEARCH_KEY: &str = "viewtask";
+const VIEW_TASK: &str = "view";
 const TASKS_STORAGE_KEY: &str = "tasknet-tasks";
-const FILTERS_STORAGE_KEY: &str = "tasknet-filters";
 
 // ------ ------
 //     Init
@@ -50,13 +46,6 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders
         .stream(streams::interval(1000, || Msg::OnRenderTick))
         .stream(streams::interval(60000, || Msg::OnRecurTick))
-        .stream(streams::window_event(Ev::KeyUp, |event| {
-            let key_event: web_sys::KeyboardEvent = event.unchecked_into();
-            match key_event.key().as_ref() {
-                ESCAPE_KEY => Some(Msg::EscapeKey),
-                _ => None,
-            }
-        }))
         .subscribe(Msg::UrlChanged);
     let tasks = match LocalStorage::get(TASKS_STORAGE_KEY) {
         Ok(tasks) => tasks,
@@ -65,34 +54,13 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         }
         Err(_) => HashMap::new(),
     };
-    let filters = match LocalStorage::get(FILTERS_STORAGE_KEY) {
-        Ok(filters) => filters,
-        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
-            panic!("failed to parse filters: {:?}", err)
-        }
-        Err(_) => Filters::default(),
-    };
-    let selected_task = url.search().get(VIEW_TASK_SEARCH_KEY).and_then(|v| {
-        uuid::Uuid::parse_str(v.first().unwrap_or(&String::new()))
-            .map(|uuid| {
-                if tasks.contains_key(&uuid) {
-                    Some(uuid)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(None)
-    });
-    if selected_task.is_none() {
-        url.clone()
-            .set_search(UrlSearch::default())
-            .go_and_replace();
-    }
+    let page = Page::init(url.clone(), &tasks, orders);
     Model {
-        tasks,
-        selected_task,
-        filters,
-        base_url: url.to_base_url(),
+        global: GlobalModel {
+            tasks,
+            base_url: url.to_hash_base_url(),
+        },
+        page,
     }
 }
 
@@ -101,11 +69,15 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 // ------ ------
 
 #[derive(Debug)]
-struct Model {
+pub struct GlobalModel {
     tasks: HashMap<uuid::Uuid, Task>,
-    selected_task: Option<uuid::Uuid>,
-    filters: Filters,
     base_url: Url,
+}
+
+#[derive(Debug)]
+pub struct Model {
+    global: GlobalModel,
+    page: Page,
 }
 
 // ------ ------
@@ -117,18 +89,49 @@ impl<'a> Urls<'a> {
     #[must_use]
     pub fn home(self) -> Url {
         self.base_url()
-            .add_path_part("tasknet")
-            .set_search(UrlSearch::default())
     }
 
     #[must_use]
     pub fn view_task(self, uuid: &uuid::Uuid) -> Url {
         self.base_url()
-            .add_path_part("tasknet")
-            .set_search(UrlSearch::new(vec![(
-                VIEW_TASK_SEARCH_KEY,
-                vec![uuid.to_string()],
-            )]))
+            .add_hash_path_part(VIEW_TASK)
+            .add_hash_path_part(uuid.to_string())
+    }
+}
+
+// ------ ------
+//     Pages
+// ------ ------
+
+#[derive(Debug)]
+enum Page {
+    Home(pages::home::Model),
+    ViewTask(pages::view_task::Model),
+}
+
+impl Page {
+    fn init(
+        mut url: Url,
+        tasks: &HashMap<uuid::Uuid, Task>,
+        orders: &mut impl Orders<Msg>,
+    ) -> Self {
+        match url.next_hash_path_part() {
+            Some(VIEW_TASK) => match url.next_hash_path_part() {
+                Some(uuid) => {
+                    if let Ok(uuid) = uuid::Uuid::parse_str(uuid) {
+                        if tasks.get(&uuid).is_some() {
+                            Self::ViewTask(pages::view_task::init(uuid, orders))
+                        } else {
+                            Self::Home(pages::home::init())
+                        }
+                    } else {
+                        Self::Home(pages::home::init())
+                    }
+                }
+                None => Self::Home(pages::home::init()),
+            },
+            None | Some(_) => Self::Home(pages::home::init()),
+        }
     }
 }
 
@@ -137,321 +140,38 @@ impl<'a> Urls<'a> {
 // ------ ------
 
 #[derive(Clone)]
-enum Msg {
+pub enum Msg {
     SelectTask(Option<uuid::Uuid>),
-    SelectedTaskDescriptionChanged(String),
-    SelectedTaskProjectChanged(String),
-    SelectedTaskTagsChanged(String),
-    SelectedTaskPriorityChanged(String),
-    SelectedTaskNotesChanged(String),
-    SelectedTaskDueDateChanged(String),
-    SelectedTaskDueTimeChanged(String),
-    SelectedTaskScheduledDateChanged(String),
-    SelectedTaskScheduledTimeChanged(String),
-    SelectedTaskRecurUnitChanged(String),
-    SelectedTaskRecurAmountChanged(String),
     CreateTask,
-    DeleteSelectedTask,
-    CompleteSelectedTask,
-    StartSelectedTask,
-    StopSelectedTask,
-    MoveSelectedTaskToPending,
     OnRenderTick,
     OnRecurTick,
-    FiltersStatusTogglePending,
-    FiltersStatusToggleDeleted,
-    FiltersStatusToggleCompleted,
-    FiltersStatusToggleWaiting,
-    FiltersStatusToggleRecurring,
-    FiltersPriorityToggleNone,
-    FiltersPriorityToggleLow,
-    FiltersPriorityToggleMedium,
-    FiltersPriorityToggleHigh,
-    FiltersProjectChanged(String),
-    FiltersTagsChanged(String),
-    FiltersDescriptionChanged(String),
-    FiltersReset,
     UrlChanged(subs::UrlChanged),
-    EscapeKey,
     ImportTasks,
     ExportTasks,
+    Home(pages::home::Msg),
+    ViewTask(pages::view_task::Msg),
 }
 
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
-fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
+fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::SelectTask(None) => {
-            Urls::new(&model.base_url).home().go_and_push();
-            model.selected_task = None
+            orders.request_url(Urls::new(&model.global.base_url).home());
         }
         Msg::SelectTask(Some(uuid)) => {
-            Urls::new(&model.base_url).view_task(&uuid).go_and_push();
-            model.selected_task = Some(uuid)
-        }
-        Msg::SelectedTaskDescriptionChanged(new_description) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_description(new_description);
-                }
-            }
-        }
-        Msg::SelectedTaskProjectChanged(new_project) => {
-            let new_project = new_project.trim();
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_project(if new_project.is_empty() {
-                        Vec::new()
-                    } else {
-                        new_project
-                            .split('.')
-                            .map(std::borrow::ToOwned::to_owned)
-                            .collect()
-                    })
-                }
-            }
-        }
-        Msg::SelectedTaskTagsChanged(new_tags) => {
-            let new_end = new_tags.ends_with(' ');
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_tags(if new_tags.is_empty() {
-                        Vec::new()
-                    } else {
-                        let mut tags: Vec<_> = new_tags
-                            .split_whitespace()
-                            .map(|s| s.trim().to_owned())
-                            .collect();
-                        if new_end {
-                            tags.push(String::new())
-                        }
-                        tags
-                    })
-                }
-            }
-        }
-        Msg::SelectedTaskPriorityChanged(new_priority) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_priority(match Priority::try_from(new_priority) {
-                        Ok(p) => Some(p),
-                        Err(()) => None,
-                    });
-                }
-            }
-        }
-        Msg::SelectedTaskNotesChanged(new_notes) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    task.set_notes(new_notes)
-                }
-            }
-        }
-        Msg::SelectedTaskDueDateChanged(new_date) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
-                    match new_date {
-                        Ok(new_date) => {
-                            let due = task.due();
-                            match due {
-                                None => task.set_due(Some(chrono::DateTime::from_utc(
-                                    new_date.and_hms(0, 0, 0),
-                                    chrono::Utc,
-                                ))),
-                                Some(due) => {
-                                    let due = due
-                                        .with_year(new_date.year())
-                                        .and_then(|due| due.with_month(new_date.month()))
-                                        .and_then(|due| due.with_day(new_date.day()));
-                                    task.set_due(due)
-                                }
-                            }
-                        }
-                        Err(_) => task.set_due(None),
-                    }
-                }
-            }
-        }
-        Msg::SelectedTaskDueTimeChanged(new_time) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
-                    match new_time {
-                        Ok(new_time) => {
-                            let due = task.due();
-                            match due {
-                                None => {
-                                    let now = chrono::offset::Utc::now();
-                                    let now = now
-                                        .with_hour(new_time.hour())
-                                        .and_then(|now| now.with_minute(new_time.minute()));
-                                    task.set_due(now)
-                                }
-                                Some(due) => {
-                                    let due = due
-                                        .with_hour(new_time.hour())
-                                        .and_then(|due| due.with_minute(new_time.minute()));
-                                    task.set_due(due)
-                                }
-                            }
-                        }
-                        Err(_) => task.set_due(None),
-                    }
-                }
-            }
-        }
-        Msg::SelectedTaskScheduledDateChanged(new_date) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
-                    match new_date {
-                        Ok(new_date) => {
-                            let scheduled = task.scheduled();
-                            match scheduled {
-                                None => task.set_scheduled(Some(chrono::DateTime::from_utc(
-                                    new_date.and_hms(0, 0, 0),
-                                    chrono::Utc,
-                                ))),
-                                Some(scheduled) => {
-                                    let scheduled = scheduled
-                                        .with_year(new_date.year())
-                                        .and_then(|scheduled| {
-                                            scheduled.with_month(new_date.month())
-                                        })
-                                        .and_then(|scheduled| scheduled.with_day(new_date.day()));
-                                    task.set_scheduled(scheduled)
-                                }
-                            }
-                        }
-                        Err(_) => task.set_scheduled(None),
-                    }
-                }
-            }
-        }
-        Msg::SelectedTaskScheduledTimeChanged(new_time) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
-                    match new_time {
-                        Ok(new_time) => {
-                            let scheduled = task.scheduled();
-                            match scheduled {
-                                None => {
-                                    let now = chrono::offset::Utc::now();
-                                    let now = now
-                                        .with_hour(new_time.hour())
-                                        .and_then(|now| now.with_minute(new_time.minute()));
-                                    task.set_scheduled(now)
-                                }
-                                Some(scheduled) => {
-                                    let scheduled = scheduled.with_hour(new_time.hour()).and_then(
-                                        |scheduled| scheduled.with_minute(new_time.minute()),
-                                    );
-                                    task.set_scheduled(scheduled)
-                                }
-                            }
-                        }
-                        Err(_) => task.set_scheduled(None),
-                    }
-                }
-            }
-        }
-        Msg::SelectedTaskRecurAmountChanged(new_amount) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    if let Ok(n) = new_amount.parse::<u16>() {
-                        if n > 0 {
-                            task.set_recur(Some(Recur {
-                                amount: n,
-                                unit: task.recur().as_ref().map_or(RecurUnit::Week, |r| r.unit),
-                            }))
-                        } else {
-                            task.set_recur(None)
-                        }
-                    }
-                }
-            }
-        }
-        Msg::SelectedTaskRecurUnitChanged(new_unit) => {
-            if let Some(uuid) = model.selected_task {
-                if let Some(task) = &mut model.tasks.get_mut(&uuid) {
-                    match RecurUnit::try_from(new_unit) {
-                        Ok(unit) => task.set_recur(Some(Recur {
-                            amount: task.recur().as_ref().map_or(1, |r| r.amount),
-                            unit,
-                        })),
-                        Err(()) => task.set_recur(None),
-                    }
-                }
-            }
+            orders.request_url(Urls::new(&model.global.base_url).view_task(&uuid));
         }
         Msg::CreateTask => {
             let task = Task::new();
             let id = task.uuid();
-            model.tasks.insert(task.uuid(), task);
-            model.selected_task = Some(id);
-            Urls::new(&model.base_url).view_task(&id).go_and_push();
-        }
-        Msg::DeleteSelectedTask => {
-            if let Some(uuid) = model.selected_task.take() {
-                Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.get_mut(&uuid) {
-                    match task.status() {
-                        Status::Pending
-                        | Status::Completed
-                        | Status::Waiting
-                        | Status::Recurring => {
-                            task.delete();
-                        }
-                        Status::Deleted => match window().confirm_with_message(
-                            "Are you sure you want to permanently delete this task?",
-                        ) {
-                            Ok(true) => {
-                                /* already removed from set so just don't add it back */
-                                model.tasks.remove(&uuid);
-                            }
-                            Ok(false) | Err(_) => {}
-                        },
-                    }
-                }
-            }
-        }
-        Msg::CompleteSelectedTask => {
-            if let Some(uuid) = model.selected_task.take() {
-                Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.get_mut(&uuid) {
-                    task.complete()
-                }
-            }
-        }
-        Msg::StartSelectedTask => {
-            if let Some(uuid) = model.selected_task.take() {
-                Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.get_mut(&uuid) {
-                    task.activate()
-                }
-            }
-        }
-        Msg::StopSelectedTask => {
-            if let Some(uuid) = model.selected_task.take() {
-                Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.get_mut(&uuid) {
-                    task.deactivate()
-                }
-            }
-        }
-        Msg::MoveSelectedTaskToPending => {
-            if let Some(uuid) = model.selected_task.take() {
-                Urls::new(&model.base_url).home().go_and_push();
-                if let Some(task) = model.tasks.get_mut(&uuid) {
-                    task.restore()
-                }
-            }
+            model.global.tasks.insert(task.uuid(), task);
+            orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
             let recurring: Vec<_> = model
+                .global
                 .tasks
                 .values()
                 .filter(|t| t.status() == &Status::Recurring)
@@ -459,6 +179,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let mut new_tasks = Vec::new();
             for r in recurring {
                 let mut children: Vec<_> = model
+                    .global
                     .tasks
                     .values()
                     .filter(|t| t.parent().map_or(false, |p| p == r.uuid()))
@@ -480,93 +201,18 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 }
             }
             for t in new_tasks {
-                model.tasks.insert(t.uuid(), t);
+                model.global.tasks.insert(t.uuid(), t);
             }
         }
-        Msg::FiltersStatusTogglePending => {
-            model.filters.status_pending = !model.filters.status_pending
-        }
-        Msg::FiltersStatusToggleDeleted => {
-            model.filters.status_deleted = !model.filters.status_deleted
-        }
-        Msg::FiltersStatusToggleCompleted => {
-            model.filters.status_completed = !model.filters.status_completed
-        }
-        Msg::FiltersStatusToggleWaiting => {
-            model.filters.status_waiting = !model.filters.status_waiting
-        }
-        Msg::FiltersStatusToggleRecurring => {
-            model.filters.status_recurring = !model.filters.status_recurring
-        }
-        Msg::FiltersPriorityToggleNone => {
-            model.filters.priority_none = !model.filters.priority_none
-        }
-        Msg::FiltersPriorityToggleLow => model.filters.priority_low = !model.filters.priority_low,
-        Msg::FiltersPriorityToggleMedium => {
-            model.filters.priority_medium = !model.filters.priority_medium
-        }
-        Msg::FiltersPriorityToggleHigh => {
-            model.filters.priority_high = !model.filters.priority_high
-        }
-        Msg::FiltersProjectChanged(new_project) => {
-            let new_project = new_project.trim();
-            model.filters.project = if new_project.is_empty() {
-                Vec::new()
-            } else {
-                new_project
-                    .split('.')
-                    .map(std::borrow::ToOwned::to_owned)
-                    .collect()
-            }
-        }
-        Msg::FiltersTagsChanged(new_tags) => {
-            let new_end = new_tags.ends_with(' ');
-            model.filters.tags = if new_tags.is_empty() {
-                Vec::new()
-            } else {
-                let mut tags: Vec<_> = new_tags
-                    .split_whitespace()
-                    .map(|s| s.trim().to_owned())
-                    .collect();
-                if new_end {
-                    tags.push(String::new())
-                }
-                tags
-            }
-        }
-        Msg::FiltersDescriptionChanged(new_description) => {
-            model.filters.description_and_notes = new_description
-        }
-        Msg::FiltersReset => model.filters = Filters::default(),
         Msg::UrlChanged(subs::UrlChanged(url)) => {
-            let selected_task = url.search().get(VIEW_TASK_SEARCH_KEY).and_then(|v| {
-                uuid::Uuid::parse_str(v.first().unwrap_or(&String::new()))
-                    .map(|uuid| {
-                        if model.tasks.contains_key(&uuid) {
-                            Some(uuid)
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or(None)
-            });
-            if selected_task.is_none() {
-                url.set_search(UrlSearch::default()).go_and_replace();
-            }
-            model.selected_task = selected_task
-        }
-        Msg::EscapeKey => {
-            if model.selected_task.is_some() {
-                Urls::new(&model.base_url).home().go_and_push();
-                model.selected_task = None
-            }
+            model.page = Page::init(url, &model.global.tasks, orders)
         }
         Msg::ImportTasks => match window().prompt_with_message("Paste the tasks json here") {
             Ok(Some(content)) => {
                 match serde_json::from_str::<HashMap<uuid::Uuid, Task>>(&content) {
                     Ok(tasks) => {
                         for (id, task) in tasks {
-                            model.tasks.insert(id, task);
+                            model.global.tasks.insert(id, task);
                         }
                     }
                     Err(e) => {
@@ -586,7 +232,7 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             }
         },
         Msg::ExportTasks => {
-            let json = serde_json::to_string(&model.tasks);
+            let json = serde_json::to_string(&model.global.tasks);
             match json {
                 Ok(json) => {
                     window()
@@ -599,10 +245,19 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 Err(e) => log!(e),
             }
         }
+        Msg::ViewTask(msg) => {
+            if let Page::ViewTask(lm) = &mut model.page {
+                pages::view_task::update(msg, &mut model.global, lm, orders)
+            }
+        }
+        Msg::Home(msg) => {
+            if let Page::Home(lm) = &mut model.page {
+                pages::home::update(msg, lm, orders)
+            }
+        }
     }
-    LocalStorage::insert(TASKS_STORAGE_KEY, &model.tasks).expect("save tasks to LocalStorage");
-    LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
-        .expect("save filters to LocalStorage");
+    LocalStorage::insert(TASKS_STORAGE_KEY, &model.global.tasks)
+        .expect("save tasks to LocalStorage");
 }
 
 // ------ ------
@@ -610,24 +265,14 @@ fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
 // ------ ------
 
 fn view(model: &Model) -> Node<Msg> {
-    if let Some(uuid) = model.selected_task {
-        if let Some(task) = model.tasks.get(&uuid) {
-            div![
-                C!["flex", "flex-col", "container", "mx-auto"],
-                view_titlebar(),
-                view_selected_task(task, &model.tasks),
-            ]
-        } else {
-            empty![]
-        }
-    } else {
-        div![
-            C!["flex", "flex-col", "container", "mx-auto"],
-            view_titlebar(),
-            view_filters(&model.filters, &model.tasks),
-            view_tasks(&model.tasks, &model.filters),
-        ]
-    }
+    div![
+        C!["flex", "flex-col", "container", "mx-auto"],
+        view_titlebar(),
+        match &model.page {
+            Page::Home(lm) => pages::home::view(&model.global, lm),
+            Page::ViewTask(lm) => pages::view_task::view(&model.global, lm),
+        },
+    ]
 }
 
 fn view_titlebar() -> Node<Msg> {
@@ -648,802 +293,6 @@ fn view_titlebar() -> Node<Msg> {
             view_button("Create", Msg::CreateTask),
         ]
     ]
-}
-
-#[allow(clippy::too_many_lines)]
-#[allow(clippy::cognitive_complexity)]
-fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
-    let is_pending = matches!(task.status(), Status::Pending);
-    let start = task.start();
-    let end = task.end();
-    let urgency = urgency::calculate(task);
-    let active = task.start().is_some();
-    let is_next = task.tags().contains(&"next".to_owned());
-    let project_lowercase = task.project().join(".").to_lowercase();
-    let project_suggestions = tasks
-        .values()
-        .filter_map(|t| {
-            let t_proj = t.project().join(".").to_lowercase();
-            if t_proj.contains(&project_lowercase) && t_proj != project_lowercase {
-                Some(t.project().join("."))
-            } else {
-                None
-            }
-        })
-        .collect::<BTreeSet<_>>();
-    let mut tags_suggestions = tasks
-        .values()
-        .flat_map(|saved_task| {
-            saved_task
-                .tags()
-                .iter()
-                .filter_map(|saved_tag| {
-                    let input_tags = task.tags();
-                    if input_tags.is_empty()
-                        || (!input_tags.contains(&saved_tag.to_lowercase())
-                            && input_tags
-                                .iter()
-                                .any(|input_tag| saved_tag.contains(input_tag)))
-                    {
-                        Some(saved_tag.to_owned())
-                    } else {
-                        None
-                    }
-                })
-                .collect::<BTreeSet<_>>()
-        })
-        .collect::<BTreeSet<_>>();
-    tags_suggestions.insert("next".to_owned());
-    div![
-        C![
-            "flex",
-            "flex-col",
-            "bg-gray-100",
-            "p-2",
-            "border-4",
-            if active {
-                "border-green-200"
-            } else if is_next {
-                "border-blue-200"
-            } else if urgency.unwrap_or(0.) > 10. {
-                "border-red-200"
-            } else if urgency.unwrap_or(0.) > 5. {
-                "border-yellow-200"
-            } else {
-                "border-gray-200"
-            }
-        ],
-        div![
-            C!["pl-2"],
-            span![C!["font-bold"], "Status: "],
-            match task.status() {
-                Status::Pending => "Pending",
-                Status::Deleted => "Deleted",
-                Status::Completed => "Completed",
-                Status::Waiting => "Waiting",
-                Status::Recurring => "Recurring",
-            }
-        ],
-        if let Some(urgency) = urgency {
-            div![
-                C!["pl-2"],
-                span![C!["font-bold"], "Urgency: "],
-                plain![format!("{:.2}", urgency)]
-            ]
-        } else {
-            empty![]
-        },
-        div![
-            C!["pl-2"],
-            span![C!["font-bold"], "Entry: "],
-            task.entry().to_string()
-        ],
-        if let Some(start) = start {
-            div![
-                C!["pl-2"],
-                span![C!["font-bold"], "Start: "],
-                start.to_string()
-            ]
-        } else {
-            empty![]
-        },
-        if let Some(end) = end {
-            div![C!["pl-2"], span![C!["font-bold"], "End: "], end.to_string()]
-        } else {
-            empty![]
-        },
-        view_text_input(
-            "Description",
-            task.description(),
-            true,
-            BTreeSet::new(),
-            Msg::SelectedTaskDescriptionChanged
-        ),
-        view_text_input(
-            "Project",
-            &task.project().join("."),
-            false,
-            project_suggestions,
-            Msg::SelectedTaskProjectChanged
-        ),
-        div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
-            div![C!["font-bold"], "Tags"],
-            div![
-                C!["flex", "flex-row"],
-                input![
-                    C!["flex-grow", "border", "mr-2"],
-                    attrs! {
-                        At::Value => task.tags().join(" "),
-                        At::AutoFocus => AtValue::Ignored
-                    },
-                    input_ev(Ev::Input, Msg::SelectedTaskTagsChanged)
-                ],
-                if task.tags().join(" ").is_empty() {
-                    pre![" "]
-                } else {
-                    button![
-                        mouse_ev(Ev::Click, |_| Msg::SelectedTaskTagsChanged(String::new())),
-                        div![C!["text-red-600"], "X"]
-                    ]
-                }
-            ],
-            div![
-                C!["flex", "flex-row", "overflow-hidden"],
-                tags_suggestions
-                    .into_iter()
-                    .map(|sug| {
-                        let sug_clone = sug.clone();
-                        let tags = task.tags().join(" ");
-                        button![
-                            C!["mr-2", "mt-2", "px-1", "bg-gray-200"],
-                            mouse_ev(Ev::Click, move |_| {
-                                if tags.ends_with(' ') || tags.is_empty() {
-                                    Msg::SelectedTaskTagsChanged(format!("{} {}", tags, sug_clone))
-                                } else {
-                                    let split_tags = tags.split_whitespace().collect::<Vec<_>>();
-                                    let tags = split_tags
-                                        .iter()
-                                        .take(split_tags.len() - 1)
-                                        .map(|s| s.to_owned())
-                                        .collect::<Vec<_>>()
-                                        .join(" ");
-                                    Msg::SelectedTaskTagsChanged(format!("{} {}", tags, sug_clone))
-                                }
-                            }),
-                            sug
-                        ]
-                    })
-                    .collect::<Vec<_>>()
-            ]
-        ],
-        div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
-            div![C!["font-bold"], "Priority"],
-            div![
-                C!["flex", "flex-row"],
-                select![
-                    C!["border", "bg-white"],
-                    option![
-                        attrs! {
-                            At::Value => "",
-                            At::Selected => if task.priority().is_none() {
-                                AtValue::None
-                            } else {
-                                AtValue::Ignored
-                            }
-                        },
-                        "None"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "L",
-                            At::Selected => if let Some(Priority::Low) = task.priority() {
-                                AtValue::None
-                            } else {
-                                AtValue::Ignored
-                            }
-                        },
-                        "Low"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "M",
-                            At::Selected => if let Some(Priority::Medium)  = task.priority() {
-                                AtValue::None
-                            } else {
-                                AtValue::Ignored
-                            }
-                        },
-                        "Medium"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "H",
-                            At::Selected => if let Some(Priority::High) = task.priority() {
-                                AtValue::None
-                            } else {
-                                AtValue::Ignored
-                            }
-                        },
-                        "High"
-                    ],
-                    input_ev(Ev::Input, Msg::SelectedTaskPriorityChanged)
-                ],
-            ]
-        ],
-        div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
-            div![C!["font-bold"], "Due"],
-            div![
-                C!["flex", "flex-row"],
-                input![
-                    C!["mr-4"],
-                    attrs! {
-                        At::Type => "date",
-                        At::Value => task.due().map_or_else(String::new, |due| due.format("%Y-%m-%d").to_string()),
-                    },
-                    input_ev(Ev::Input, Msg::SelectedTaskDueDateChanged)
-                ],
-                input![
-                    attrs! {
-                        At::Type => "time",
-                        At::Value => task.due().map_or_else(String::new, |due| due.format("%H:%M").to_string()),
-                    },
-                    input_ev(Ev::Input, Msg::SelectedTaskDueTimeChanged)
-                ],
-                if let Some(due) = task.due() {
-                    span![
-                        C!["ml-2"],
-                        duration_string(due.signed_duration_since(chrono::offset::Utc::now()))
-                    ]
-                } else {
-                    empty![]
-                }
-            ]
-        ],
-        div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
-            div![C!["font-bold"], "Scheduled"],
-            div![
-                C!["flex", "flex-row"],
-                input![
-                    C!["mr-4"],
-                    attrs! {
-                        At::Type => "date",
-                        At::Value => task.scheduled().map_or_else(String::new, |scheduled| scheduled.format("%Y-%m-%d").to_string()),
-                    },
-                    input_ev(Ev::Input, Msg::SelectedTaskScheduledDateChanged)
-                ],
-                input![
-                    attrs! {
-                        At::Type => "time",
-                        At::Value => task.scheduled().map_or_else(String::new, |scheduled| scheduled.format("%H:%M").to_string()),
-                    },
-                    input_ev(Ev::Input, Msg::SelectedTaskScheduledTimeChanged)
-                ],
-                if let Some(scheduled) = task.scheduled() {
-                    span![
-                        C!["ml-2"],
-                        duration_string(
-                            scheduled.signed_duration_since(chrono::offset::Utc::now())
-                        )
-                    ]
-                } else {
-                    empty![]
-                }
-            ]
-        ],
-        div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
-            div![C!["font-bold"], "Recur"],
-            div![
-                span!["Every "],
-                input![
-                    attrs! {
-                        At::Type => "number",
-                        At::Value => task.recur().as_ref().map_or(0, |r|r.amount),
-                    },
-                    input_ev(Ev::Input, Msg::SelectedTaskRecurAmountChanged)
-                ],
-                span![" "],
-                select![
-                    C!["border", "bg-white"],
-                    option![
-                        attrs! {
-                            At::Value => "",
-                            At::Selected => if task.status() == &Status::Recurring {
-                                AtValue::Ignored
-                            } else {
-                                AtValue::None
-                            }
-                        },
-                        "None"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "Year",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
-                                if recur.unit == RecurUnit::Year {
-                                    AtValue::None
-                                } else {
-                                    AtValue::Ignored
-                                }
-                            })
-                        },
-                        "Years"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "Month",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
-                                if recur.unit == RecurUnit::Month {
-                                    AtValue::None
-                                } else {
-                                    AtValue::Ignored
-                                }
-                            })
-                        },
-                        "Months"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "Week",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
-                                if recur.unit == RecurUnit::Week {
-                                    AtValue::None
-                                } else {
-                                    AtValue::Ignored
-                                }
-                            })
-                        },
-                        "Weeks"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "Day",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
-                                if recur.unit == RecurUnit::Day {
-                                    AtValue::None
-                                } else {
-                                    AtValue::Ignored
-                                }
-                            })
-                        },
-                        "Days"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "Hour",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
-                                if recur.unit == RecurUnit::Hour {
-                                    AtValue::None
-                                } else {
-                                    AtValue::Ignored
-                                }
-                            })
-                        },
-                        "Hours"
-                    ],
-                    input_ev(Ev::Input, Msg::SelectedTaskRecurUnitChanged)
-                ]
-            ]
-        ],
-        div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
-            div![C!["font-bold"], "Notes"],
-            div![
-                C!["flex", "flex-row"],
-                textarea![
-                    C!["flex-grow", "border", "mr-2"],
-                    attrs! {
-                        At::Value => task.notes(),
-                    },
-                    input_ev(Ev::Input, Msg::SelectedTaskNotesChanged)
-                ],
-                if task.notes().is_empty() {
-                    pre![" "]
-                } else {
-                    button![
-                        mouse_ev(Ev::Click, |_| Msg::SelectedTaskNotesChanged(String::new())),
-                        div![C!["text-red-600"], "X"]
-                    ]
-                }
-            ]
-        ],
-        div![
-            C!["flex", "justify-end"],
-            IF!(is_pending =>
-                div![
-                    if start.is_some() {
-                        view_button("Stop", Msg::StopSelectedTask)
-                    } else {
-                        view_button("Start", Msg::StartSelectedTask)
-                    }
-                ]
-            ),
-            IF!(is_pending =>
-                div![ view_button("Complete", Msg::CompleteSelectedTask)]
-            ),
-            IF!(matches!(task.status(), Status::Pending|Status::Waiting|Status::Recurring) =>
-                div![ view_button("Delete", Msg::DeleteSelectedTask)]
-            ),
-            IF!(matches!(task.status(), Status::Deleted) =>
-                div![ view_button("Permanently delete", Msg::DeleteSelectedTask)]
-            ),
-            IF!(matches!(task.status(), Status::Deleted) =>
-                div![ view_button("Undelete", Msg::MoveSelectedTaskToPending)]
-            ),
-            IF!(matches!(task.status(), Status::Completed) =>
-                div![ view_button("Uncomplete", Msg::MoveSelectedTaskToPending)]
-            ),
-            view_button("Close", Msg::SelectTask(None))
-        ]
-    ]
-}
-
-fn view_text_input(
-    name: &str,
-    value: &str,
-    autofocus: bool,
-    suggestions: BTreeSet<String>,
-    f: impl FnOnce(String) -> Msg + Clone + 'static,
-) -> Node<Msg> {
-    let also_f = f.clone();
-    let also_also_f = f.clone();
-    div![
-        C!["flex", "flex-col", "px-2", "mb-2"],
-        div![C!["font-bold"], name],
-        div![
-            C!["flex", "flex-row"],
-            input![
-                C!["flex-grow", "border", "mr-2"],
-                attrs! {
-                    At::Value => value,
-                    At::AutoFocus => if autofocus { AtValue::None } else { AtValue::Ignored }
-                },
-                input_ev(Ev::Input, f)
-            ],
-            if value.is_empty() {
-                pre![" "]
-            } else {
-                button![
-                    mouse_ev(Ev::Click, |_| also_f(String::new())),
-                    div![C!["text-red-600"], "X"]
-                ]
-            }
-        ],
-        div![
-            C!["flex", "flex-row", "overflow-hidden"],
-            suggestions
-                .into_iter()
-                .map(|sug| {
-                    let sug_clone = sug.clone();
-                    let new_f = also_also_f.clone();
-                    button![
-                        C!["mr-2", "mt-2", "px-1", "bg-gray-200"],
-                        mouse_ev(Ev::Click, |_| new_f(sug_clone)),
-                        sug
-                    ]
-                })
-                .collect::<Vec<_>>()
-        ]
-    ]
-}
-
-fn view_button(text: &str, msg: Msg) -> Node<Msg> {
-    button![
-        C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300"],
-        mouse_ev(Ev::Click, |_| msg),
-        text
-    ]
-}
-
-#[allow(clippy::too_many_lines)]
-fn view_filters(filters: &Filters, tasks: &HashMap<uuid::Uuid, Task>) -> Node<Msg> {
-    div![
-        C![
-            "flex",
-            "flex-row",
-            "flex-wrap",
-            "justify-center",
-            "items-center",
-            "bg-gray-100",
-            "p-2",
-            "mx-2",
-        ],
-        div![
-            C!["flex", "flex-col", "mr-8"],
-            h2![C!["font-bold"], "Status"],
-            view_checkbox(
-                "filters-status-pending",
-                "Pending",
-                filters.status_pending,
-                Msg::FiltersStatusTogglePending
-            ),
-            view_checkbox(
-                "filters-status-deleted",
-                "Deleted",
-                filters.status_deleted,
-                Msg::FiltersStatusToggleDeleted
-            ),
-            view_checkbox(
-                "filters-status-completed",
-                "Completed",
-                filters.status_completed,
-                Msg::FiltersStatusToggleCompleted
-            ),
-            view_checkbox(
-                "filters-status-waiting",
-                "Waiting",
-                filters.status_waiting,
-                Msg::FiltersStatusToggleWaiting
-            ),
-            view_checkbox(
-                "filters-status-recurring",
-                "Recurring",
-                filters.status_recurring,
-                Msg::FiltersStatusToggleRecurring
-            ),
-        ],
-        div![
-            C!["flex", "flex-col", "mr-8"],
-            h2![C!["font-bold"], "Priority"],
-            view_checkbox(
-                "filters-priority-none",
-                "None",
-                filters.priority_none,
-                Msg::FiltersPriorityToggleNone
-            ),
-            view_checkbox(
-                "filters-priority-low",
-                "Low",
-                filters.priority_low,
-                Msg::FiltersPriorityToggleLow
-            ),
-            view_checkbox(
-                "filters-priority-medium",
-                "Medium",
-                filters.priority_medium,
-                Msg::FiltersPriorityToggleMedium
-            ),
-            view_checkbox(
-                "filters-priority-high",
-                "High",
-                filters.priority_high,
-                Msg::FiltersPriorityToggleHigh
-            ),
-        ],
-        view_text_input(
-            "Description & Notes",
-            &filters.description_and_notes,
-            false,
-            BTreeSet::new(),
-            Msg::FiltersDescriptionChanged
-        ),
-        view_text_input(
-            "Project",
-            &filters.project.join("."),
-            false,
-            BTreeSet::new(),
-            Msg::FiltersProjectChanged
-        ),
-        view_text_input(
-            "Tags",
-            &filters.tags.join(" "),
-            false,
-            BTreeSet::new(),
-            Msg::FiltersTagsChanged
-        ),
-        div![
-            C!["mr-2"],
-            tasks.values().filter(|t| filters.filter_task(t)).count(),
-            "/",
-            tasks.len()
-        ],
-        view_button("Reset Filters", Msg::FiltersReset),
-    ]
-}
-
-fn view_checkbox(name: &str, title: &str, checked: bool, msg: Msg) -> Node<Msg> {
-    let msg_clone = msg.clone();
-    div![
-        C!["flex", "flex-row"],
-        input![
-            C!["mr-2"],
-            attrs! {
-                At::Type => "checkbox",
-                At::Name => name,
-                At::Checked => if checked { AtValue::None } else { AtValue::Ignored },
-            },
-            mouse_ev(Ev::Click, |_| msg),
-        ],
-        label![
-            attrs! {
-                At::For => name,
-            },
-            mouse_ev(Ev::Click, |_| msg_clone),
-            title
-        ]
-    ]
-}
-
-#[allow(clippy::too_many_lines)]
-fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<Msg> {
-    let mut tasks: Vec<_> = tasks
-        .values()
-        .filter_map(|t| {
-            if filters.filter_task(t) {
-                Some(ViewableTask {
-                    age: duration_string(
-                        (chrono::offset::Utc::now()).signed_duration_since(*t.entry()),
-                    ),
-                    status: match t.status() {
-                        Status::Pending => "Pending".to_owned(),
-                        Status::Completed => "Completed".to_owned(),
-                        Status::Deleted => "Deleted".to_owned(),
-                        Status::Waiting => "Waiting".to_owned(),
-                        Status::Recurring => "Recurring".to_owned(),
-                    },
-                    project: t.project().to_owned(),
-                    description: t.description().to_owned(),
-                    urgency: urgency::calculate(t),
-                    uuid: t.uuid(),
-                    tags: t.tags().to_owned(),
-                    priority: t.priority().to_owned(),
-                    active: t.start().is_some(),
-                    end: t.end().to_owned(),
-                    due: t.due().to_owned(),
-                    scheduled: t.scheduled().to_owned(),
-                })
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    // reverse sort so we have most urgent at the top
-    tasks.sort_by(|t1, t2| match (t1.urgency, t2.urgency) {
-        (Some(u1), Some(u2)) => u2.partial_cmp(&u1).unwrap(),
-        (Some(_), None) => std::cmp::Ordering::Less,
-        (None, Some(_)) => std::cmp::Ordering::Greater,
-        (None, None) => t2.end.cmp(&t1.end),
-    });
-    let show_status = tasks
-        .iter()
-        .map(|t| &t.status)
-        .collect::<HashSet<_>>()
-        .len()
-        > 1;
-    let show_project = tasks.iter().any(|t| !t.project.is_empty());
-    let show_tags = tasks.iter().any(|t| !t.tags.is_empty());
-    let show_priority = tasks.iter().any(|t| t.priority.is_some());
-    let show_due = tasks.iter().any(|t| t.due.is_some());
-    let show_scheduled = tasks.iter().any(|t| t.scheduled.is_some());
-    div![
-        C!["mt-2", "px-2", "pb-2"],
-        table![
-            C!["table-auto", "w-full"],
-            tr![
-                C!["border-b-2"],
-                th!["Age"],
-                IF!(show_due => th![C!["border-l-2"], "Due"]),
-                IF!(show_scheduled => th![C!["border-l-2"], "Scheduled"]),
-                IF!(show_status => th![C!["border-l-2"], "Status"]),
-                IF!(show_project => th![C!["border-l-2"], "Project"]),
-                IF!(show_tags => th![C!["border-l-2"], "Tags"]),
-                IF!(show_priority => th![C!["border-l-2"], "Priority"]),
-                th![C!["border-l-2"], "Description"],
-                th![C!["border-l-2"], "Urgency"]
-            ],
-            tasks.into_iter().enumerate().map(|(i, t)| {
-                let id = t.uuid;
-                let is_next = t.tags.contains(&"next".to_owned());
-                tr![
-                    C![
-                        "cursor-pointer",
-                        "select-none",
-                        if t.active {
-                            vec!["bg-green-200", "hover:bg-green-400"]
-                        } else if is_next {
-                            vec!["bg-blue-200", "hover:bg-blue-400"]
-                        } else if t.urgency.unwrap_or(0.) > 10. {
-                            vec!["bg-red-300", "hover:bg-red-400"]
-                        } else if t.urgency.unwrap_or(0.) > 5. {
-                            vec!["bg-yellow-200", "hover:bg-yellow-400"]
-                        } else if i % 2 == 0 {
-                            vec!["bg-gray-100", "hover:bg-gray-200"]
-                        } else {
-                            vec!["hover:bg-gray-200"]
-                        }
-                    ],
-                    mouse_ev(Ev::Click, move |_| { Msg::SelectTask(Some(id)) }),
-                    td![C!["text-center", "px-2"], t.age.clone()],
-                    IF!(show_due => td![C!["border-l-2", "text-center", "px-2"], t.due.map(|due|duration_string(due.signed_duration_since(chrono::offset::Utc::now())))]),
-                    IF!(show_scheduled => td![C!["border-l-2", "text-center", "px-2"], t.scheduled.map(|scheduled|duration_string(scheduled.signed_duration_since(chrono::offset::Utc::now())))]),
-                    IF!(show_status => td![C!["border-l-2","text-center", "px-2"], t.status]),
-                    IF!(show_project => td![
-                        C!["border-l-2", "text-left", "px-2"],
-                        if t.project.is_empty(){
-                            empty![]
-                        } else {
-                            plain!(t.project.join("."))
-                        }
-                    ]),
-                    IF!(show_tags => td![
-                        C!["border-l-2", "text-left", "px-2"],
-                        if t.tags.is_empty(){
-                            empty![]
-                        } else {
-                            plain!(t.tags.join(" "))
-                        }
-                    ]),
-                    IF!(show_priority => td![
-                        C!["border-l-2", "text-center", "px-2"],
-                        if let Some(p) = t.priority {
-                            plain!(match p {
-                                Priority::Low => "L",
-                                Priority::Medium => "M",
-                                Priority::High => "H",
-                            })
-                        } else {
-                            empty![]
-                        }
-                    ]),
-                    td![C!["border-l-2", "text-left", "px-2"], &t.description],
-                    td![
-                        C!["border-l-2", "text-center", "px-2"],
-                        if let Some(urgency) = t.urgency {
-                            plain![format!("{:.2}", urgency)]
-                        } else {
-                            empty![]
-                        }
-                    ]
-                ]
-            })
-        ]
-    ]
-}
-
-struct ViewableTask {
-    uuid: uuid::Uuid,
-    active: bool,
-    status: String,
-    age: String,
-    project: Vec<String>,
-    description: String,
-    tags: Vec<String>,
-    priority: Option<Priority>,
-    urgency: Option<f64>,
-    end: Option<chrono::DateTime<chrono::Utc>>,
-    due: Option<chrono::DateTime<chrono::Utc>>,
-    scheduled: Option<chrono::DateTime<chrono::Utc>>,
-}
-
-fn duration_string(duration: chrono::Duration) -> String {
-    if duration.num_weeks() > 0 {
-        format!("{}w", duration.num_weeks())
-    } else if duration.num_days() > 0 {
-        format!("{}d", duration.num_days())
-    } else if duration.num_hours() > 0 {
-        format!("{}h", duration.num_hours())
-    } else if duration.num_minutes() > 0 {
-        format!("{}m", duration.num_minutes())
-    } else if duration.num_seconds() > 0 {
-        format!("{}s", duration.num_seconds())
-    } else if duration.num_seconds() > -1 {
-        "now".to_owned()
-    } else if duration.num_seconds() > -60 {
-        format!("{}s", duration.num_seconds())
-    } else if duration.num_minutes() > -60 {
-        format!("{}m", duration.num_minutes())
-    } else if duration.num_hours() > -24 {
-        format!("{}h", duration.num_hours())
-    } else if duration.num_days() > -7 {
-        format!("{}d", duration.num_days())
-    } else {
-        format!("{}w", duration.num_weeks())
-    }
 }
 
 // ------ ------
