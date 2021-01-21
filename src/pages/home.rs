@@ -57,6 +57,7 @@ pub enum Msg {
     ContextsRemove,
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
     match msg {
         Msg::FiltersStatusTogglePending => {
