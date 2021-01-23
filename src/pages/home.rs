@@ -2,6 +2,9 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
+use seed_styles::rem;
+#[allow(clippy::wildcard_imports)]
+use seed_styles::*;
 
 use crate::{
     components::{duration_string, view_button, view_checkbox, view_text_input},
@@ -222,7 +225,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<GMsg
     let show_due = tasks.iter().any(|t| t.due.is_some());
     let show_scheduled = tasks.iter().any(|t| t.scheduled.is_some());
     div![
-        C!["mt-2", "px-2", "pb-2"],
+        s().margin_top(rem(0.5)).padding_x(rem(0.5)).padding_bottom(rem(0.5)),
         table![
             C!["table-auto", "w-full"],
             tr![
@@ -259,7 +262,9 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<GMsg
                         }
                     ],
                     mouse_ev(Ev::Click, move |_| { GMsg::SelectTask(Some(id)) }),
-                    td![C!["text-center", "px-2"], t.age.clone()],
+                    td![
+                        s().padding_x(rem(0.5)),
+                        C!["text-center"], t.age.clone()],
                     IF!(show_due => td![C!["border-l-2", "text-center", "px-2"], t.due.map(|due|duration_string(due.signed_duration_since(chrono::offset::Utc::now())))]),
                     IF!(show_scheduled => td![C!["border-l-2", "text-center", "px-2"], t.scheduled.map(|scheduled|duration_string(scheduled.signed_duration_since(chrono::offset::Utc::now())))]),
                     IF!(show_status => td![C!["border-l-2","text-center", "px-2"], t.status]),
@@ -328,6 +333,7 @@ fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> 
         .values()
         .any(|filters| filters == &model.filters);
     div![
+        s().padding(rem(0.5)).margin_x(rem(0.5)),
         C![
             "flex",
             "flex-row",
@@ -335,11 +341,10 @@ fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> 
             "justify-center",
             "items-center",
             "bg-gray-100",
-            "p-2",
-            "mx-2",
         ],
         div![
-            C!["flex", "flex-col", "mr-8"],
+            s().margin_right(rem(2)),
+            C!["flex", "flex-col"],
             h2![C!["font-bold"], "Status"],
             view_checkbox(
                 "filters-status-pending",
@@ -373,7 +378,8 @@ fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> 
             ),
         ],
         div![
-            C!["flex", "flex-col", "mr-8"],
+            s().margin_right(rem(2)),
+            C!["flex", "flex-col"],
             h2![C!["font-bold"], "Priority"],
             view_checkbox(
                 "filters-priority-none",
@@ -422,7 +428,7 @@ fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> 
             |s| GMsg::Home(Msg::FiltersTagsChanged(s))
         ),
         div![
-            C!["mr-2"],
+            s().margin_right(rem(0.5)),
             tasks
                 .values()
                 .filter(|t| model.filters.filter_task(t))

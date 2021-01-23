@@ -6,6 +6,9 @@ use std::{
 use chrono::{Datelike, Timelike};
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
+use seed_styles::rem;
+#[allow(clippy::wildcard_imports)]
+use seed_styles::*;
 
 use crate::{
     components::{duration_string, view_button, view_text_input},
@@ -338,11 +341,11 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
         .collect::<BTreeSet<_>>();
     tags_suggestions.insert("next".to_owned());
     div![
+        s().padding_left(rem(0.5)),
         C![
             "flex",
             "flex-col",
             "bg-gray-100",
-            "p-2",
             "border-4",
             if active {
                 "border-green-200"
@@ -357,7 +360,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             }
         ],
         div![
-            C!["pl-2"],
+            s().padding_left(rem(0.5)),
             span![C!["font-bold"], "Status: "],
             match task.status() {
                 Status::Pending => "Pending",
@@ -369,7 +372,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
         ],
         if let Some(urgency) = urgency {
             div![
-                C!["pl-2"],
+                s().padding_left(rem(0.5)),
                 span![C!["font-bold"], "Urgency: "],
                 plain![format!("{:.2}", urgency)]
             ]
@@ -377,13 +380,13 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             empty![]
         },
         div![
-            C!["pl-2"],
+            s().padding_left(rem(0.5)),
             span![C!["font-bold"], "Entry: "],
             task.entry().to_string()
         ],
         if let Some(start) = start {
             div![
-                C!["pl-2"],
+                s().padding_left(rem(0.5)),
                 span![C!["font-bold"], "Start: "],
                 start.to_string()
             ]
@@ -391,7 +394,11 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             empty![]
         },
         if let Some(end) = end {
-            div![C!["pl-2"], span![C!["font-bold"], "End: "], end.to_string()]
+            div![
+                s().padding_left(rem(0.5)),
+                span![C!["font-bold"], "End: "],
+                end.to_string()
+            ]
         } else {
             empty![]
         },
@@ -410,12 +417,14 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             |s| GMsg::ViewTask(Msg::SelectedTaskProjectChanged(s))
         ),
         div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
+            s().padding_x(rem(0.5)).margin_bottom(rem(0.5)),
+            C!["flex", "flex-col"],
             div![C!["font-bold"], "Tags"],
             div![
                 C!["flex", "flex-row"],
                 input![
-                    C!["flex-grow", "border", "mr-2"],
+                    s().margin_right(rem(0.5)),
+                    C!["flex-grow", "border"],
                     attrs! {
                         At::Value => task.tags().join(" "),
                         At::AutoFocus => AtValue::Ignored
@@ -443,7 +452,10 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                         let sug_clone = sug.clone();
                         let tags = task.tags().join(" ");
                         button![
-                            C!["mr-2", "mt-2", "px-1", "bg-gray-200"],
+                            s().margin_right(rem(0.5))
+                                .margin_top(rem(0.5))
+                                .padding_x(rem(0.25)),
+                            C!["bg-gray-200"],
                             mouse_ev(Ev::Click, move |_| {
                                 if tags.ends_with(' ') || tags.is_empty() {
                                     GMsg::ViewTask(Msg::SelectedTaskTagsChanged(format!(
@@ -471,7 +483,8 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             ]
         ],
         div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
+            s().padding_x(rem(0.5)).margin_bottom(rem(0.5)),
+            C!["flex", "flex-col"],
             div![C!["font-bold"], "Priority"],
             div![
                 C!["flex", "flex-row"],
@@ -528,12 +541,13 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             ]
         ],
         div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
+            s().padding_x(rem(0.5)).margin_bottom(rem(0.5)),
+            C!["flex", "flex-col"],
             div![C!["font-bold"], "Due"],
             div![
                 C!["flex", "flex-row"],
                 input![
-                    C!["mr-4"],
+                    s().margin_right(rem(1)),
                     attrs! {
                         At::Type => "date",
                         At::Value => task.due().map_or_else(String::new, |due| due.format("%Y-%m-%d").to_string()),
@@ -553,7 +567,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                 ],
                 if let Some(due) = task.due() {
                     span![
-                        C!["ml-2"],
+                        s().margin_left(rem(0.5)),
                         duration_string(due.signed_duration_since(chrono::offset::Utc::now()))
                     ]
                 } else {
@@ -562,12 +576,13 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             ]
         ],
         div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
+            s().padding_x(rem(0.5)).margin_bottom(rem(0.5)),
+            C!["flex", "flex-col"],
             div![C!["font-bold"], "Scheduled"],
             div![
                 C!["flex", "flex-row"],
                 input![
-                    C!["mr-4"],
+                    s().margin_right(rem(1)),
                     attrs! {
                         At::Type => "date",
                         At::Value => task.scheduled().map_or_else(String::new, |scheduled| scheduled.format("%Y-%m-%d").to_string()),
@@ -587,7 +602,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                 ],
                 if let Some(scheduled) = task.scheduled() {
                     span![
-                        C!["ml-2"],
+                        s().margin_left(rem(0.5)),
                         duration_string(
                             scheduled.signed_duration_since(chrono::offset::Utc::now())
                         )
@@ -598,7 +613,8 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             ]
         ],
         div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
+            s().padding_x(rem(0.5)).margin_bottom(rem(0.5)),
+            C!["flex", "flex-col"],
             div![C!["font-bold"], "Recur"],
             div![
                 span!["Every "],
@@ -697,12 +713,13 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             ]
         ],
         div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
+            s().padding_x(rem(0.5)).margin_bottom(rem(0.5)),
             div![C!["font-bold"], "Notes"],
             div![
                 C!["flex", "flex-row"],
                 textarea![
-                    C!["flex-grow", "border", "mr-2"],
+                    s().margin_right(rem(0.5)),
+                    C!["flex-grow", "border"],
                     attrs! {
                         At::Value => task.notes(),
                     },

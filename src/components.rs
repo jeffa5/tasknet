@@ -2,12 +2,19 @@ use std::collections::BTreeSet;
 
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
+use seed_styles::rem;
+#[allow(clippy::wildcard_imports)]
+use seed_styles::*;
 
-use crate::Msg;
+use crate::{styles::Color, Msg};
 
 pub fn view_button(text: &str, msg: Msg) -> Node<Msg> {
     button![
-        C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300"],
+        s().bg_color(Color::Background)
+            .padding_y(rem(0.5))
+            .padding_x(rem(1))
+            .margin(rem(0.5)),
+        C!["bg-gray-200", "hover:bg-gray-300"],
         mouse_ev(Ev::Click, |_| msg),
         text
     ]
@@ -18,7 +25,7 @@ pub fn view_checkbox(name: &str, title: &str, checked: bool, msg: Msg) -> Node<M
     div![
         C!["flex", "flex-row"],
         input![
-            C!["mr-2"],
+            s().margin_right(rem(0.5)),
             attrs! {
                 At::Type => "checkbox",
                 At::Name => name,
@@ -46,12 +53,14 @@ pub fn view_text_input(
     let also_f = f.clone();
     let also_also_f = f.clone();
     div![
-        C!["flex", "flex-col", "px-2", "mb-2"],
+        s().padding_x(rem(0.5)).margin_bottom(rem(0.5)),
+        C!["flex", "flex-col"],
         div![C!["font-bold"], name],
         div![
             C!["flex", "flex-row"],
             input![
-                C!["flex-grow", "border", "mr-2"],
+                s().margin_right(rem(0.5)),
+                C!["flex-grow", "border"],
                 attrs! {
                     At::Value => value,
                     At::AutoFocus => if autofocus { AtValue::None } else { AtValue::Ignored }
@@ -75,7 +84,10 @@ pub fn view_text_input(
                     let sug_clone = sug.clone();
                     let new_f = also_also_f.clone();
                     button![
-                        C!["mr-2", "mt-2", "px-1", "bg-gray-200"],
+                        s().margin_right(rem(0.5))
+                            .margin_top(rem(0.5))
+                            .padding_x(rem(0.25)),
+                        C!["bg-gray-200"],
                         mouse_ev(Ev::Click, |_| new_f(sug_clone)),
                         sug
                     ]

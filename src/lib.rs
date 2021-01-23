@@ -6,15 +6,20 @@ use std::collections::HashMap;
 use apply::Apply;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
+use seed_styles::rem;
+#[allow(clippy::wildcard_imports)]
+use seed_styles::*;
 
 mod components;
 mod filters;
 mod pages;
+mod styles;
 mod task;
 mod urgency;
 
 use components::view_button;
 use filters::Filters;
+use styles::light_theme;
 use task::{Recur, Status, Task};
 
 const VIEW_TASK: &str = "view";
@@ -26,6 +31,7 @@ const TASKS_STORAGE_KEY: &str = "tasknet-tasks";
 
 #[allow(clippy::needless_pass_by_value)]
 fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
+    load_app_themes(&[default_colors_theme, default_breakpoint_theme, light_theme]);
     let url_clone = url.clone();
     orders.perform_cmd(async move {
         let res = window()
@@ -281,7 +287,10 @@ fn view_titlebar() -> Node<Msg> {
         div![
             C!["flex", "flex-row", "justify-start"],
             a![
-                C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300",],
+                s().padding_y(rem(0.5))
+                    .padding_x(rem(1))
+                    .margin(rem(0.5)),
+                C!["bg-gray-200", "hover:bg-gray-300"],
                 attrs! {At::Href => "/tasknet"},
                 "TaskNet"
             ]
