@@ -163,9 +163,8 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             orders.request_url(Urls::new(&model.global.base_url).view_task(&uuid));
         }
         Msg::CreateTask => {
-            let task = Task::new();
-            let id = task.uuid();
-            model.global.tasks.insert(task.uuid(), task);
+            let (id, task) = Task::new();
+            model.global.tasks.insert(id, task);
             orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
@@ -173,35 +172,35 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             let recurring: Vec<_> = model
                 .global
                 .tasks
-                .values()
-                .filter(|t| t.status() == &Status::Recurring)
+                .iter()
+                .filter(|(_, t)| t.status() == &Status::Recurring)
                 .collect();
             let mut new_tasks = Vec::new();
             for r in recurring {
                 let mut children: Vec<_> = model
                     .global
                     .tasks
-                    .values()
-                    .filter(|t| t.parent().map_or(false, |p| p == r.uuid()))
+                    .iter()
+                    .filter(|(i, t)| t.parent().map_or(false, |p| p == **i))
                     .collect();
-                children.sort_by_key(|c| c.entry());
+                children.sort_by_key(|c| c.1.entry());
                 let last_child = children.last();
                 if let Some(child) = last_child {
                     // if child's entry is older than the recurring duration, create a new child
-                    if chrono::offset::Utc::now() - *child.entry()
-                        > r.recur().as_ref().unwrap().duration()
+                    if chrono::offset::Utc::now() - *child.1.entry()
+                        > r.1.recur().as_ref().unwrap().duration()
                     {
                         log!("old enough");
-                        let new_child = r.new_child();
+                        let new_child = r.1.new_child(*r.0);
                         new_tasks.push(new_child)
                     }
                 } else {
-                    let new_child = r.new_child();
+                    let new_child = r.1.new_child(*r.0);
                     new_tasks.push(new_child)
                 }
             }
-            for t in new_tasks {
-                model.global.tasks.insert(t.uuid(), t);
+            for (i, t) in new_tasks {
+                model.global.tasks.insert(i, t);
             }
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {

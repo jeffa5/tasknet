@@ -230,8 +230,35 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
 #[allow(clippy::too_many_lines)]
 fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
     let mut tasks: Vec<_> = tasks
-        .values()
-        .filter(|t| model.filters.filter_task(t))
+        .iter()
+        .filter_map(|(i, t)| {
+            if filters.filter_task(t) {
+                Some(ViewableTask {
+                    age: duration_string(
+                        (chrono::offset::Utc::now()).signed_duration_since(*t.entry()),
+                    ),
+                    status: match t.status() {
+                        Status::Pending => "Pending".to_owned(),
+                        Status::Completed => "Completed".to_owned(),
+                        Status::Deleted => "Deleted".to_owned(),
+                        Status::Waiting => "Waiting".to_owned(),
+                        Status::Recurring => "Recurring".to_owned(),
+                    },
+                    project: t.project().to_owned(),
+                    description: t.description().to_owned(),
+                    urgency: urgency::calculate(t),
+                    uuid: *i,
+                    tags: t.tags().to_owned(),
+                    priority: t.priority().to_owned(),
+                    active: t.start().is_some(),
+                    end: t.end().to_owned(),
+                    due: t.due().to_owned(),
+                    scheduled: t.scheduled().to_owned(),
+                })
+            } else {
+                None
+            }
+        })
         .collect();
 
     tasks.sort_by(|t1, t2| sort_viewable_task(model.sort_field, t1, t2));

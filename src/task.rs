@@ -13,7 +13,6 @@ type DateTime = chrono::DateTime<chrono::Utc>;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Task {
     status: Status,
-    uuid: uuid::Uuid,
     entry: DateTime,
     description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -62,54 +61,58 @@ pub enum Status {
 }
 
 impl Task {
-    pub fn new() -> Self {
-        Self {
-            uuid: uuid::Uuid::new_v4(),
-            entry: now(),
-            description: String::new(),
-            project: Vec::new(),
-            start: None,
-            scheduled: None,
-            notes: String::new(),
-            tags: Vec::new(),
-            priority: None,
-            depends: HashSet::new(),
-            udas: HashMap::new(),
-            status: Status::Pending,
-            due: None,
-            end: None,
-            wait: None,
-            recur: None,
-            parent: None,
-            until: None,
-        }
+    pub fn new() -> (uuid::Uuid, Self) {
+        (
+            uuid::Uuid::new_v4(),
+            Self {
+                entry: now(),
+                description: String::new(),
+                project: Vec::new(),
+                start: None,
+                scheduled: None,
+                notes: String::new(),
+                tags: Vec::new(),
+                priority: None,
+                depends: HashSet::new(),
+                udas: HashMap::new(),
+                status: Status::Pending,
+                due: None,
+                end: None,
+                wait: None,
+                recur: None,
+                parent: None,
+                until: None,
+            },
+        )
     }
 
     pub const fn parent(&self) -> &Option<uuid::Uuid> {
         &self.parent
     }
 
-    pub fn new_child(&self) -> Self {
-        Self {
-            uuid: uuid::Uuid::new_v4(),
-            entry: now(),
-            description: self.description.clone(),
-            project: self.project.clone(),
-            start: self.start,
-            scheduled: self.scheduled,
-            notes: self.notes.clone(),
-            tags: self.tags.clone(),
-            priority: self.priority.clone(),
-            depends: self.depends.clone(),
-            udas: self.udas.clone(),
-            status: Status::Pending,
-            due: self.due,
-            end: self.end,
-            wait: self.wait,
-            recur: self.recur.clone(),
-            parent: Some(self.uuid),
-            until: self.until,
-        }
+    pub fn new_child(&self, uuid: uuid::Uuid) -> (uuid::Uuid, Self) {
+        (
+            uuid::Uuid::new_v4(),
+            Self {
+                entry: now(),
+                description: self.description.clone(),
+                project: self.project.clone(),
+                start: self.start,
+                scheduled: self.scheduled,
+                notes: self.notes.clone(),
+                tags: self.tags.clone(),
+                priority: self.priority.clone(),
+                depends: self.depends.clone(),
+                udas: self.udas.clone(),
+                status: Status::Pending,
+                due: self.due,
+                end: self.end,
+                wait: self.wait,
+                recur: self.recur.clone(),
+                parent: Some(uuid),
+                until: self.until,
+            },
+        )
     }
 
     pub const fn status(&self) -> &Status {
@@ -118,10 +121,6 @@ impl Task {
 
     pub const fn entry(&self) -> &DateTime {
         &self.entry
-    }
-
-    pub const fn uuid(&self) -> uuid::Uuid {
-        self.uuid
     }
 
     pub fn description(&self) -> &str {
@@ -329,7 +328,7 @@ mod tests {
 
     #[test]
     fn test_serde_priority() {
-        let mut task = Task::new();
+        let (_, mut task) = Task::new();
         task.set_priority(Some(Priority::Medium));
         let s = serde_json::to_string(&task).unwrap();
         let t = serde_json::from_str(&s).unwrap();
@@ -347,8 +346,7 @@ mod tests {
     fn test_render_json_format_string() {
         let task = Task::new();
         let rendered = serde_json::to_string(&task).unwrap();
-        let re = Regex::new(r#"\{"status":"pending","uuid":".*","entry":".*","description":""}"#)
-            .unwrap();
+        let re = Regex::new(r#"\{"status":"pending","entry":".*","description":""}"#).unwrap();
         assert!(re.is_match(&rendered), "{}", rendered)
     }
 }

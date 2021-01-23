@@ -1,0 +1,15 @@
+{
+  "tasks":{
+    "uuid":{
+      "status":"",
+      "uuid":"",
+      "entry":"...",
+      "description":""
+    }
+  },
+  "contexts":{
+    "name":{
+      "status_pending":true
+    }
+  }
+}
