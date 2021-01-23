@@ -2,9 +2,22 @@
   "tasks":{
     "uuid":{
       "status":"",
-      "uuid":"",
       "entry":"...",
-      "description":""
+      "description":"",
+    "start": "",
+    "due": "",
+    "end": "",
+    "wait": "",
+    "scheduled": "",
+    "recur": {"amount":0, "unit": ""},
+    "parent": "",
+    "until": "",
+    "notes": "",
+    "project": [],
+    "tags": [],
+    "priority": "",
+    "depends": ["uuid1", "uuid2"],
+    "udas": {"uda":""}
     }
   },
   "contexts":{
