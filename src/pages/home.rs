@@ -27,13 +27,24 @@ pub fn init() -> Model {
         }
         Err(_) => HashMap::new(),
     };
-    Model { filters, contexts }
+    Model {
+        filters,
+        contexts,
+        urgency_sort: SortDirection::Descending,
+    }
 }
 
 #[derive(Debug)]
 pub struct Model {
     filters: Filters,
     contexts: HashMap<String, Filters>,
+    urgency_sort: SortDirection,
+}
+
+#[derive(Debug)]
+enum SortDirection {
+    Ascending,
+    Descending,
 }
 
 #[derive(Clone)]
@@ -55,6 +66,7 @@ pub enum Msg {
     FiltersSave,
     SelectedContextChanged(String),
     ContextsRemove,
+    ToggleUrgencySort,
 }
 
 #[allow(clippy::too_many_lines)]
@@ -155,6 +167,10 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                 .contexts
                 .retain(|_, filters| filters != &current_filters);
         }
+        Msg::ToggleUrgencySort => match model.urgency_sort {
+            SortDirection::Ascending => model.urgency_sort = SortDirection::Descending,
+            SortDirection::Descending => model.urgency_sort = SortDirection::Ascending,
+        },
     }
     LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
         .expect("save filters to LocalStorage");
@@ -165,16 +181,16 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
         view_filters(model, &global_model.tasks),
-        view_tasks(&global_model.tasks, &model.filters),
+        view_tasks(&global_model.tasks, &model),
     ]
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<GMsg> {
+fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
     let mut tasks: Vec<_> = tasks
         .values()
         .filter_map(|t| {
-            if filters.filter_task(t) {
+            if model.filters.filter_task(t) {
                 Some(ViewableTask {
                     age: duration_string(
                         (chrono::offset::Utc::now()).signed_duration_since(*t.entry()),
@@ -210,6 +226,10 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<GMsg
         (None, Some(_)) => std::cmp::Ordering::Greater,
         (None, None) => t2.end.cmp(&t1.end),
     });
+    if matches!(model.urgency_sort, SortDirection::Ascending) {
+        tasks.reverse();
+    }
+
     let show_status = tasks
         .iter()
         .map(|t| &t.status)
@@ -235,7 +255,16 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, filters: &Filters) -> Node<GMsg
                 IF!(show_tags => th![C!["border-l-2"], "Tags"]),
                 IF!(show_priority => th![C!["border-l-2"], "Priority"]),
                 th![C!["border-l-2"], "Description"],
-                th![C!["border-l-2"], "Urgency"]
+                th![C!["border-l-2"], "Urgency ",
+                    button![
+                        C!["bg-gray-200", "hover:bg-gray-300"],
+                        mouse_ev(Ev::Click, |_| GMsg::Home(Msg::ToggleUrgencySort)),
+                        match model.urgency_sort {
+                            SortDirection::Ascending => "⬆",
+                            SortDirection::Descending => "⬇",
+                        },
+                    ]
+                ]
             ],
             tasks.into_iter().enumerate().map(|(i, t)| {
                 let id = t.uuid;
