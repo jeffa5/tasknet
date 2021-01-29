@@ -49,8 +49,10 @@ enum SortDirection {
     Descending,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum SortField {
+    Age,
+    Due,
     Urgency,
 }
 
@@ -73,7 +75,9 @@ pub enum Msg {
     FiltersSave,
     SelectedContextChanged(String),
     ContextsRemove,
-    ToggleUrgencySort,
+    ToggleSortAge,
+    ToggleSortUrgency,
+    ToggleSortDue,
 }
 
 #[allow(clippy::too_many_lines)]
@@ -174,7 +178,21 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                 .contexts
                 .retain(|_, filters| filters != &current_filters);
         }
-        Msg::ToggleUrgencySort => {
+        Msg::ToggleSortAge => {
+            model.sort_field = SortField::Age;
+            match model.sort_direction {
+                SortDirection::Ascending => model.sort_direction = SortDirection::Descending,
+                SortDirection::Descending => model.sort_direction = SortDirection::Ascending,
+            }
+        }
+        Msg::ToggleSortDue => {
+            model.sort_field = SortField::Due;
+            match model.sort_direction {
+                SortDirection::Ascending => model.sort_direction = SortDirection::Descending,
+                SortDirection::Descending => model.sort_direction = SortDirection::Ascending,
+            }
+        }
+        Msg::ToggleSortUrgency => {
             model.sort_field = SortField::Urgency;
             match model.sort_direction {
                 SortDirection::Ascending => model.sort_direction = SortDirection::Descending,
@@ -199,51 +217,38 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
 fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
     let mut tasks: Vec<_> = tasks
         .values()
-        .filter_map(|t| {
-            if model.filters.filter_task(t) {
-                Some(ViewableTask {
-                    age: duration_string(
-                        (chrono::offset::Utc::now()).signed_duration_since(*t.entry()),
-                    ),
-                    status: match t.status() {
-                        Status::Pending => "Pending".to_owned(),
-                        Status::Completed => "Completed".to_owned(),
-                        Status::Deleted => "Deleted".to_owned(),
-                        Status::Waiting => "Waiting".to_owned(),
-                        Status::Recurring => "Recurring".to_owned(),
-                    },
-                    project: t.project().to_owned(),
-                    description: t.description().to_owned(),
-                    urgency: urgency::calculate(t),
-                    uuid: t.uuid(),
-                    tags: t.tags().to_owned(),
-                    priority: t.priority().to_owned(),
-                    active: t.start().is_some(),
-                    end: t.end().to_owned(),
-                    due: t.due().to_owned(),
-                    scheduled: t.scheduled().to_owned(),
-                })
-            } else {
-                None
-            }
-        })
+        .filter(|t| model.filters.filter_task(t))
         .collect();
 
     // reverse sort so we have most urgent at the top
-    tasks.sort_by(|t1, t2| {
-        let vals = match model.sort_field {
-            SortField::Urgency => (t1.urgency, t2.urgency),
-        };
-        match vals {
-            (Some(u1), Some(u2)) => u2.partial_cmp(&u1).unwrap(),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => t2.end.cmp(&t1.end),
-        }
-    });
+    tasks.sort_by(|t1, t2| sort_viewable_task(&model.sort_field, t1, t2));
     if matches!(model.sort_direction, SortDirection::Ascending) {
         tasks.reverse();
     }
+
+    let tasks = tasks
+        .iter()
+        .map(|t| ViewableTask {
+            age: duration_string((chrono::offset::Utc::now()).signed_duration_since(*t.entry())),
+            status: match t.status() {
+                Status::Pending => "Pending".to_owned(),
+                Status::Completed => "Completed".to_owned(),
+                Status::Deleted => "Deleted".to_owned(),
+                Status::Waiting => "Waiting".to_owned(),
+                Status::Recurring => "Recurring".to_owned(),
+            },
+            project: t.project().to_owned(),
+            description: t.description().to_owned(),
+            urgency: urgency::calculate(t),
+            uuid: t.uuid(),
+            tags: t.tags().to_owned(),
+            priority: t.priority().to_owned(),
+            active: t.start().is_some(),
+            end: t.end().to_owned(),
+            due: t.due().to_owned(),
+            scheduled: t.scheduled().to_owned(),
+        })
+        .collect::<Vec<_>>();
 
     let show_status = tasks
         .iter()
@@ -262,8 +267,8 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
             C!["table-auto", "w-full"],
             tr![
                 C!["border-b-2"],
-                th!["Age"],
-                IF!(show_due => th![C!["border-l-2"], "Due"]),
+                th!["Age ", view_sort_button(&model,SortField::Age, Msg::ToggleSortAge)],
+                IF!(show_due => th![C!["border-l-2"], "Due ", view_sort_button(&model, SortField::Due, Msg::ToggleSortDue)]),
                 IF!(show_scheduled => th![C!["border-l-2"], "Scheduled"]),
                 IF!(show_status => th![C!["border-l-2"], "Status"]),
                 IF!(show_project => th![C!["border-l-2"], "Project"]),
@@ -271,7 +276,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
                 IF!(show_priority => th![C!["border-l-2"], "Priority"]),
                 th![C!["border-l-2"], "Description"],
                 th![C!["border-l-2"], "Urgency ",
-                    view_sort_button(&model.sort_direction, Msg::ToggleUrgencySort)
+                    view_sort_button(&model, SortField::Urgency, Msg::ToggleSortUrgency)
                 ]
             ],
             tasks.into_iter().enumerate().map(|(i, t)| {
@@ -343,15 +348,37 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
     ]
 }
 
-fn view_sort_button(direction: &SortDirection, msg: Msg) -> Node<GMsg> {
+fn view_sort_button(model: &Model, field: SortField, msg: Msg) -> Node<GMsg> {
     button![
         C!["bg-gray-200", "hover:bg-gray-300"],
         mouse_ev(Ev::Click, |_| GMsg::Home(msg)),
-        match direction {
-            SortDirection::Ascending => "⬆",
-            SortDirection::Descending => "⬇",
+        if model.sort_field == field {
+            match model.sort_direction {
+                SortDirection::Ascending => "⬆",
+                SortDirection::Descending => "⬇",
+            }
+        } else {
+            "⬍"
         },
     ]
+}
+
+fn sort_viewable_task(sort_field: &SortField, t1: &Task, t2: &Task) -> std::cmp::Ordering {
+    match sort_field {
+        SortField::Urgency => match (urgency::calculate(t1), urgency::calculate(t2)) {
+            (Some(u1), Some(u2)) => u2.partial_cmp(&u1).unwrap(),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => t2.entry().cmp(&t1.entry()),
+        },
+        SortField::Age => t2.entry().partial_cmp(&t1.entry()).unwrap(),
+        SortField::Due => match (t1.due(), t2.due()) {
+            (Some(d1), Some(d2)) => d1.partial_cmp(&d2).unwrap(),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => t2.entry().cmp(&t1.entry()),
+        },
+    }
 }
 
 struct ViewableTask {
