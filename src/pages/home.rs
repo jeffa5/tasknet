@@ -30,7 +30,8 @@ pub fn init() -> Model {
     Model {
         filters,
         contexts,
-        urgency_sort: SortDirection::Descending,
+        sort_field: SortField::Urgency,
+        sort_direction: SortDirection::Descending,
     }
 }
 
@@ -38,13 +39,19 @@ pub fn init() -> Model {
 pub struct Model {
     filters: Filters,
     contexts: HashMap<String, Filters>,
-    urgency_sort: SortDirection,
+    sort_field: SortField,
+    sort_direction: SortDirection,
 }
 
 #[derive(Debug)]
 enum SortDirection {
     Ascending,
     Descending,
+}
+
+#[derive(Debug)]
+enum SortField {
+    Urgency,
 }
 
 #[derive(Clone)]
@@ -167,10 +174,13 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                 .contexts
                 .retain(|_, filters| filters != &current_filters);
         }
-        Msg::ToggleUrgencySort => match model.urgency_sort {
-            SortDirection::Ascending => model.urgency_sort = SortDirection::Descending,
-            SortDirection::Descending => model.urgency_sort = SortDirection::Ascending,
-        },
+        Msg::ToggleUrgencySort => {
+            model.sort_field = SortField::Urgency;
+            match model.sort_direction {
+                SortDirection::Ascending => model.sort_direction = SortDirection::Descending,
+                SortDirection::Descending => model.sort_direction = SortDirection::Ascending,
+            }
+        }
     }
     LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
         .expect("save filters to LocalStorage");
@@ -220,13 +230,18 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
         .collect();
 
     // reverse sort so we have most urgent at the top
-    tasks.sort_by(|t1, t2| match (t1.urgency, t2.urgency) {
-        (Some(u1), Some(u2)) => u2.partial_cmp(&u1).unwrap(),
-        (Some(_), None) => std::cmp::Ordering::Less,
-        (None, Some(_)) => std::cmp::Ordering::Greater,
-        (None, None) => t2.end.cmp(&t1.end),
+    tasks.sort_by(|t1, t2| {
+        let vals = match model.sort_field {
+            SortField::Urgency => (t1.urgency, t2.urgency),
+        };
+        match vals {
+            (Some(u1), Some(u2)) => u2.partial_cmp(&u1).unwrap(),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => t2.end.cmp(&t1.end),
+        }
     });
-    if matches!(model.urgency_sort, SortDirection::Ascending) {
+    if matches!(model.sort_direction, SortDirection::Ascending) {
         tasks.reverse();
     }
 
@@ -256,14 +271,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
                 IF!(show_priority => th![C!["border-l-2"], "Priority"]),
                 th![C!["border-l-2"], "Description"],
                 th![C!["border-l-2"], "Urgency ",
-                    button![
-                        C!["bg-gray-200", "hover:bg-gray-300"],
-                        mouse_ev(Ev::Click, |_| GMsg::Home(Msg::ToggleUrgencySort)),
-                        match model.urgency_sort {
-                            SortDirection::Ascending => "⬆",
-                            SortDirection::Descending => "⬇",
-                        },
-                    ]
+                    view_sort_button(&model.sort_direction, Msg::ToggleUrgencySort)
                 ]
             ],
             tasks.into_iter().enumerate().map(|(i, t)| {
@@ -332,6 +340,17 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
                 ]
             })
         ]
+    ]
+}
+
+fn view_sort_button(direction: &SortDirection, msg: Msg) -> Node<GMsg> {
+    button![
+        C!["bg-gray-200", "hover:bg-gray-300"],
+        mouse_ev(Ev::Click, |_| GMsg::Home(msg)),
+        match direction {
+            SortDirection::Ascending => "⬆",
+            SortDirection::Descending => "⬇",
+        },
     ]
 }
 
