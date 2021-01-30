@@ -1,4 +1,7 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::{
+    collections::{BTreeSet, HashMap, HashSet},
+    fmt::Display,
+};
 
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
@@ -49,11 +52,37 @@ enum SortDirection {
     Descending,
 }
 
-#[derive(Debug, PartialEq)]
-enum SortField {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SortField {
     Age,
     Due,
+    Scheduled,
+    Project,
+    Tags,
+    Priority,
+    Description,
+    Status,
     Urgency,
+}
+
+impl Display for SortField {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Age => "Age",
+                Self::Due => "Due",
+                Self::Scheduled => "Scheduled",
+                Self::Project => "Project",
+                Self::Tags => "Tags",
+                Self::Priority => "Priority",
+                Self::Description => "Description",
+                Self::Status => "Status",
+                Self::Urgency => "Urgency",
+            }
+        )
+    }
 }
 
 #[derive(Clone)]
@@ -75,9 +104,7 @@ pub enum Msg {
     FiltersSave,
     SelectedContextChanged(String),
     ContextsRemove,
-    ToggleSortAge,
-    ToggleSortUrgency,
-    ToggleSortDue,
+    ToggleSort(SortField),
 }
 
 #[allow(clippy::too_many_lines)]
@@ -178,22 +205,8 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                 .contexts
                 .retain(|_, filters| filters != &current_filters);
         }
-        Msg::ToggleSortAge => {
-            model.sort_field = SortField::Age;
-            match model.sort_direction {
-                SortDirection::Ascending => model.sort_direction = SortDirection::Descending,
-                SortDirection::Descending => model.sort_direction = SortDirection::Ascending,
-            }
-        }
-        Msg::ToggleSortDue => {
-            model.sort_field = SortField::Due;
-            match model.sort_direction {
-                SortDirection::Ascending => model.sort_direction = SortDirection::Descending,
-                SortDirection::Descending => model.sort_direction = SortDirection::Ascending,
-            }
-        }
-        Msg::ToggleSortUrgency => {
-            model.sort_field = SortField::Urgency;
+        Msg::ToggleSort(field) => {
+            model.sort_field = field;
             match model.sort_direction {
                 SortDirection::Ascending => model.sort_direction = SortDirection::Descending,
                 SortDirection::Descending => model.sort_direction = SortDirection::Ascending,
@@ -220,9 +233,8 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
         .filter(|t| model.filters.filter_task(t))
         .collect();
 
-    // reverse sort so we have most urgent at the top
     tasks.sort_by(|t1, t2| sort_viewable_task(&model.sort_field, t1, t2));
-    if matches!(model.sort_direction, SortDirection::Ascending) {
+    if matches!(model.sort_direction, SortDirection::Descending) {
         tasks.reverse();
     }
 
@@ -244,7 +256,6 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
             tags: t.tags().to_owned(),
             priority: t.priority().to_owned(),
             active: t.start().is_some(),
-            end: t.end().to_owned(),
             due: t.due().to_owned(),
             scheduled: t.scheduled().to_owned(),
         })
@@ -267,16 +278,16 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
             C!["table-auto", "w-full"],
             tr![
                 C!["border-b-2"],
-                th!["Age ", view_sort_button(&model,SortField::Age, Msg::ToggleSortAge)],
-                IF!(show_due => th![C!["border-l-2"], "Due ", view_sort_button(&model, SortField::Due, Msg::ToggleSortDue)]),
-                IF!(show_scheduled => th![C!["border-l-2"], "Scheduled"]),
-                IF!(show_status => th![C!["border-l-2"], "Status"]),
-                IF!(show_project => th![C!["border-l-2"], "Project"]),
-                IF!(show_tags => th![C!["border-l-2"], "Tags"]),
-                IF!(show_priority => th![C!["border-l-2"], "Priority"]),
-                th![C!["border-l-2"], "Description"],
-                th![C!["border-l-2"], "Urgency ",
-                    view_sort_button(&model, SortField::Urgency, Msg::ToggleSortUrgency)
+                th![view_sort_button(&model, SortField::Age)],
+                IF!(show_due => th![C!["border-l-2"], view_sort_button(&model, SortField::Due)]),
+                IF!(show_scheduled => th![C!["border-l-2"], view_sort_button(&model, SortField::Scheduled)]),
+                IF!(show_status => th![C!["border-l-2"], view_sort_button(model, SortField::Status)]),
+                IF!(show_project => th![C!["border-l-2"], view_sort_button(model, SortField::Project)]),
+                IF!(show_tags => th![C!["border-l-2"], view_sort_button(model, SortField::Tags)]),
+                IF!(show_priority => th![C!["border-l-2"], view_sort_button(model, SortField::Priority)]),
+                th![C!["border-l-2"], view_sort_button(model, SortField::Description)],
+                th![C!["border-l-2"],
+                    view_sort_button(&model, SortField::Urgency)
                 ]
             ],
             tasks.into_iter().enumerate().map(|(i, t)| {
@@ -348,25 +359,29 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
     ]
 }
 
-fn view_sort_button(model: &Model, field: SortField, msg: Msg) -> Node<GMsg> {
+fn view_sort_button(model: &Model, field: SortField) -> Node<GMsg> {
     button![
-        C!["bg-gray-200", "hover:bg-gray-300"],
-        mouse_ev(Ev::Click, |_| GMsg::Home(msg)),
-        if model.sort_field == field {
-            match model.sort_direction {
-                SortDirection::Ascending => "⬆",
-                SortDirection::Descending => "⬇",
+        C!["w-full"],
+        mouse_ev(Ev::Click, move |_| GMsg::Home(Msg::ToggleSort(field))),
+        format!(
+            "{}{}",
+            field,
+            if model.sort_field == field {
+                match model.sort_direction {
+                    SortDirection::Ascending => "⬆",
+                    SortDirection::Descending => "⬇",
+                }
+            } else {
+                "⬍"
             }
-        } else {
-            "⬍"
-        },
+        ),
     ]
 }
 
 fn sort_viewable_task(sort_field: &SortField, t1: &Task, t2: &Task) -> std::cmp::Ordering {
     match sort_field {
         SortField::Urgency => match (urgency::calculate(t1), urgency::calculate(t2)) {
-            (Some(u1), Some(u2)) => u2.partial_cmp(&u1).unwrap(),
+            (Some(u1), Some(u2)) => u1.partial_cmp(&u2).unwrap(),
             (Some(_), None) => std::cmp::Ordering::Less,
             (None, Some(_)) => std::cmp::Ordering::Greater,
             (None, None) => t2.entry().cmp(&t1.entry()),
@@ -378,6 +393,27 @@ fn sort_viewable_task(sort_field: &SortField, t1: &Task, t2: &Task) -> std::cmp:
             (None, Some(_)) => std::cmp::Ordering::Greater,
             (None, None) => t2.entry().cmp(&t1.entry()),
         },
+        SortField::Scheduled => match (t1.scheduled(), t2.scheduled()) {
+            (Some(d1), Some(d2)) => d1.partial_cmp(&d2).unwrap(),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => t2.entry().cmp(&t1.entry()),
+        },
+        SortField::Project => t1.project().cmp(t2.project()),
+        SortField::Tags => match (t1.tags(), t2.tags()) {
+            ([], []) => std::cmp::Ordering::Equal,
+            ([], [..]) => std::cmp::Ordering::Greater,
+            ([..], []) => std::cmp::Ordering::Less,
+            (t1, t2) => t1.cmp(t2),
+        },
+        SortField::Priority => match (t1.priority(), t2.priority()) {
+            (Some(d1), Some(d2)) => d1.partial_cmp(&d2).unwrap(),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => t2.entry().cmp(&t1.entry()),
+        },
+        SortField::Description => t1.description().cmp(t2.description()),
+        SortField::Status => t1.status().cmp(t2.status()),
     }
 }
 
@@ -391,7 +427,6 @@ struct ViewableTask {
     tags: Vec<String>,
     priority: Option<Priority>,
     urgency: Option<f64>,
-    end: Option<chrono::DateTime<chrono::Utc>>,
     due: Option<chrono::DateTime<chrono::Utc>>,
     scheduled: Option<chrono::DateTime<chrono::Utc>>,
 }
