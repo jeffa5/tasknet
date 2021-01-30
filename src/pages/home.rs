@@ -223,7 +223,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
         view_filters(model, &global_model.tasks),
-        view_tasks(&global_model.tasks, &model),
+        view_tasks(&global_model.tasks, model),
     ]
 }
 
@@ -234,7 +234,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
         .filter(|t| model.filters.filter_task(t))
         .collect();
 
-    tasks.sort_by(|t1, t2| sort_viewable_task(&model.sort_field, t1, t2));
+    tasks.sort_by(|t1, t2| sort_viewable_task(model.sort_field, t1, t2));
     if matches!(model.sort_direction, SortDirection::Descending) {
         tasks.reverse();
     }
@@ -279,16 +279,16 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
             C!["table-auto", "w-full"],
             tr![
                 C!["border-b-2"],
-                th![view_sort_button(&model, Field::Age)],
-                IF!(show_due => th![C!["border-l-2"], view_sort_button(&model, Field::Due)]),
-                IF!(show_scheduled => th![C!["border-l-2"], view_sort_button(&model, Field::Scheduled)]),
+                th![view_sort_button(model, Field::Age)],
+                IF!(show_due => th![C!["border-l-2"], view_sort_button(model, Field::Due)]),
+                IF!(show_scheduled => th![C!["border-l-2"], view_sort_button(model, Field::Scheduled)]),
                 IF!(show_status => th![C!["border-l-2"], view_sort_button(model, Field::Status)]),
                 IF!(show_project => th![C!["border-l-2"], view_sort_button(model, Field::Project)]),
                 IF!(show_tags => th![C!["border-l-2"], view_sort_button(model, Field::Tags)]),
                 IF!(show_priority => th![C!["border-l-2"], view_sort_button(model, Field::Priority)]),
                 th![C!["border-l-2"], view_sort_button(model, Field::Description)],
                 th![C!["border-l-2"],
-                    view_sort_button(&model, Field::Urgency)
+                    view_sort_button(model, Field::Urgency)
                 ]
             ],
             tasks.into_iter().enumerate().map(|(i, t)| {
@@ -369,23 +369,23 @@ fn view_sort_button(model: &Model, field: Field) -> Node<GMsg> {
             field,
             if model.sort_field == field {
                 match model.sort_direction {
-                    SortDirection::Ascending => "⬆",
-                    SortDirection::Descending => "⬇",
+                    SortDirection::Ascending => "\u{2b06}",  // ⬆
+                    SortDirection::Descending => "\u{2b07}", // ⬇
                 }
             } else {
-                "⬍"
+                "\u{2b0d}" // ⬍
             }
         ),
     ]
 }
 
-fn sort_viewable_task(sort_field: &Field, t1: &Task, t2: &Task) -> Ordering {
+fn sort_viewable_task(sort_field: Field, t1: &Task, t2: &Task) -> Ordering {
     match sort_field {
         Field::Urgency => match (urgency::calculate(t1), urgency::calculate(t2)) {
             (Some(u1), Some(u2)) => u1.partial_cmp(&u2).unwrap(),
             (Some(_), None) => Ordering::Less,
             (None, Some(_)) => Ordering::Greater,
-            (None, None) => t2.entry().cmp(&t1.entry()),
+            (None, None) => t2.entry().cmp(t1.entry()),
         },
         Field::Age => t2.entry().cmp(t1.entry()),
         Field::Due => match (t1.due(), t2.due()) {
