@@ -51,7 +51,7 @@ pub struct Task {
     udas: HashMap<String, UDA>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Status {
     Pending,
@@ -288,7 +288,7 @@ impl std::convert::TryFrom<String> for RecurUnit {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Priority {
     #[serde(rename(serialize = "H", deserialize = "H"))]
     High,
