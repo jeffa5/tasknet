@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::{BTreeSet, HashMap, HashSet},
     fmt::Display,
 };
@@ -378,39 +379,39 @@ fn view_sort_button(model: &Model, field: Field) -> Node<GMsg> {
     ]
 }
 
-fn sort_viewable_task(sort_field: &Field, t1: &Task, t2: &Task) -> std::cmp::Ordering {
+fn sort_viewable_task(sort_field: &Field, t1: &Task, t2: &Task) -> Ordering {
     match sort_field {
         Field::Urgency => match (urgency::calculate(t1), urgency::calculate(t2)) {
             (Some(u1), Some(u2)) => u1.partial_cmp(&u2).unwrap(),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
             (None, None) => t2.entry().cmp(&t1.entry()),
         },
-        Field::Age => t2.entry().partial_cmp(&t1.entry()).unwrap(),
+        Field::Age => t2.entry().cmp(t1.entry()),
         Field::Due => match (t1.due(), t2.due()) {
-            (Some(d1), Some(d2)) => d1.partial_cmp(&d2).unwrap(),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => t2.entry().cmp(&t1.entry()),
+            (Some(d1), Some(d2)) => d1.cmp(d2),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => t2.entry().cmp(t1.entry()),
         },
         Field::Scheduled => match (t1.scheduled(), t2.scheduled()) {
-            (Some(d1), Some(d2)) => d1.partial_cmp(&d2).unwrap(),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => t2.entry().cmp(&t1.entry()),
+            (Some(d1), Some(d2)) => d1.cmp(d2),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => t2.entry().cmp(t1.entry()),
         },
         Field::Project => t1.project().cmp(t2.project()),
         Field::Tags => match (t1.tags(), t2.tags()) {
-            ([], []) => std::cmp::Ordering::Equal,
-            ([], [..]) => std::cmp::Ordering::Greater,
-            ([..], []) => std::cmp::Ordering::Less,
+            ([], []) => t2.entry().cmp(t1.entry()),
+            ([], [..]) => Ordering::Greater,
+            ([..], []) => Ordering::Less,
             (t1, t2) => t1.cmp(t2),
         },
         Field::Priority => match (t1.priority(), t2.priority()) {
-            (Some(d1), Some(d2)) => d1.partial_cmp(&d2).unwrap(),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => t2.entry().cmp(&t1.entry()),
+            (Some(d1), Some(d2)) => d1.cmp(d2),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => t2.entry().cmp(t1.entry()),
         },
         Field::Description => t1.description().cmp(t2.description()),
         Field::Status => t1.status().cmp(t2.status()),
