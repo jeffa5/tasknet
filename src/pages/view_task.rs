@@ -336,7 +336,9 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                 .collect::<BTreeSet<_>>()
         })
         .collect::<BTreeSet<_>>();
-    tags_suggestions.insert("next".to_owned());
+    if !is_next {
+        tags_suggestions.insert("next".to_owned());
+    }
     div![
         C![
             "flex",
