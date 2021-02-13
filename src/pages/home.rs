@@ -231,44 +231,17 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
 fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
     let mut tasks: Vec<_> = tasks
         .iter()
-        .filter_map(|(i, t)| {
-            if filters.filter_task(t) {
-                Some(ViewableTask {
-                    age: duration_string(
-                        (chrono::offset::Utc::now()).signed_duration_since(*t.entry()),
-                    ),
-                    status: match t.status() {
-                        Status::Pending => "Pending".to_owned(),
-                        Status::Completed => "Completed".to_owned(),
-                        Status::Deleted => "Deleted".to_owned(),
-                        Status::Waiting => "Waiting".to_owned(),
-                        Status::Recurring => "Recurring".to_owned(),
-                    },
-                    project: t.project().to_owned(),
-                    description: t.description().to_owned(),
-                    urgency: urgency::calculate(t),
-                    uuid: *i,
-                    tags: t.tags().to_owned(),
-                    priority: t.priority().to_owned(),
-                    active: t.start().is_some(),
-                    end: t.end().to_owned(),
-                    due: t.due().to_owned(),
-                    scheduled: t.scheduled().to_owned(),
-                })
-            } else {
-                None
-            }
-        })
+        .filter(|(_, t)| model.filters.filter_task(t))
         .collect();
 
-    tasks.sort_by(|t1, t2| sort_viewable_task(model.sort_field, t1, t2));
+    tasks.sort_by(|(_, t1), (_, t2)| sort_viewable_task(model.sort_field, t1, t2));
     if matches!(model.sort_direction, SortDirection::Descending) {
         tasks.reverse();
     }
 
     let tasks = tasks
         .iter()
-        .map(|t| ViewableTask {
+        .map(|(uuid, t)| ViewableTask {
             age: duration_string((chrono::offset::Utc::now()).signed_duration_since(*t.entry())),
             status: match t.status() {
                 Status::Pending => "Pending".to_owned(),
@@ -280,7 +253,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
             project: t.project().to_owned(),
             description: t.description().to_owned(),
             urgency: urgency::calculate(t),
-            uuid: t.uuid(),
+            uuid: *uuid.clone(),
             tags: t.tags().to_owned(),
             priority: t.priority().to_owned(),
             active: t.start().is_some(),
