@@ -21,7 +21,6 @@ impl Document {
                 Backend::init()
             }
         };
-        log!("backend init");
         let mut frontend = Frontend::new();
         frontend.apply_patch(backend.get_patch().unwrap()).unwrap();
         if frontend.value_at_path(&Path::root().key("tasks")).is_none() {
@@ -39,7 +38,6 @@ impl Document {
                 frontend.apply_patch(patch).unwrap();
             }
         }
-        log!("built document", frontend.state());
         Self { frontend, backend }
     }
 
@@ -79,7 +77,6 @@ impl Document {
                 let task = d
                     .value_at_path(&Path::root().key("tasks").key(uuid.to_string()))
                     .map(|v| Task::try_from(v).unwrap());
-                log!(task);
                 if let Some(task) = task {
                     let changes = f(Path::root().key("tasks").key(uuid.to_string()), task);
                     for change in changes {
@@ -89,17 +86,10 @@ impl Document {
                 Ok(())
             })
             .unwrap();
-        log!("changes", changes);
-        log!("in flight 1", self.frontend.in_flight_requests());
         if let Some(changes) = changes {
             let (patch, _) = self.backend.apply_local_change(changes).unwrap();
-            log!("patch", patch);
             self.frontend.apply_patch(patch).unwrap();
         }
-        log!("in flight 2", self.frontend.in_flight_requests());
-        log!(self
-            .frontend
-            .value_at_path(&Path::root().key("tasks").key(uuid.to_string())))
     }
 
     pub fn add_task(&mut self, uuid: uuid::Uuid) {
@@ -118,12 +108,10 @@ impl Document {
                 Ok(())
             })
             .unwrap();
-        log!("in flight 1", self.frontend.in_flight_requests());
         if let Some(changes) = changes {
             let (patch, _) = self.backend.apply_local_change(changes).unwrap();
             self.frontend.apply_patch(patch).unwrap();
         }
-        log!("in flight 2", self.frontend.in_flight_requests());
     }
 
     pub fn save(&self) -> Vec<u8> {

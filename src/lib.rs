@@ -45,7 +45,6 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
             log!("Error registering service worker:", e)
         }
     });
-
     orders
         .stream(streams::interval(1000, || Msg::OnRenderTick))
         .stream(streams::interval(60000, || Msg::OnRecurTick))

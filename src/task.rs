@@ -178,7 +178,6 @@ impl Task {
     }
 
     pub fn set_project(path: Path, project: Vec<String>) -> Vec<LocalChange> {
-        log!("set project");
         vec![LocalChange::set(
             path.key("project"),
             Value::Sequence(
