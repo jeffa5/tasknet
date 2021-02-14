@@ -70,26 +70,7 @@ pub enum Status {
 }
 
 impl Task {
-    pub fn new(uuid: uuid::Uuid) -> Vec<automerge::LocalChange> {
-        (Self {
-            entry: now(),
-            description: String::new(),
-            project: Vec::new(),
-            start: None,
-            scheduled: None,
-            notes: String::new(),
-            tags: Vec::new(),
-            priority: None,
-            depends: HashSet::new(),
-            udas: HashMap::new(),
-            status: Status::Pending,
-            due: None,
-            end: None,
-            wait: None,
-            recur: None,
-            parent: None,
-            until: None,
-        });
+    pub fn create(uuid: uuid::Uuid) -> Vec<automerge::LocalChange> {
         let task_path = Path::root().key("tasks").key(uuid.to_string());
         vec![
             LocalChange::set(
@@ -122,6 +103,30 @@ impl Task {
             LocalChange::set(
                 task_path.clone().key("entry"),
                 Value::Primitive(ScalarValue::Timestamp(now().timestamp_millis())),
+            ),
+            LocalChange::set(
+                task_path.clone().key("end"),
+                Value::Primitive(ScalarValue::Null),
+            ),
+            LocalChange::set(
+                task_path.clone().key("start"),
+                Value::Primitive(ScalarValue::Null),
+            ),
+            LocalChange::set(
+                task_path.clone().key("wait"),
+                Value::Primitive(ScalarValue::Null),
+            ),
+            LocalChange::set(
+                task_path.clone().key("until"),
+                Value::Primitive(ScalarValue::Null),
+            ),
+            LocalChange::set(
+                task_path.clone().key("scheduled"),
+                Value::Primitive(ScalarValue::Null),
+            ),
+            LocalChange::set(
+                task_path.clone().key("due"),
+                Value::Primitive(ScalarValue::Null),
             ),
         ]
     }
@@ -194,16 +199,30 @@ impl Task {
         &self.due
     }
 
-    pub fn set_due(&mut self, due: Option<DateTime>) {
-        self.due = due
+    pub fn set_due(path: Path, due: Option<DateTime>) -> Vec<LocalChange> {
+        vec![LocalChange::set(
+            path.key("due"),
+            Value::Primitive(if let Some(due) = due {
+                ScalarValue::Timestamp(due.timestamp_millis())
+            } else {
+                ScalarValue::Null
+            }),
+        )]
     }
 
     pub const fn scheduled(&self) -> &Option<DateTime> {
         &self.scheduled
     }
 
-    pub fn set_scheduled(&mut self, scheduled: Option<DateTime>) {
-        self.scheduled = scheduled
+    pub fn set_scheduled(path: Path, scheduled: Option<DateTime>) -> Vec<LocalChange> {
+        vec![LocalChange::set(
+            path.key("scheduled"),
+            Value::Primitive(if let Some(scheduled) = scheduled {
+                ScalarValue::Timestamp(scheduled.timestamp_millis())
+            } else {
+                ScalarValue::Null
+            }),
+        )]
     }
 
     pub const fn recur(&self) -> &Option<Recur> {
@@ -222,20 +241,49 @@ impl Task {
         self.recur = recur
     }
 
-    pub fn complete(&mut self) {
-        self.end = Some(now());
-        self.status = Status::Completed
+    pub fn complete(path: Path) -> Vec<LocalChange> {
+        vec![
+            LocalChange::set(
+                path.clone().key("end"),
+                Value::Primitive(ScalarValue::Timestamp(now().timestamp_millis())),
+            ),
+            LocalChange::set(
+                path.clone().key("start"),
+                Value::Primitive(ScalarValue::Null),
+            ),
+            LocalChange::set(
+                path.key("status"),
+                Value::Primitive(ScalarValue::Str(
+                    serde_json::to_string(&Status::Completed).unwrap(),
+                )),
+            ),
+        ]
     }
 
-    pub fn delete(&mut self) {
-        self.end = Some(now());
-        self.status = Status::Deleted
+    pub fn delete(path: Path) -> Vec<LocalChange> {
+        vec![
+            LocalChange::set(
+                path.clone().key("end"),
+                Value::Primitive(ScalarValue::Timestamp(now().timestamp_millis())),
+            ),
+            LocalChange::set(
+                path.key("status"),
+                Value::Primitive(ScalarValue::Str(
+                    serde_json::to_string(&Status::Deleted).unwrap(),
+                )),
+            ),
+        ]
     }
 
-    pub fn restore(&mut self) {
+    pub fn restore(&self, path: Path) -> Vec<LocalChange> {
         match self.status {
-            Status::Pending | Status::Waiting | Status::Recurring => {}
-            Status::Completed | Status::Deleted => self.status = Status::Pending,
+            Status::Pending | Status::Waiting | Status::Recurring => Vec::new(),
+            Status::Completed | Status::Deleted => vec![LocalChange::set(
+                path.key("status"),
+                Value::Primitive(ScalarValue::Str(
+                    serde_json::to_string(&Status::Pending).unwrap(),
+                )),
+            )],
         }
     }
 
@@ -281,13 +329,26 @@ impl Task {
         }
     }
 
-    pub fn activate(&mut self) {
-        self.tags.retain(|t| *t != "next");
-        self.start = Some(now())
+    pub fn activate(&self, path: Path) -> Vec<LocalChange> {
+        let tags = self
+            .tags
+            .iter()
+            .filter(|t| *t != "next")
+            .map(|t| t.to_owned())
+            .collect();
+        let mut changes = Self::set_tags(path.clone(), tags);
+        changes.push(LocalChange::set(
+            path.key("start"),
+            Value::Primitive(ScalarValue::Timestamp(now().timestamp_millis())),
+        ));
+        changes
     }
 
-    pub fn deactivate(&mut self) {
-        self.start = None
+    pub fn deactivate(path: Path) -> Vec<LocalChange> {
+        vec![LocalChange::set(
+            path.key("start"),
+            Value::Primitive(ScalarValue::Null),
+        )]
     }
 }
 
@@ -395,6 +456,48 @@ impl TryFrom<automerge::Value> for Task {
             } else {
                 return Err("Missing entry / wrong type".to_owned());
             };
+            let start = match map.get("start") {
+                Some(Value::Primitive(ScalarValue::Timestamp(t))) => {
+                    Some(chrono::Utc.timestamp_millis(*t))
+                }
+                Some(Value::Primitive(ScalarValue::Null)) => None,
+                _ => return Err("Missing start / wrong type".to_owned()),
+            };
+            let end = match map.get("end") {
+                Some(Value::Primitive(ScalarValue::Timestamp(t))) => {
+                    Some(chrono::Utc.timestamp_millis(*t))
+                }
+                Some(Value::Primitive(ScalarValue::Null)) => None,
+                _ => return Err("Missing end / wrong type".to_owned()),
+            };
+            let wait = match map.get("wait") {
+                Some(Value::Primitive(ScalarValue::Timestamp(t))) => {
+                    Some(chrono::Utc.timestamp_millis(*t))
+                }
+                Some(Value::Primitive(ScalarValue::Null)) => None,
+                _ => return Err("Missing wait / wrong type".to_owned()),
+            };
+            let until = match map.get("until") {
+                Some(Value::Primitive(ScalarValue::Timestamp(t))) => {
+                    Some(chrono::Utc.timestamp_millis(*t))
+                }
+                Some(Value::Primitive(ScalarValue::Null)) => None,
+                _ => return Err("Missing until / wrong type".to_owned()),
+            };
+            let scheduled = match map.get("scheduled") {
+                Some(Value::Primitive(ScalarValue::Timestamp(t))) => {
+                    Some(chrono::Utc.timestamp_millis(*t))
+                }
+                Some(Value::Primitive(ScalarValue::Null)) => None,
+                _ => return Err("Missing scheduled / wrong type".to_owned()),
+            };
+            let due = match map.get("due") {
+                Some(Value::Primitive(ScalarValue::Timestamp(t))) => {
+                    Some(chrono::Utc.timestamp_millis(*t))
+                }
+                Some(Value::Primitive(ScalarValue::Null)) => None,
+                _ => return Err("Missing due / wrong type".to_owned()),
+            };
             let description = if let Some(Value::Text(t)) = map.get("description") {
                 t.iter().collect()
             } else {
@@ -430,14 +533,14 @@ impl TryFrom<automerge::Value> for Task {
                 status,
                 entry,
                 description,
-                start: None,
-                due: None,
-                end: None,
-                wait: None,
-                scheduled: None,
+                start,
+                due,
+                end,
+                wait,
+                scheduled,
                 recur: None,
                 parent: None,
-                until: None,
+                until,
                 notes: "".to_owned(),
                 project,
                 tags,
@@ -460,7 +563,7 @@ mod tests {
 
     #[test]
     fn test_serde_priority() {
-        let (_, mut task) = Task::new();
+        let (_, mut task) = Task::create();
         task.set_priority(Some(Priority::Medium));
         let s = serde_json::to_string(&task).unwrap();
         let t = serde_json::from_str(&s).unwrap();
@@ -476,7 +579,7 @@ mod tests {
 
     #[test]
     fn test_render_json_format_string() {
-        let task = Task::new();
+        let task = Task::create();
         let rendered = serde_json::to_string(&task).unwrap();
         let re = Regex::new(r#"\{"status":"pending","entry":".*","description":""}"#).unwrap();
         assert!(re.is_match(&rendered), "{}", rendered)

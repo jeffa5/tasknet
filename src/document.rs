@@ -97,7 +97,7 @@ impl Document {
                     .value_at_path(&Path::root().key("tasks").key(uuid.to_string()))
                     .map(|v| Task::try_from(v).unwrap());
                 if task.is_none() {
-                    let changes = Task::new(uuid);
+                    let changes = Task::create(uuid);
                     for change in changes {
                         d.add_change(change).unwrap()
                     }

@@ -279,27 +279,39 @@ pub fn update(
         }
         Msg::CompleteSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            // if let Some(task) = global_model.document.get_mut(&model.selected_task) {
-            //     task.complete()
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, _task| Task::complete(path));
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::StartSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            // if let Some(task) = global_model.document.get_mut(&model.selected_task) {
-            //     task.activate()
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, task| task.activate(path));
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::StopSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            // if let Some(task) = global_model.document.get_mut(&model.selected_task) {
-            //     task.deactivate()
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, _task| Task::deactivate(path));
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::MoveSelectedTaskToPending => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            // if let Some(task) = global_model.document.get_mut(&model.selected_task) {
-            //     task.restore()
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, task| task.restore(path));
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::EscapeKey => {
             orders.request_url(Urls::new(&global_model.base_url).home());
