@@ -121,17 +121,24 @@ pub fn update(
             }
         }
         Msg::SelectedTaskPriorityChanged(new_priority) => {
-            // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
-            //     task.set_priority(match Priority::try_from(new_priority) {
-            //         Ok(p) => Some(p),
-            //         Err(()) => None,
-            //     });
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, _task| {
+                    Task::set_priority(path, Priority::try_from(new_priority).ok())
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::SelectedTaskNotesChanged(new_notes) => {
-            // if let some(task) = &mut global_model.document.get_mut(&model.selected_task) {
-            //     task.set_notes(new_notes)
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, _task| {
+                    Task::set_notes(path, &new_notes)
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::SelectedTaskDueDateChanged(new_date) => {
             // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
@@ -260,22 +267,24 @@ pub fn update(
         }
         Msg::DeleteSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            // if let Some(task) = global_model.document.get_mut(&model.selected_task) {
-            //     match task.status() {
-            //         Status::Pending | Status::Completed | Status::Waiting | Status::Recurring => {
-            //             task.delete();
-            //         }
-            //         Status::Deleted => match window().confirm_with_message(
-            //             "Are you sure you want to permanently delete this task?",
-            //         ) {
-            //             Ok(true) => {
-            //                 /* already removed from set so just don't add it back */
-            //                 global_model.document.remove(&model.selected_task);
-            //             }
-            //             Ok(false) | Err(_) => {}
-            //         },
-            //     }
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, task| match task.status() {
+                    Status::Pending | Status::Completed | Status::Waiting | Status::Recurring => {
+                        Task::delete(path)
+                    }
+                    Status::Deleted => match window().confirm_with_message(
+                        "Are you sure you want to permanently delete this task?",
+                    ) {
+                        Ok(true) => {
+                            vec![automerge::LocalChange::delete(path.parent())]
+                        }
+                        Ok(false) | Err(_) => Vec::new(),
+                    },
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::CompleteSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());

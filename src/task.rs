@@ -85,6 +85,7 @@ impl Task {
                 task_path.clone().key("description"),
                 Value::Text(Vec::new()),
             ),
+            LocalChange::set(task_path.clone().key("notes"), Value::Text(Vec::new())),
             LocalChange::set(
                 task_path.clone().key("project"),
                 Value::Sequence(Vec::new()),
@@ -126,6 +127,10 @@ impl Task {
             ),
             LocalChange::set(
                 task_path.clone().key("due"),
+                Value::Primitive(ScalarValue::Null),
+            ),
+            LocalChange::set(
+                task_path.clone().key("priority"),
                 Value::Primitive(ScalarValue::Null),
             ),
         ]
@@ -306,12 +311,20 @@ impl Task {
         &self.priority
     }
 
-    pub fn set_priority(&mut self, priority: Option<Priority>) {
-        self.priority = priority
+    pub fn set_priority(path: Path, priority: Option<Priority>) -> Vec<LocalChange> {
+        vec![LocalChange::set(
+            path.key("priority"),
+            Value::Primitive(priority.map_or(ScalarValue::Null, |priority| {
+                ScalarValue::Str(serde_json::to_string(&priority).unwrap())
+            })),
+        )]
     }
 
-    pub fn set_notes(&mut self, notes: String) {
-        self.notes = notes
+    pub fn set_notes(path: Path, notes: &str) -> Vec<LocalChange> {
+        vec![LocalChange::set(
+            path.key("notes"),
+            Value::Text(notes.chars().collect()),
+        )]
     }
 
     pub fn notes(&self) -> &str {
@@ -503,6 +516,11 @@ impl TryFrom<automerge::Value> for Task {
             } else {
                 return Err("Missing description / wrong type".to_owned());
             };
+            let notes = if let Some(Value::Text(t)) = map.get("notes") {
+                t.iter().collect()
+            } else {
+                return Err("Missing notes / wrong type".to_owned());
+            };
             let project = if let Some(Value::Sequence(v)) = map.get("project") {
                 let mut project: Vec<String> = Vec::new();
                 for i in v {
@@ -529,6 +547,13 @@ impl TryFrom<automerge::Value> for Task {
             } else {
                 return Err("Missing tags / wrong type".to_owned());
             };
+            let priority = match map.get("priority") {
+                Some(Value::Primitive(ScalarValue::Str(s))) => {
+                    Some(serde_json::from_str(s).unwrap())
+                }
+                Some(Value::Primitive(ScalarValue::Null)) => None,
+                _ => return Err("Missing priority / wrong type".to_owned()),
+            };
             Ok(Self {
                 status,
                 entry,
@@ -541,10 +566,10 @@ impl TryFrom<automerge::Value> for Task {
                 recur: None,
                 parent: None,
                 until,
-                notes: "".to_owned(),
+                notes,
                 project,
                 tags,
-                priority: None,
+                priority,
                 depends: HashSet::new(),
                 udas: HashMap::new(),
             })
