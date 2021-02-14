@@ -140,8 +140,6 @@ pub enum Msg {
     OnRenderTick,
     OnRecurTick,
     UrlChanged(subs::UrlChanged),
-    ImportTasks,
-    ExportTasks,
     ApplyChange(automerge_protocol::UncompressedChange),
     ApplyPatch(automerge_protocol::Patch),
     Home(pages::home::Msg),
@@ -199,44 +197,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::UrlChanged(subs::UrlChanged(url)) => {
             model.page = Page::init(url, &model.global.document, orders)
         }
-        Msg::ImportTasks => match window().prompt_with_message("Paste the tasks json here") {
-            Ok(Some(content)) => {
-                match serde_json::from_str::<HashMap<uuid::Uuid, Task>>(&content) {
-                    Ok(tasks) => {
-                        for (id, task) in tasks {
-                            // model.global.tasks.insert(id, task);
-                        }
-                    }
-                    Err(e) => {
-                        log!(e);
-                        window()
-                            .alert_with_message("Failed to import tasks")
-                            .unwrap_or_else(|e| log!(e));
-                    }
-                }
-            }
-            Ok(None) => {}
-            Err(e) => {
-                log!(e);
-                window()
-                    .alert_with_message("Failed to create prompt")
-                    .unwrap_or_else(|e| log!(e));
-            }
-        },
-        Msg::ExportTasks => {
-            // let json = serde_json::to_string(&model.global.document);
-            // match json {
-            //     Ok(json) => {
-            //         window()
-            //             .prompt_with_message_and_default("Copy this", &json)
-            //             .unwrap_or_else(|e| {
-            //                 log!(e);
-            //                 None
-            //             });
-            //     }
-            //     Err(e) => log!(e),
-            // }
-        }
         Msg::ApplyChange(change) => {
                 let (patch, _) = model.global.document.backend.apply_local_change(change).unwrap();
             orders.skip().send_msg(
@@ -289,8 +249,6 @@ fn view_titlebar() -> Node<Msg> {
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
-            view_button("Import Tasks", Msg::ImportTasks),
-            view_button("Export Tasks", Msg::ExportTasks),
             view_button("Create", Msg::CreateTask),
         ]
     ]
