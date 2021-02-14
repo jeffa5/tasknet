@@ -108,6 +108,7 @@ impl Task {
                 task_path.clone().key("project"),
                 Value::Sequence(Vec::new()),
             ),
+            LocalChange::set(task_path.clone().key("tags"), Value::Sequence(Vec::new())),
             LocalChange::set(
                 task_path.clone().key("start"),
                 Value::Primitive(ScalarValue::Null),
@@ -242,8 +243,15 @@ impl Task {
         &self.tags
     }
 
-    pub fn set_tags(&mut self, tags: Vec<String>) {
-        self.tags = tags
+    pub fn set_tags(path: Path, tags: Vec<String>) -> Vec<LocalChange> {
+        vec![LocalChange::set(
+            path.key("tags"),
+            Value::Sequence(
+                tags.into_iter()
+                    .map(|s| Value::Text(s.chars().collect()))
+                    .collect(),
+            ),
+        )]
     }
 
     pub const fn priority(&self) -> &Option<Priority> {
@@ -405,6 +413,19 @@ impl TryFrom<automerge::Value> for Task {
             } else {
                 return Err("Missing project / wrong type".to_owned());
             };
+            let tags = if let Some(Value::Sequence(v)) = map.get("tags") {
+                let mut tags: Vec<String> = Vec::new();
+                for i in v {
+                    if let Value::Text(t) = i {
+                        tags.push(t.iter().collect())
+                    } else {
+                        return Err(format!("Wrong type in tags sequence {:?}", i));
+                    }
+                }
+                tags
+            } else {
+                return Err("Missing tags / wrong type".to_owned());
+            };
             Ok(Self {
                 status,
                 entry,
@@ -419,7 +440,7 @@ impl TryFrom<automerge::Value> for Task {
                 until: None,
                 notes: "".to_owned(),
                 project,
-                tags: Vec::new(),
+                tags,
                 priority: None,
                 depends: HashSet::new(),
                 udas: HashMap::new(),

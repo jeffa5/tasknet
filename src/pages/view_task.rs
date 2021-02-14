@@ -97,20 +97,28 @@ pub fn update(
         }
         Msg::SelectedTaskTagsChanged(new_tags) => {
             let new_end = new_tags.ends_with(' ');
-            // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
-            //     task.set_tags(if new_tags.is_empty() {
-            //         Vec::new()
-            //     } else {
-            //         let mut tags: Vec<_> = new_tags
-            //             .split_whitespace()
-            //             .map(|s| s.trim().to_owned())
-            //             .collect();
-            //         if new_end {
-            //             tags.push(String::new())
-            //         }
-            //         tags
-            //     })
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, _task| {
+                    Task::set_tags(
+                        path,
+                        if new_tags.is_empty() {
+                            Vec::new()
+                        } else {
+                            let mut tags: Vec<_> = new_tags
+                                .split_whitespace()
+                                .map(std::borrow::ToOwned::to_owned)
+                                .collect();
+                            if new_end {
+                                tags.push(String::new())
+                            }
+                            tags
+                        },
+                    )
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::SelectedTaskPriorityChanged(new_priority) => {
             // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
