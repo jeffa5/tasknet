@@ -142,6 +142,8 @@ pub enum Msg {
     UrlChanged(subs::UrlChanged),
     ImportTasks,
     ExportTasks,
+    ApplyChange(automerge_protocol::UncompressedChange),
+    ApplyPatch(automerge_protocol::Patch),
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
 }
@@ -234,6 +236,15 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             //     }
             //     Err(e) => log!(e),
             // }
+        }
+        Msg::ApplyChange(change) => {
+                let (patch, _) = model.global.document.backend.apply_local_change(change).unwrap();
+            orders.skip().send_msg(
+                Msg::ApplyPatch(patch)
+            );
+        }
+        Msg::ApplyPatch(patch) => {
+            model.global.document.frontend.apply_patch(patch).unwrap()
         }
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {

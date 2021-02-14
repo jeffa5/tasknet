@@ -1,4 +1,4 @@
-use crate::task::Task;
+use crate::{task::Task, Msg};
 use std::{collections::HashMap, convert::TryFrom, str::FromStr};
 
 use automerge::{Backend, Frontend, Path};
@@ -8,8 +8,8 @@ use seed::{prelude::*, *};
 pub const TASKS_STORAGE_KEY: &str = "tasknet-tasks-automerge";
 
 pub struct Document {
-    frontend: Frontend,
-    backend: Backend,
+    pub frontend: Frontend,
+    pub backend: Backend,
 }
 
 impl Document {
@@ -67,7 +67,7 @@ impl Document {
             .unwrap_or_default()
     }
 
-    pub fn change_task<F>(&mut self, uuid: &uuid::Uuid, f: F)
+    pub fn change_task<F>(&mut self, uuid: &uuid::Uuid, f: F) -> Option<Msg>
     where
         F: FnOnce(Path, Task) -> Vec<automerge::LocalChange>,
     {
@@ -86,10 +86,7 @@ impl Document {
                 Ok(())
             })
             .unwrap();
-        if let Some(changes) = changes {
-            let (patch, _) = self.backend.apply_local_change(changes).unwrap();
-            self.frontend.apply_patch(patch).unwrap();
-        }
+        changes.map(Msg::ApplyChange)
     }
 
     pub fn add_task(&mut self, uuid: uuid::Uuid) {

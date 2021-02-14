@@ -64,14 +64,19 @@ pub fn update(
     orders: &mut impl Orders<GMsg>,
 ) {
     match msg {
-        Msg::SelectedTaskDescriptionChanged(new_description) => global_model
-            .document
-            .change_task(&model.selected_task, |path, _task| {
-                Task::set_description(path, &new_description)
-            }),
+        Msg::SelectedTaskDescriptionChanged(new_description) => {
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, _task| {
+                    Task::set_description(path, &new_description)
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
+        }
         Msg::SelectedTaskProjectChanged(new_project) => {
             let new_project = new_project.trim();
-            global_model
+            let msg = global_model
                 .document
                 .change_task(&model.selected_task, |path, _task| {
                     Task::set_project(
@@ -85,7 +90,10 @@ pub fn update(
                                 .collect()
                         },
                     )
-                })
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::SelectedTaskTagsChanged(new_tags) => {
             let new_end = new_tags.ends_with(' ');
