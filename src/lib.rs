@@ -198,14 +198,15 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.page = Page::init(url, &model.global.document, orders)
         }
         Msg::ApplyChange(change) => {
-                let (patch, _) = model.global.document.backend.apply_local_change(change).unwrap();
-            orders.skip().send_msg(
-                Msg::ApplyPatch(patch)
-            );
+            let (patch, _) = model
+                .global
+                .document
+                .backend
+                .apply_local_change(change)
+                .unwrap();
+            orders.skip().send_msg(Msg::ApplyPatch(patch));
         }
-        Msg::ApplyPatch(patch) => {
-            model.global.document.frontend.apply_patch(patch).unwrap()
-        }
+        Msg::ApplyPatch(patch) => model.global.document.frontend.apply_patch(patch).unwrap(),
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {
                 pages::view_task::update(msg, &mut model.global, lm, orders)

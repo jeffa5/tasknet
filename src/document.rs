@@ -1,9 +1,10 @@
-use crate::{task::Task, Msg};
 use std::{collections::HashMap, convert::TryFrom, str::FromStr};
 
 use automerge::{Backend, Frontend, Path};
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
+
+use crate::{task::Task, Msg};
 
 pub const TASKS_STORAGE_KEY: &str = "tasknet-tasks-automerge";
 

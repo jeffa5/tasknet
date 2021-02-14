@@ -1,14 +1,13 @@
-use automerge::Path;
-use automerge_protocol::ScalarValue;
-use chrono::TimeZone;
-#[allow(clippy::wildcard_imports)]
-use seed::{prelude::*, *};
 use std::{
     collections::{HashMap, HashSet},
     convert::TryFrom,
 };
 
-use automerge::{LocalChange, Value};
+use automerge::{LocalChange, Path, Value};
+use automerge_protocol::ScalarValue;
+use chrono::TimeZone;
+#[allow(clippy::wildcard_imports)]
+use seed::{prelude::*, *};
 use serde::{Deserialize, Serialize};
 
 // Based on https://taskwarrior.org/docs/design/task.html
