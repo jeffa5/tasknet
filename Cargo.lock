@@ -33,7 +33,7 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 [[package]]
 name = "automerge"
 version = "0.0.2"
-source = "git+https://github.com/automerge/automerge-rs?branch=main#82deb8a517b242659b13d5358492114edfdfe16d"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#c8d2d92478e3192f7e9df097c9b18785ef0720df"
 dependencies = [
  "automerge-backend",
  "automerge-frontend",
@@ -46,11 +46,12 @@ dependencies = [
 [[package]]
 name = "automerge-backend"
 version = "0.0.1"
-source = "git+https://github.com/automerge/automerge-rs?branch=main#82deb8a517b242659b13d5358492114edfdfe16d"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#c8d2d92478e3192f7e9df097c9b18785ef0720df"
 dependencies = [
  "automerge-protocol",
  "fxhash",
  "hex",
+ "itertools",
  "js-sys",
  "leb128",
  "maplit",
@@ -59,7 +60,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "thiserror",
- "uuid 0.5.1",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -67,11 +67,12 @@ dependencies = [
 [[package]]
 name = "automerge-frontend"
 version = "0.1.0"
-source = "git+https://github.com/automerge/automerge-rs?branch=main#82deb8a517b242659b13d5358492114edfdfe16d"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#c8d2d92478e3192f7e9df097c9b18785ef0720df"
 dependencies = [
  "automerge-protocol",
+ "chrono",
  "futures",
- "im",
+ "im-rc",
  "maplit",
  "serde",
  "serde_json",
@@ -82,12 +83,12 @@ dependencies = [
 [[package]]
 name = "automerge-protocol"
 version = "0.1.0"
-source = "git+https://github.com/automerge/automerge-rs?branch=main#82deb8a517b242659b13d5358492114edfdfe16d"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#c8d2d92478e3192f7e9df097c9b18785ef0720df"
 dependencies = [
  "hex",
  "serde",
  "thiserror",
- "uuid 0.5.1",
+ "uuid 0.8.2",
 ]
 
 [[package]]
@@ -225,6 +226,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derivative"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "difference"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -244,6 +256,12 @@ name = "discard"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
+
+[[package]]
+name = "either"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
 name = "enclose"
@@ -460,10 +478,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "644f9158b2f133fd50f5fb3242878846d9eb792e445c893805ff0e3824006e35"
 
 [[package]]
-name = "im"
+name = "im-rc"
 version = "15.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "111c1983f3c5bb72732df25cddacee9b546d08325fb584b5ebd38148be7b0246"
+checksum = "3ca8957e71f04a205cb162508f9326aea04676c8dfd0711220190d6b83664f3f"
 dependencies = [
  "bitmaps",
  "rand_core 0.5.1",
@@ -481,6 +499,15 @@ checksum = "4fb1fa934250de4de8aef298d81c729a7d33d8c239daa3a7575e6b92bfc7313b"
 dependencies = [
  "autocfg",
  "hashbrown",
+]
+
+[[package]]
+name = "itertools"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
+dependencies = [
+ "either",
 ]
 
 [[package]]
@@ -982,7 +1009,9 @@ version = "0.1.0"
 dependencies = [
  "apply",
  "automerge",
+ "automerge-protocol",
  "chrono",
+ "derivative",
  "pretty_assertions",
  "regex",
  "seed",

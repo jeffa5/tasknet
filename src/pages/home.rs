@@ -221,10 +221,8 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
 }
 
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
-    div![
-        view_filters(model, &global_model.tasks),
-        view_tasks(&global_model.tasks, model),
-    ]
+    let tasks = global_model.document.tasks();
+    div![view_filters(model, &tasks), view_tasks(&tasks, model),]
 }
 
 #[allow(clippy::too_many_lines)]
