@@ -173,30 +173,35 @@ pub fn update(
             }
         }
         Msg::SelectedTaskDueTimeChanged(new_time) => {
-            // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
-            //     let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
-            //     match new_time {
-            //         Ok(new_time) => {
-            //             let due = task.due();
-            //             match due {
-            //                 None => {
-            //                     let now = chrono::offset::Utc::now();
-            //                     let now = now
-            //                         .with_hour(new_time.hour())
-            //                         .and_then(|now| now.with_minute(new_time.minute()));
-            //                     task.set_due(now)
-            //                 }
-            //                 Some(due) => {
-            //                     let due = due
-            //                         .with_hour(new_time.hour())
-            //                         .and_then(|due| due.with_minute(new_time.minute()));
-            //                     task.set_due(due)
-            //                 }
-            //             }
-            //         }
-            //         Err(_) => task.set_due(None),
-            //     }
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, task| {
+                    let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
+                    match new_time {
+                        Ok(new_time) => {
+                            let due = task.due();
+                            match due {
+                                None => {
+                                    let now = chrono::offset::Utc::now();
+                                    let now = now
+                                        .with_hour(new_time.hour())
+                                        .and_then(|now| now.with_minute(new_time.minute()));
+                                    Task::set_due(path, now)
+                                }
+                                Some(due) => {
+                                    let due = due
+                                        .with_hour(new_time.hour())
+                                        .and_then(|due| due.with_minute(new_time.minute()));
+                                    Task::set_due(path, due)
+                                }
+                            }
+                        }
+                        Err(_) => Task::set_due(path, None),
+                    }
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::SelectedTaskScheduledDateChanged(new_date) => {
             // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
