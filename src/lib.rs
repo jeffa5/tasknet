@@ -1,10 +1,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 
-use std::collections::HashMap;
-
 use apply::Apply;
-use automerge::{Backend, Frontend};
 use derivative::Derivative;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
@@ -19,7 +16,7 @@ mod urgency;
 use components::view_button;
 use document::Document;
 use filters::Filters;
-use task::{Recur, Status, Task};
+use task::{Recur, Status};
 
 const VIEW_TASK: &str = "view";
 

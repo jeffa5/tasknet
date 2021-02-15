@@ -251,7 +251,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
             project: t.project().to_owned(),
             description: t.description().to_owned(),
             urgency: urgency::calculate(t),
-            uuid: *uuid.clone(),
+            uuid: **uuid,
             tags: t.tags().to_owned(),
             priority: t.priority().to_owned(),
             active: t.start().is_some(),

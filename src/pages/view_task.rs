@@ -3,7 +3,6 @@ use std::{
     convert::TryFrom,
 };
 
-use automerge::Path;
 use chrono::{Datelike, Timelike};
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
