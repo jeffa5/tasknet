@@ -129,7 +129,7 @@ impl Task {
                 Value::Primitive(ScalarValue::Null),
             ),
             LocalChange::set(
-                task_path.clone().key("priority"),
+                task_path.key("priority"),
                 Value::Primitive(ScalarValue::Null),
             ),
         ]
@@ -206,11 +206,9 @@ impl Task {
     pub fn set_due(path: Path, due: Option<DateTime>) -> Vec<LocalChange> {
         vec![LocalChange::set(
             path.key("due"),
-            Value::Primitive(if let Some(due) = due {
+            Value::Primitive(due.map_or(ScalarValue::Null, |due| {
                 ScalarValue::Timestamp(due.timestamp_millis())
-            } else {
-                ScalarValue::Null
-            }),
+            })),
         )]
     }
 
@@ -575,37 +573,5 @@ impl TryFrom<automerge::Value> for Task {
         } else {
             Err("Value was not a map".to_owned())
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use pretty_assertions::assert_eq;
-    use regex::Regex;
-
-    use super::*;
-
-    #[test]
-    fn test_serde_priority() {
-        let (_, mut task) = Task::create();
-        task.set_priority(Some(Priority::Medium));
-        let s = serde_json::to_string(&task).unwrap();
-        let t = serde_json::from_str(&s).unwrap();
-        assert_eq!(task, t)
-    }
-
-    #[test]
-    fn test_parse_json_format_string() {
-        let json = r#"{"status":"completed","uuid":"2aa2717d-715f-4a74-9014-1ad4175bbbdc","entry":"2020-12-30T20:05:27.108Z","description":"Add uncomplete for completed tasks","end":"2020-12-31T11:10:42.123Z","project":["tasknet","ui"],"modified":"2020-12-31T11:10:42.123Z"}"#;
-        let parsed = serde_json::from_str::<Task>(json);
-        assert!(parsed.is_ok(), "{:?}", parsed)
-    }
-
-    #[test]
-    fn test_render_json_format_string() {
-        let task = Task::create();
-        let rendered = serde_json::to_string(&task).unwrap();
-        let re = Regex::new(r#"\{"status":"pending","entry":".*","description":""}"#).unwrap();
-        assert!(re.is_match(&rendered), "{}", rendered)
     }
 }

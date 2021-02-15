@@ -141,28 +141,36 @@ pub fn update(
             }
         }
         Msg::SelectedTaskDueDateChanged(new_date) => {
-            // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
-            //     let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
-            //     match new_date {
-            //         Ok(new_date) => {
-            //             let due = task.due();
-            //             match due {
-            //                 None => task.set_due(Some(chrono::DateTime::from_utc(
-            //                     new_date.and_hms(0, 0, 0),
-            //                     chrono::Utc,
-            //                 ))),
-            //                 Some(due) => {
-            //                     let due = due
-            //                         .with_year(new_date.year())
-            //                         .and_then(|due| due.with_month(new_date.month()))
-            //                         .and_then(|due| due.with_day(new_date.day()));
-            //                     task.set_due(due)
-            //                 }
-            //             }
-            //         }
-            //         Err(_) => task.set_due(None),
-            //     }
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, task| {
+                    let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
+                    match new_date {
+                        Ok(new_date) => {
+                            let due = task.due();
+                            match due {
+                                None => Task::set_due(
+                                    path,
+                                    Some(chrono::DateTime::from_utc(
+                                        new_date.and_hms(0, 0, 0),
+                                        chrono::Utc,
+                                    )),
+                                ),
+                                Some(due) => {
+                                    let due = due
+                                        .with_year(new_date.year())
+                                        .and_then(|due| due.with_month(new_date.month()))
+                                        .and_then(|due| due.with_day(new_date.day()));
+                                    Task::set_due(path, due)
+                                }
+                            }
+                        }
+                        Err(_) => Task::set_due(path, None),
+                    }
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::SelectedTaskDueTimeChanged(new_time) => {
             // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
