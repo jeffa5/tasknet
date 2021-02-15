@@ -219,11 +219,9 @@ impl Task {
     pub fn set_scheduled(path: Path, scheduled: Option<DateTime>) -> Vec<LocalChange> {
         vec![LocalChange::set(
             path.key("scheduled"),
-            Value::Primitive(if let Some(scheduled) = scheduled {
+            Value::Primitive(scheduled.map_or(ScalarValue::Null, |scheduled| {
                 ScalarValue::Timestamp(scheduled.timestamp_millis())
-            } else {
-                ScalarValue::Null
-            }),
+            })),
         )]
     }
 

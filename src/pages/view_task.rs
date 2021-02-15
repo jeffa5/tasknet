@@ -204,54 +204,69 @@ pub fn update(
             }
         }
         Msg::SelectedTaskScheduledDateChanged(new_date) => {
-            // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
-            //     let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
-            //     match new_date {
-            //         Ok(new_date) => {
-            //             let scheduled = task.scheduled();
-            //             match scheduled {
-            //                 None => task.set_scheduled(Some(chrono::DateTime::from_utc(
-            //                     new_date.and_hms(0, 0, 0),
-            //                     chrono::Utc,
-            //                 ))),
-            //                 Some(scheduled) => {
-            //                     let scheduled = scheduled
-            //                         .with_year(new_date.year())
-            //                         .and_then(|scheduled| scheduled.with_month(new_date.month()))
-            //                         .and_then(|scheduled| scheduled.with_day(new_date.day()));
-            //                     task.set_scheduled(scheduled)
-            //                 }
-            //             }
-            //         }
-            //         Err(_) => task.set_scheduled(None),
-            //     }
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, task| {
+                    let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
+                    match new_date {
+                        Ok(new_date) => {
+                            let scheduled = task.scheduled();
+                            match scheduled {
+                                None => Task::set_scheduled(
+                                    path,
+                                    Some(chrono::DateTime::from_utc(
+                                        new_date.and_hms(0, 0, 0),
+                                        chrono::Utc,
+                                    )),
+                                ),
+                                Some(scheduled) => {
+                                    let scheduled = scheduled
+                                        .with_year(new_date.year())
+                                        .and_then(|scheduled| {
+                                            scheduled.with_month(new_date.month())
+                                        })
+                                        .and_then(|scheduled| scheduled.with_day(new_date.day()));
+                                    Task::set_scheduled(path, scheduled)
+                                }
+                            }
+                        }
+                        Err(_) => Task::set_scheduled(path, None),
+                    }
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::SelectedTaskScheduledTimeChanged(new_time) => {
-            // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
-            //     let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
-            //     match new_time {
-            //         Ok(new_time) => {
-            //             let scheduled = task.scheduled();
-            //             match scheduled {
-            //                 None => {
-            //                     let now = chrono::offset::Utc::now();
-            //                     let now = now
-            //                         .with_hour(new_time.hour())
-            //                         .and_then(|now| now.with_minute(new_time.minute()));
-            //                     task.set_scheduled(now)
-            //                 }
-            //                 Some(scheduled) => {
-            //                     let scheduled = scheduled
-            //                         .with_hour(new_time.hour())
-            //                         .and_then(|scheduled| scheduled.with_minute(new_time.minute()));
-            //                     task.set_scheduled(scheduled)
-            //                 }
-            //             }
-            //         }
-            //         Err(_) => task.set_scheduled(None),
-            //     }
-            // }
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task, |path, task| {
+                    let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
+                    match new_time {
+                        Ok(new_time) => {
+                            let scheduled = task.scheduled();
+                            match scheduled {
+                                None => {
+                                    let now = chrono::offset::Utc::now();
+                                    let now = now
+                                        .with_hour(new_time.hour())
+                                        .and_then(|now| now.with_minute(new_time.minute()));
+                                    Task::set_scheduled(path, now)
+                                }
+                                Some(scheduled) => {
+                                    let scheduled = scheduled.with_hour(new_time.hour()).and_then(
+                                        |scheduled| scheduled.with_minute(new_time.minute()),
+                                    );
+                                    Task::set_scheduled(path, scheduled)
+                                }
+                            }
+                        }
+                        Err(_) => Task::set_scheduled(path, None),
+                    }
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::SelectedTaskRecurAmountChanged(new_amount) => {
             // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
