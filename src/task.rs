@@ -342,7 +342,7 @@ impl Task {
             .tags
             .iter()
             .filter(|t| *t != "next")
-            .map(|t| t.to_owned())
+            .map(std::borrow::ToOwned::to_owned)
             .collect();
         let mut changes = Self::set_tags(path.clone(), tags);
         changes.push(LocalChange::set(
