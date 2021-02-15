@@ -48,9 +48,14 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .subscribe(Msg::UrlChanged);
     let document = Document::new();
     let page = Page::init(url.clone(), &document, orders);
+    let web_socket = WebSocket::builder("ws://127.0.0.1:8080/sync", orders)
+        .on_message(|msg| Msg::SyncMessageReceived(msg.text().unwrap()))
+        .build_and_open()
+        .unwrap();
     Model {
         global: GlobalModel {
             document,
+            sync_socket: web_socket,
             base_url: url.to_hash_base_url(),
         },
         page,
@@ -66,6 +71,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 pub struct GlobalModel {
     #[derivative(Debug = "ignore")]
     document: Document,
+    sync_socket: seed::browser::web_socket::WebSocket,
     base_url: Url,
 }
 
@@ -139,6 +145,7 @@ pub enum Msg {
     UrlChanged(subs::UrlChanged),
     ApplyChange(automerge_protocol::UncompressedChange),
     ApplyPatch(automerge_protocol::Patch),
+    SyncMessageReceived(String),
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
 }
@@ -204,6 +211,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             orders.skip().send_msg(Msg::ApplyPatch(patch));
         }
         Msg::ApplyPatch(patch) => model.global.document.frontend.apply_patch(patch).unwrap(),
+        Msg::SyncMessageReceived(message) => {
+            log!("sync message", message);
+            model.global.sync_socket.send_text("hello!").unwrap();
+        }
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {
                 pages::view_task::update(msg, &mut model.global, lm, orders)
@@ -219,8 +230,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     log!("heads", heads);
     let changes = model.global.document.backend.get_changes(&heads);
     if !changes.is_empty() {
-    log!("changes since heads", changes);
+        log!("changes since heads", changes);
     }
+    model.global.sync_socket.send_text("hello!").unwrap();
     LocalStorage::insert(document::TASKS_STORAGE_KEY, &model.global.document.save())
         .expect("save tasks to LocalStorage");
 }
