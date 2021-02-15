@@ -1,0 +1,38 @@
+[package]
+name = "tasknet"
+version = "0.1.0"
+authors = ["Andrew Jeffery <dev@jeffas.io>"]
+description = "A task management suite"
+readme = "./README.md"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.18"
+pretty_assertions = "0.6.1"
+regex = "1.4.2"
+
+[dependencies]
+serde = "1.0.118"
+serde_json = "1.0.59"
+seed = "0.8.0"
+uuid = {version = "0.8.1", features = ["serde", "v4"] }
+chrono = {version = "0.4.19", features = ["wasmbind","serde"]}
+automerge = { git = "https://github.com/jeffa5/automerge-rs", branch = "update-uuid" }
+automerge-protocol = { git = "https://github.com/jeffa5/automerge-rs", branch = "update-uuid" }
+apply = "0.3.0"
+derivative = "2.2.0"
+
+[dependencies.web-sys]
+version = "0.3.46"
+features = [ "Navigator", "Window", "ServiceWorkerContainer" ]
+
+[profile.release]
+lto = true
+opt-level = 'z'
+codegen-units = 1
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ['-Os']

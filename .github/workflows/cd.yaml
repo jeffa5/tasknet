@@ -70,7 +70,7 @@ jobs:
           args: -- -D warnings
 
   deploy:
-    name: Deploy
+    name: Deploy Website
     needs:
       - check
       - test
@@ -82,19 +82,19 @@ jobs:
     - name: Install wasm-pack
       run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
     - name: Build wasm
-      run: wasm-pack build --target web --out-name package
+      run: wasm-pack build --target web --out-name package tasknet-web
     - name: Build site tree
       run: |
-        mkdir -p deploy/pkg
-        mv pkg/package_bg.wasm deploy/pkg/.
-        mv pkg/package.js deploy/pkg/.
-        cp -r assets deploy/.
-        cp -r styles deploy/.
-        cp index.html deploy/.
-        cp service-worker.js deploy/.
-        cp tasknet.webmanifest deploy/.
+        mkdir -p tasknet-web/deploy/pkg
+        mv tasknet-web/pkg/package_bg.wasm tasknet-web/deploy/pkg/.
+        mv tasknet-web/pkg/package.js tasknet-web/deploy/pkg/.
+        cp -r tasknet-web/assets tasknet-web/deploy/.
+        cp -r tasknet-web/styles tasknet-web/deploy/.
+        cp tasknet-web/index.html tasknet-web/deploy/.
+        cp tasknet-web/service-worker.js tasknet-web/deploy/.
+        cp tasknet-web/tasknet.webmanifest tasknet-web/deploy/.
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./deploy
+        publish_dir: ./tasknet-web/deploy

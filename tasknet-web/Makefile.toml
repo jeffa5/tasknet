@@ -1,0 +1,107 @@
+[env]
+PORT = "8000"
+
+[config]
+skip_core_tasks = true
+
+# ---- LOCAL ----
+
+[tasks.local]
+description = "Build the site and move files to local/tasknet folder"
+dependencies = ["local_clean","build","local_pkg", "local_statics"]
+
+[tasks.local_serve]
+description = "Start server from local folder"
+install_crate = { crate_name = "microserver", binary = "microserver", test_arg = "-h" }
+command = "microserver"
+args = ["--port", "${PORT}", "local"]
+dependencies = ["local"]
+# watch = true
+
+[tasks.local_clean]
+command = "rm"
+args = ["-rf", "local"]
+
+[tasks.local_pkg]
+script = [
+"mkdir -p local/tasknet/pkg",
+"cp pkg/package_bg.wasm local/tasknet/pkg/.",
+"cp pkg/package.js local/tasknet/pkg/.",
+]
+
+[tasks.local_statics]
+script = [
+"cp -r assets local/tasknet/.",
+"cp -r styles local/tasknet/.",
+"cp index.html local/tasknet/.",
+"cp service-worker.js local/tasknet/.",
+"cp tasknet.webmanifest local/tasknet/.",
+]
+
+# ---- BASIC ----
+
+[tasks.watch]
+description = "Watch files and recompile the project on change"
+dependencies = ["verify", "build"]
+watch = true
+
+[tasks.verify]
+description = "Format, lint with Clippy and run tests"
+dependencies = ["fmt", "clippy", "test", "test_browser_headless_firefox"]
+
+[tasks.clean]
+dependencies = ["clean_target", "clean_pkg", "local_clean"]
+
+[tasks.clean_target]
+command = "cargo"
+args = ["clean"]
+
+[tasks.clean_pkg]
+command = "cargo"
+args = ["clean", "--target-dir", "pkg"]
+
+# ---- BUILD ----
+
+[tasks.build]
+description = "Build with wasm-pack"
+install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
+command = "wasm-pack"
+args = ["build", "--target", "web", "--out-name", "package", "--dev"]
+
+# ---- LINT ----
+
+[tasks.clippy]
+description = "Lint with Clippy"
+install_crate = { rustup_component_name = "clippy", binary = "cargo-clippy", test_arg = "--help" }
+command = "cargo"
+args = ["clippy", "--all-features", "--", "--deny", "warnings", "--deny", "clippy::pedantic", "--deny", "clippy::nursery"]
+
+[tasks.fmt]
+description = "Format with rustfmt"
+install_crate = { rustup_component_name = "rustfmt", binary = "rustfmt", test_arg = "-V" }
+command = "cargo"
+args = ["fmt"]
+
+
+# ---- TEST ----
+
+[tasks.test_browser_headless]
+description = "Run headless tests for browsers. Ex: 'cargo make test_browser_headless firefox'. Test envs: [chrome, firefox, safari]"
+extend = "test_browser"
+args = ["test", "--headless", "--${@}"]
+
+[tasks.test_browser_headless_firefox]
+description = "Run headless tests with Firefox."
+extend = "test_browser"
+args = ["test", "--headless", "--firefox"]
+
+[tasks.test_browser]
+description = "Run tests for browsers. Ex: 'cargo make test_browser firefox'. Test envs: [chrome, firefox, safari]"
+install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
+command = "wasm-pack"
+args = ["test", "--${@}"]
+
+[tasks.test]
+description = "Run tests"
+command = "cargo"
+args = ["test"]
