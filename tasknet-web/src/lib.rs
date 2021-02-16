@@ -1,6 +1,8 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 
+use std::rc::Rc;
+
 use apply::Apply;
 use derivative::Derivative;
 #[allow(clippy::wildcard_imports)]
@@ -48,18 +50,26 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .subscribe(Msg::UrlChanged);
     let document = Document::new();
     let page = Page::init(url.clone(), &document, orders);
-    let web_socket = WebSocket::builder("ws://127.0.0.1:8080/sync", orders)
-        .on_message(|msg| Msg::SyncMessageReceived(msg.text().unwrap()))
+    let msg_sender = orders.msg_sender();
+    let sync_socket = WebSocket::builder("ws://127.0.0.1:8080/sync", orders)
+        .on_message(|msg| decode_ws_message(msg, msg_sender))
         .build_and_open()
         .unwrap();
     Model {
         global: GlobalModel {
             document,
-            sync_socket: web_socket,
+            sync_socket,
             base_url: url.to_hash_base_url(),
         },
         page,
     }
+}
+
+fn decode_ws_message(msg: WebSocketMessage, msg_sender: Rc<dyn Fn(Option<Msg>)>) {
+    spawn_local(async move {
+        let heads = msg.json().unwrap();
+        msg_sender(Some(Msg::SyncMessageReceived(heads)))
+    })
 }
 
 // ------ ------
@@ -145,7 +155,7 @@ pub enum Msg {
     UrlChanged(subs::UrlChanged),
     ApplyChange(automerge_protocol::UncompressedChange),
     ApplyPatch(automerge_protocol::Patch),
-    SyncMessageReceived(String),
+    SyncMessageReceived(Vec<automerge_protocol::ChangeHash>),
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
 }
@@ -211,9 +221,16 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             orders.skip().send_msg(Msg::ApplyPatch(patch));
         }
         Msg::ApplyPatch(patch) => model.global.document.frontend.apply_patch(patch).unwrap(),
-        Msg::SyncMessageReceived(message) => {
-            log!("sync message", message);
-            model.global.sync_socket.send_text("hello!").unwrap();
+        Msg::SyncMessageReceived(heads) => {
+            let changes = model.global.document.backend.get_changes(&heads);
+            if !changes.is_empty() {
+                log!("sending changes:", changes);
+                model
+                    .global
+                    .sync_socket
+                    .send_json(&changes.iter().map(|c| c.decode()).collect::<Vec<_>>())
+                    .unwrap();
+            }
         }
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {
@@ -226,13 +243,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
     }
-    let heads = model.global.document.backend.get_heads();
-    log!("heads", heads);
-    let changes = model.global.document.backend.get_changes(&heads);
-    if !changes.is_empty() {
-        log!("changes since heads", changes);
-    }
-    model.global.sync_socket.send_text("hello!").unwrap();
     LocalStorage::insert(document::TASKS_STORAGE_KEY, &model.global.document.save())
         .expect("save tasks to LocalStorage");
 }
