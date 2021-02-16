@@ -20,12 +20,11 @@ async fn main() {
                 ws.on_upgrade(|websocket| async {
                     eprintln!("websocket connection");
                     let (mut tx, mut rx) = websocket.split();
-                    {
-                        let heads = doc.lock().unwrap().get_heads();
-                        tx.send(Message::text(serde_json::to_string(&heads).unwrap()))
-                            .await
-                            .unwrap();
-                    }
+                    let heads: Vec<automerge_protocol::ChangeHash> = Vec::new();
+                    // heads = doc.clone().lock().unwrap().get_heads();
+                    tx.send(Message::text(serde_json::to_string(&heads).unwrap()))
+                        .await
+                        .unwrap();
                     while let Some(changes) = rx.next().await {
                         if let Ok(msg) = changes {
                             if let Ok(text) = msg.to_str() {
@@ -33,7 +32,7 @@ async fn main() {
                                     serde_json::from_str(text).unwrap();
                                 let changes: Vec<_> = changes.iter().map(Change::from).collect();
                                 eprintln!("changes {:?}", changes);
-                                doc.lock().unwrap().apply_changes(changes).unwrap();
+                                // doc.clone().lock().unwrap().apply_changes(changes).unwrap();
                             }
                         }
                     }
