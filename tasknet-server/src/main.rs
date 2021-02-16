@@ -10,6 +10,7 @@ async fn main() {
     let tasknet_log = warp::log("tasknet::tasknet");
     let sync_log = warp::log("tasknet::sync");
     let doc = Arc::new(Mutex::new(automerge::Backend::init()));
+    // use spawn local here with channels to interact with the document?
     let routes = warp::get()
         .and(
             warp::path("tasknet").and(warp::fs::dir("tasknet-web/local/tasknet").with(tasknet_log)),
