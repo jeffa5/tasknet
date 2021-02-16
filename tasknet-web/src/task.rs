@@ -451,25 +451,37 @@ impl TryFrom<automerge::Value> for Task {
 
     fn try_from(value: automerge::Value) -> Result<Self, Self::Error> {
         if let automerge::Value::Map(map, automerge_protocol::MapType::Map) = value {
-            let status =
-                if let Some(Value::Primitive(automerge::ScalarValue::Str(s))) = map.get("status") {
-                    serde_json::from_str(s).unwrap()
-                } else {
-                    return Err("Missing status / wrong type".to_owned());
-                };
+            let status = if let Some(Value::Primitive(automerge::ScalarValue::Str(s))) =
+                map.get("status")
+            {
+                serde_json::from_str(s).unwrap()
+            } else {
+                return Err(format!(
+                    "Missing status / wrong type: {:?}",
+                    map.get("status")
+                ));
+            };
             let entry = if let Some(Value::Primitive(automerge::ScalarValue::Timestamp(t))) =
                 map.get("entry")
             {
                 chrono::Utc.timestamp_millis(*t)
             } else {
-                return Err("Missing entry / wrong type".to_owned());
+                return Err(format!(
+                    "Missing entry / wrong type: {:?}",
+                    map.get("entry")
+                ));
             };
             let start = match map.get("start") {
                 Some(Value::Primitive(ScalarValue::Timestamp(t))) => {
                     Some(chrono::Utc.timestamp_millis(*t))
                 }
                 Some(Value::Primitive(ScalarValue::Null)) => None,
-                _ => return Err("Missing start / wrong type".to_owned()),
+                _ => {
+                    return Err(format!(
+                        "Missing start / wrong type: {:?}",
+                        map.get("start")
+                    ))
+                }
             };
             let end = match map.get("end") {
                 Some(Value::Primitive(ScalarValue::Timestamp(t))) => {

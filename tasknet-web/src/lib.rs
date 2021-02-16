@@ -46,6 +46,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     });
     orders
         .stream(streams::interval(1000, || Msg::OnRenderTick))
+        .stream(streams::interval(1000, || Msg::OnSyncTick))
         .stream(streams::interval(60000, || Msg::OnRecurTick))
         .subscribe(Msg::UrlChanged);
     let document = Document::new();
@@ -66,10 +67,19 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 }
 
 fn decode_ws_message(msg: WebSocketMessage, msg_sender: Rc<dyn Fn(Option<Msg>)>) {
-    spawn_local(async move {
-        let heads = msg.json().unwrap();
-        msg_sender(Some(Msg::SyncMessageReceived(heads)))
-    })
+    let text = msg.text().unwrap();
+    if let Ok(heads) = serde_json::from_str::<Vec<automerge_protocol::ChangeHash>>(&text) {
+        msg_sender(Some(Msg::SyncMessageReceivedHeads(heads)))
+    } else if let Ok(changes) =
+        serde_json::from_str::<Vec<automerge_protocol::UncompressedChange>>(&text)
+    {
+        if !changes.is_empty() {
+            let changes: Vec<_> = changes.iter().map(automerge::Change::from).collect();
+            msg_sender(Some(Msg::SyncMessageReceivedChanges(changes)))
+        }
+    } else {
+        log!("unmatched message from server", text);
+    }
 }
 
 // ------ ------
@@ -151,11 +161,13 @@ pub enum Msg {
     SelectTask(Option<uuid::Uuid>),
     CreateTask,
     OnRenderTick,
+    OnSyncTick,
     OnRecurTick,
     UrlChanged(subs::UrlChanged),
     ApplyChange(automerge_protocol::UncompressedChange),
     ApplyPatch(automerge_protocol::Patch),
-    SyncMessageReceived(Vec<automerge_protocol::ChangeHash>),
+    SyncMessageReceivedHeads(Vec<automerge_protocol::ChangeHash>),
+    SyncMessageReceivedChanges(Vec<automerge::Change>),
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
 }
@@ -176,6 +188,13 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
+        Msg::OnSyncTick => {
+            let heads = model.global.document.backend.get_heads();
+            if !heads.is_empty() {
+                log!("sending heads:", heads.len());
+                model.global.sync_socket.send_json(&heads).unwrap();
+            }
+        }
         Msg::OnRecurTick => {
             let tasks = model.global.document.tasks();
             let recurring: Vec<_> = tasks
@@ -221,15 +240,28 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             orders.skip().send_msg(Msg::ApplyPatch(patch));
         }
         Msg::ApplyPatch(patch) => model.global.document.frontend.apply_patch(patch).unwrap(),
-        Msg::SyncMessageReceived(heads) => {
+        Msg::SyncMessageReceivedHeads(heads) => {
+            log!("received heads", heads);
             let changes = model.global.document.backend.get_changes(&heads);
             if !changes.is_empty() {
-                log!("sending changes:", changes);
+                log!("sending changes:", changes.len());
                 model
                     .global
                     .sync_socket
                     .send_json(&changes.iter().map(|c| c.decode()).collect::<Vec<_>>())
                     .unwrap();
+            }
+        }
+        Msg::SyncMessageReceivedChanges(changes) => {
+            log!("received changes", changes.len());
+            if !changes.is_empty() {
+                let patch = model
+                    .global
+                    .document
+                    .backend
+                    .apply_changes(changes)
+                    .unwrap();
+                model.global.document.frontend.apply_patch(patch).unwrap();
             }
         }
         Msg::ViewTask(msg) => {
