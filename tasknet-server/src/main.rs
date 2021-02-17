@@ -102,6 +102,7 @@ async fn main() {
                         msgs_in_rx,
                         get_heads_tx,
                         get_changes_tx,
+                        new_changes_tx,
                         new_changes_rx,
                         apply_changes_tx,
                     )

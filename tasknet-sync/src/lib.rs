@@ -40,7 +40,10 @@ impl Connection {
             Vec<automerge_protocol::ChangeHash>,
             tokio::sync::oneshot::Sender<Vec<automerge_protocol::UncompressedChange>>,
         )>,
-        mut new_changes: tokio::sync::broadcast::Receiver<
+        send_new_changes: tokio::sync::broadcast::Sender<
+            Vec<automerge_protocol::UncompressedChange>,
+        >,
+        mut recv_new_changes: tokio::sync::broadcast::Receiver<
             Vec<automerge_protocol::UncompressedChange>,
         >,
         apply_changes: tokio::sync::mpsc::Sender<Vec<automerge_protocol::UncompressedChange>>,
@@ -71,7 +74,8 @@ impl Connection {
                                 peer_hashes_1.lock().unwrap().insert(hash);
                             }
                         }
-                        apply_changes.send(changes).await.unwrap();
+                        apply_changes.send(changes.clone()).await.unwrap();
+                        send_new_changes.send(changes).unwrap();
                     }
                 }
             }
@@ -79,7 +83,7 @@ impl Connection {
 
         // task for new local changes
         let send = tokio::spawn(async move {
-            while let Ok(changes) = new_changes.recv().await {
+            while let Ok(changes) = recv_new_changes.recv().await {
                 let changes = changes
                     .into_iter()
                     .filter(|c| {
