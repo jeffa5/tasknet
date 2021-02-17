@@ -2,4 +2,5 @@
 members = [
   "tasknet-web",
   "tasknet-server",
+  "tasknet-sync",
 ]

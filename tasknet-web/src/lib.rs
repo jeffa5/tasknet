@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 
-use std::rc::Rc;
+use std::{convert::TryFrom, rc::Rc};
 
 use apply::Apply;
 use derivative::Derivative;
@@ -68,17 +68,15 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 
 fn decode_ws_message(msg: WebSocketMessage, msg_sender: Rc<dyn Fn(Option<Msg>)>) {
     let text = msg.text().unwrap();
-    if let Ok(heads) = serde_json::from_str::<Vec<automerge_protocol::ChangeHash>>(&text) {
-        msg_sender(Some(Msg::SyncMessageReceivedHeads(heads)))
-    } else if let Ok(changes) =
-        serde_json::from_str::<Vec<automerge_protocol::UncompressedChange>>(&text)
-    {
-        if !changes.is_empty() {
-            let changes: Vec<_> = changes.iter().map(automerge::Change::from).collect();
-            msg_sender(Some(Msg::SyncMessageReceivedChanges(changes)))
+    if let Ok(message) = tasknet_sync::Message::try_from(text) {
+        match message {
+            tasknet_sync::Message::Heads(heads) => {
+                msg_sender(Some(Msg::SyncMessageReceivedHeads(heads)))
+            }
+            tasknet_sync::Message::Changes(changes) => {
+                msg_sender(Some(Msg::SyncMessageReceivedChanges(changes)))
+            }
         }
-    } else {
-        log!("unmatched message from server", text);
     }
 }
 
@@ -167,7 +165,7 @@ pub enum Msg {
     ApplyChange(automerge_protocol::UncompressedChange),
     ApplyPatch(automerge_protocol::Patch),
     SyncMessageReceivedHeads(Vec<automerge_protocol::ChangeHash>),
-    SyncMessageReceivedChanges(Vec<automerge::Change>),
+    SyncMessageReceivedChanges(Vec<automerge_protocol::UncompressedChange>),
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
 }
@@ -192,7 +190,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             let heads = model.global.document.backend.get_heads();
             if !heads.is_empty() {
                 log!("sending heads:", heads.len());
-                model.global.sync_socket.send_json(&heads).unwrap();
+                model
+                    .global
+                    .sync_socket
+                    .send_text(String::try_from(tasknet_sync::Message::Heads(heads)).unwrap())
+                    .unwrap();
             }
         }
         Msg::OnRecurTick => {
@@ -248,13 +250,22 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 model
                     .global
                     .sync_socket
-                    .send_json(&changes.iter().map(|c| c.decode()).collect::<Vec<_>>())
+                    .send_text(
+                        String::try_from(tasknet_sync::Message::Changes(
+                            changes.iter().map(|c| c.decode()).collect::<Vec<_>>(),
+                        ))
+                        .unwrap(),
+                    )
                     .unwrap();
             }
         }
         Msg::SyncMessageReceivedChanges(changes) => {
             log!("received changes", changes.len());
             if !changes.is_empty() {
+                let changes = changes
+                    .into_iter()
+                    .map(automerge::Change::from)
+                    .collect::<Vec<_>>();
                 let patch = model
                     .global
                     .document

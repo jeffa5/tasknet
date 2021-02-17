@@ -1,7 +1,10 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    convert::TryFrom,
+    sync::{Arc, Mutex},
+};
 
 use automerge::Change;
-use futures_util::{FutureExt, SinkExt, StreamExt};
+use futures_util::{SinkExt, StreamExt};
 use warp::{filters::ws::Message, Filter};
 
 #[tokio::main]
@@ -17,7 +20,10 @@ async fn main() {
         >,
         _,
     ) = tokio::sync::mpsc::channel(1);
-    let (apply_changes_tx, mut apply_changes_rx) = tokio::sync::mpsc::channel(1);
+    let (apply_changes_tx, mut apply_changes_rx): (
+        tokio::sync::mpsc::Sender<Vec<automerge_protocol::UncompressedChange>>,
+        tokio::sync::mpsc::Receiver<Vec<automerge_protocol::UncompressedChange>>,
+    ) = tokio::sync::mpsc::channel(1);
     let (get_changes_tx, mut get_changes_rx): (
         tokio::sync::mpsc::Sender<(
             Vec<automerge_protocol::ChangeHash>,
@@ -37,6 +43,7 @@ async fn main() {
         let doc_clone = doc.clone();
         let changes_task = tokio::task::spawn_local(async move {
             while let Some(changes) = apply_changes_rx.recv().await {
+                let changes = changes.iter().map(Change::from).collect::<Vec<_>>();
                 doc_clone.lock().unwrap().apply_changes(changes).unwrap();
             }
         });
@@ -67,66 +74,38 @@ async fn main() {
                 let get_changes_tx = get_changes_tx.clone();
                 ws.on_upgrade(|websocket| async move {
                     let (mut tx, mut rx) = websocket.split();
-                    let (msgs_tx, mut msgs_rx) = tokio::sync::mpsc::channel(1);
-                    let msgs_tx_clone = msgs_tx.clone();
-                    tokio::spawn(async move {
-                        while let Some(msg) = msgs_rx.recv().await {
-                            tx.send(Message::text(msg)).await.unwrap()
-                        }
-                    });
-                    tokio::spawn(async move {
-                        let interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
-                        tokio::pin!(interval);
 
-                        loop {
-                            interval.as_mut().tick().await;
-                            let (heads_tx, heads_rx) = tokio::sync::oneshot::channel();
-                            get_heads_tx.send(heads_tx).await.unwrap();
-                            let heads = heads_rx.await.unwrap();
-                            eprintln!("sending {} heads", heads.len());
-                            msgs_tx
-                                .send(serde_json::to_string(&heads).unwrap())
-                                .await
-                                .unwrap();
+                    let (msgs_out_tx, mut msgs_out_rx) = tokio::sync::mpsc::channel(1);
+                    let (msgs_in_tx, msgs_in_rx) = tokio::sync::mpsc::channel(1);
+                    let (new_changes_tx, new_changes_rx) = tokio::sync::broadcast::channel(1);
+
+                    tokio::spawn(async move {
+                        while let Some(msg) = msgs_out_rx.recv().await {
+                            let text = String::try_from(msg).unwrap();
+                            tx.send(Message::text(text)).await.unwrap();
                         }
                     });
 
-                    while let Some(changes) = rx.next().await {
-                        if let Ok(msg) = changes {
-                            if let Ok(text) = msg.to_str() {
-                                if let Ok(heads) = serde_json::from_str::<
-                                    Vec<automerge_protocol::ChangeHash>,
-                                >(text)
-                                {
-                                    eprintln!("received heads");
-                                    let (changes_tx, changes_rx) = tokio::sync::oneshot::channel();
-                                    get_changes_tx.send((heads, changes_tx)).await.unwrap();
-                                    let changes: Vec<automerge_protocol::UncompressedChange> =
-                                        changes_rx.await.unwrap();
-                                    eprintln!("sending {} changes", changes.len());
-                                    if !changes.is_empty() {
-                                    msgs_tx_clone
-                                        .send(serde_json::to_string(&changes).unwrap())
-                                        .await
-                                        .unwrap();
-
-                                    }
-                                } else if let Ok(changes) = serde_json::from_str::<
-                                    Vec<automerge_protocol::UncompressedChange>,
-                                >(text)
-                                {
-                                    eprintln!("received {} changes", changes.len());
-                                    let changes: Vec<_> =
-                                        changes.iter().map(Change::from).collect();
-                                    if !changes.is_empty() {
-                                        apply_changes_tx.send(changes).await.unwrap();
-                                    }
-                                } else {
-                                    eprintln!("Unhandled message from client {:?}", text);
-                                }
+                    tokio::spawn(async move {
+                        while let Some(Ok(msg)) = rx.next().await {
+                            if let Ok(msg) = tasknet_sync::Message::try_from(msg.to_str().unwrap())
+                            {
+                                msgs_in_tx.send(msg).await.unwrap();
+                            } else {
+                                eprintln!("unexpected message {:?}", msg)
                             }
                         }
-                    }
+                    });
+
+                    tasknet_sync::Connection::handle(
+                        msgs_out_tx,
+                        msgs_in_rx,
+                        get_heads_tx,
+                        get_changes_tx,
+                        new_changes_rx,
+                        apply_changes_tx,
+                    )
+                    .await;
                 })
             })
             .with(sync_log));

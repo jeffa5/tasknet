@@ -451,16 +451,15 @@ impl TryFrom<automerge::Value> for Task {
 
     fn try_from(value: automerge::Value) -> Result<Self, Self::Error> {
         if let automerge::Value::Map(map, automerge_protocol::MapType::Map) = value {
-            let status = if let Some(Value::Primitive(automerge::ScalarValue::Str(s))) =
-                map.get("status")
-            {
-                serde_json::from_str(s).unwrap()
-            } else {
-                return Err(format!(
-                    "Missing status / wrong type: {:?}",
-                    map.get("status")
-                ));
-            };
+            let status =
+                if let Some(Value::Primitive(automerge::ScalarValue::Str(s))) = map.get("status") {
+                    serde_json::from_str(s).unwrap()
+                } else {
+                    return Err(format!(
+                        "Missing status / wrong type: {:?}",
+                        map.get("status")
+                    ));
+                };
             let entry = if let Some(Value::Primitive(automerge::ScalarValue::Timestamp(t))) =
                 map.get("entry")
             {

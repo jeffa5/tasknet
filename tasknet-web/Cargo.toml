@@ -24,6 +24,7 @@ automerge = { git = "https://github.com/jeffa5/automerge-rs", branch = "update-u
 automerge-protocol = { git = "https://github.com/jeffa5/automerge-rs", branch = "update-uuid" }
 apply = "0.3.0"
 derivative = "2.2.0"
+tasknet-sync = { path = "../tasknet-sync" }
 
 [dependencies.web-sys]
 version = "0.3.46"

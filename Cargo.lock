@@ -1496,6 +1496,7 @@ dependencies = [
  "seed",
  "serde",
  "serde_json",
+ "tasknet-sync",
  "uuid 0.8.2",
  "wasm-bindgen-test",
  "web-sys",
@@ -1510,8 +1511,20 @@ dependencies = [
  "env_logger",
  "futures-util",
  "serde_json",
+ "tasknet-sync",
  "tokio",
  "warp",
+]
+
+[[package]]
+name = "tasknet-sync"
+version = "0.1.0"
+dependencies = [
+ "automerge",
+ "automerge-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
