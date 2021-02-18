@@ -13,3 +13,4 @@ warp = "0.3.0"
 automerge = { git = "https://github.com/jeffa5/automerge-rs", branch = "update-uuid" }
 automerge-protocol = { git = "https://github.com/jeffa5/automerge-rs", branch = "update-uuid" }
 tasknet-sync = { path = "../tasknet-sync" }
+tracing = "0.1.23"

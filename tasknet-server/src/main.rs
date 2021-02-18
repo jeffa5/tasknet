@@ -5,6 +5,7 @@ use std::{
 
 use automerge::Change;
 use futures_util::{SinkExt, StreamExt};
+use tracing::warn;
 use warp::{filters::ws::Message, Filter};
 
 #[tokio::main]
@@ -37,7 +38,7 @@ async fn main() {
         let heads_task = tokio::task::spawn_local(async move {
             while let Some(heads_tx) = get_heads_rx.recv().await {
                 let heads = doc_clone.lock().unwrap().get_heads();
-                heads_tx.send(heads).unwrap()
+                let _ = heads_tx.send(heads);
             }
         });
         let doc_clone = doc.clone();
@@ -53,14 +54,20 @@ async fn main() {
                 let doc = doc_clone.lock().unwrap();
                 let changes: Vec<_> = doc.get_changes(&heads);
                 let changes: Vec<_> = changes.iter().map(|c| c.decode()).collect();
-                sender.send(changes).unwrap();
+                let _ = sender.send(changes);
             }
         });
         let (heads_task, changes_task, get_changes_task) =
             tokio::join![heads_task, changes_task, get_changes_task];
-        heads_task.unwrap();
-        changes_task.unwrap();
-        get_changes_task.unwrap();
+        if let Err(e) = heads_task {
+            warn!(error = ?e, "error joining heads_task")
+        }
+        if let Err(e) = changes_task {
+            warn!(error = ?e, "error joining changes task")
+        }
+        if let Err(e) = get_changes_task {
+            warn!(error = ?e, "error joining get_changes task")
+        }
     });
     let (new_changes_tx, _new_changes_rx) = tokio::sync::broadcast::channel(1);
     let routes = warp::get()
@@ -94,7 +101,7 @@ async fn main() {
                                 if let Ok(msg) =
                                     tasknet_sync::Message::try_from(msg.to_str().unwrap())
                                 {
-                                    msgs_in_tx.send(msg).await.unwrap();
+                                    let _ = msgs_in_tx.send(msg).await;
                                 } else {
                                     eprintln!("unexpected message {:?}", msg)
                                 }
