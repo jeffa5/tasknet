@@ -6,28 +6,6 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-pub trait SyncedBackend {
-    fn db(&self) -> automerge::Backend;
-
-    fn db_mut(&mut self) -> automerge::Backend;
-
-    fn get_heads(&self) -> Heads {
-        self.db().get_heads()
-    }
-
-    fn get_changes(&self, heads: Heads) -> Changes {
-        let db = self.db();
-        let changes = db.get_changes(&heads);
-        let changes = changes.iter().map(|c| c.decode()).collect();
-        changes
-    }
-
-    fn apply_remote_changes(&mut self, changes: Changes) {
-        let changes: Vec<_> = changes.iter().map(automerge::Change::from).collect();
-        self.db().apply_changes(changes).unwrap();
-    }
-}
-
 pub struct Connection;
 impl Connection {
     pub async fn handle(
