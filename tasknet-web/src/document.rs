@@ -68,6 +68,7 @@ impl Document {
             .unwrap_or_default()
     }
 
+    #[must_use]
     pub fn change_task<F>(&mut self, uuid: &uuid::Uuid, f: F) -> Option<Msg>
     where
         F: FnOnce(Path, Task) -> Vec<automerge::LocalChange>,
@@ -90,7 +91,8 @@ impl Document {
         changes.map(Msg::ApplyChange)
     }
 
-    pub fn add_task(&mut self, uuid: uuid::Uuid) {
+    #[must_use]
+    pub fn add_task(&mut self, uuid: uuid::Uuid) -> Option<Msg> {
         let changes = self
             .frontend
             .change::<_, automerge::InvalidChangeRequest>(None, |d| {
@@ -106,10 +108,7 @@ impl Document {
                 Ok(())
             })
             .unwrap();
-        if let Some(changes) = changes {
-            let (patch, _) = self.backend.apply_local_change(changes).unwrap();
-            self.frontend.apply_patch(patch).unwrap();
-        }
+        changes.map(Msg::ApplyChange)
     }
 
     pub fn save(&self) -> Vec<u8> {

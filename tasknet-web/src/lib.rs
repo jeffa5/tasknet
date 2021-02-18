@@ -182,7 +182,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::CreateTask => {
             let id = uuid::Uuid::new_v4();
-            model.global.document.add_task(id);
+            let msg = model.global.document.add_task(id);
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
             orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
