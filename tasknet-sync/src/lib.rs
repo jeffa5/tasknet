@@ -5,6 +5,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 pub struct Connection;
 impl Connection {
@@ -40,6 +41,7 @@ impl Connection {
             while let Some(msg) = recv_msg.recv().await {
                 match msg {
                     Message::Heads(heads) => {
+                        debug!(?heads, "received heads");
                         for head in &heads {
                             peer_hashes_1.lock().unwrap().insert(*head);
                         }
@@ -47,6 +49,7 @@ impl Connection {
                         send_msg_1.send(Message::Changes(changes)).await.unwrap();
                     }
                     Message::Changes(changes) => {
+                        debug!(changes_count = changes.len(), "received changes");
                         for change in &changes {
                             if let Some(hash) = change.hash {
                                 peer_hashes_1.lock().unwrap().insert(hash);
@@ -62,6 +65,7 @@ impl Connection {
         // task for new local changes
         let send = tokio::spawn(async move {
             while let Ok(changes) = recv_new_changes.recv().await {
+                debug!(changes_count = changes.len(), "received local changes");
                 let changes = changes
                     .into_iter()
                     .filter(|c| {
@@ -85,7 +89,7 @@ impl Connection {
 
         // task for periodic heads sync
         let interval = tokio::spawn(async move {
-            let interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
+            let interval = tokio::time::interval(tokio::time::Duration::from_secs(50));
             tokio::pin!(interval);
 
             loop {

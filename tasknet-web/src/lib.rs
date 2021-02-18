@@ -189,7 +189,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::OnSyncTick => {
             let heads = model.global.document.backend.get_heads();
             if !heads.is_empty() {
-                log!("sending heads:", heads.len());
                 model
                     .global
                     .sync_socket
@@ -237,16 +236,19 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .global
                 .document
                 .backend
-                .apply_local_change(change)
+                .apply_local_change(change.clone())
+                .unwrap();
+            model
+                .global
+                .sync_socket
+                .send_text(String::try_from(tasknet_sync::Message::Changes(vec![change])).unwrap())
                 .unwrap();
             orders.skip().send_msg(Msg::ApplyPatch(patch));
         }
         Msg::ApplyPatch(patch) => model.global.document.frontend.apply_patch(patch).unwrap(),
         Msg::SyncMessageReceivedHeads(heads) => {
-            log!("received heads", heads);
             let changes = model.global.document.backend.get_changes(&heads);
             if !changes.is_empty() {
-                log!("sending changes:", changes.len());
                 model
                     .global
                     .sync_socket
@@ -260,7 +262,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
         Msg::SyncMessageReceivedChanges(changes) => {
-            log!("received changes", changes.len());
             if !changes.is_empty() {
                 let changes = changes
                     .into_iter()

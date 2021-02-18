@@ -62,52 +62,57 @@ async fn main() {
         changes_task.unwrap();
         get_changes_task.unwrap();
     });
+    let (new_changes_tx, _new_changes_rx) = tokio::sync::broadcast::channel(1);
     let routes = warp::get()
         .and(
             warp::path("tasknet").and(warp::fs::dir("tasknet-web/local/tasknet").with(tasknet_log)),
         )
         .or(warp::path("sync")
             .and(warp::ws())
-            .map(move |ws: warp::ws::Ws| {
-                let get_heads_tx = get_heads_tx.clone();
-                let apply_changes_tx = apply_changes_tx.clone();
-                let get_changes_tx = get_changes_tx.clone();
-                ws.on_upgrade(|websocket| async move {
-                    let (mut tx, mut rx) = websocket.split();
+            .map({
+                move |ws: warp::ws::Ws| {
+                    let get_heads_tx = get_heads_tx.clone();
+                    let apply_changes_tx = apply_changes_tx.clone();
+                    let get_changes_tx = get_changes_tx.clone();
+                    let new_changes_tx = new_changes_tx.clone();
+                    let new_changes_rx = new_changes_tx.subscribe();
+                    ws.on_upgrade(|websocket| async move {
+                        let (mut tx, mut rx) = websocket.split();
 
-                    let (msgs_out_tx, mut msgs_out_rx) = tokio::sync::mpsc::channel(1);
-                    let (msgs_in_tx, msgs_in_rx) = tokio::sync::mpsc::channel(1);
-                    let (new_changes_tx, new_changes_rx) = tokio::sync::broadcast::channel(1);
+                        let (msgs_out_tx, mut msgs_out_rx) = tokio::sync::mpsc::channel(1);
+                        let (msgs_in_tx, msgs_in_rx) = tokio::sync::mpsc::channel(1);
 
-                    tokio::spawn(async move {
-                        while let Some(msg) = msgs_out_rx.recv().await {
-                            let text = String::try_from(msg).unwrap();
-                            tx.send(Message::text(text)).await.unwrap();
-                        }
-                    });
-
-                    tokio::spawn(async move {
-                        while let Some(Ok(msg)) = rx.next().await {
-                            if let Ok(msg) = tasknet_sync::Message::try_from(msg.to_str().unwrap())
-                            {
-                                msgs_in_tx.send(msg).await.unwrap();
-                            } else {
-                                eprintln!("unexpected message {:?}", msg)
+                        tokio::spawn(async move {
+                            while let Some(msg) = msgs_out_rx.recv().await {
+                                let text = String::try_from(msg).unwrap();
+                                tx.send(Message::text(text)).await.unwrap();
                             }
-                        }
-                    });
+                        });
 
-                    tasknet_sync::Connection::handle(
-                        msgs_out_tx,
-                        msgs_in_rx,
-                        get_heads_tx,
-                        get_changes_tx,
-                        new_changes_tx,
-                        new_changes_rx,
-                        apply_changes_tx,
-                    )
-                    .await;
-                })
+                        tokio::spawn(async move {
+                            while let Some(Ok(msg)) = rx.next().await {
+                                if let Ok(msg) =
+                                    tasknet_sync::Message::try_from(msg.to_str().unwrap())
+                                {
+                                    msgs_in_tx.send(msg).await.unwrap();
+                                } else {
+                                    eprintln!("unexpected message {:?}", msg)
+                                }
+                            }
+                        });
+
+                        tasknet_sync::Connection::handle(
+                            msgs_out_tx,
+                            msgs_in_rx,
+                            get_heads_tx,
+                            get_changes_tx,
+                            new_changes_tx,
+                            new_changes_rx,
+                            apply_changes_tx,
+                        )
+                        .await;
+                    })
+                }
             })
             .with(sync_log));
     tokio::join![doc_task, warp::serve(routes).run(([127, 0, 0, 1], 8080))];
