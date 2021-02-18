@@ -5,7 +5,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use tracing::debug;
+use tracing::{debug, warn};
 
 pub struct Connection;
 impl Connection {
@@ -46,7 +46,7 @@ impl Connection {
                             peer_hashes_1.lock().unwrap().insert(*head);
                         }
                         let changes = Self::get_changes(&get_changes, heads).await;
-                        send_msg_1.send(Message::Changes(changes)).await.unwrap();
+                        let _ = send_msg_1.send(Message::Changes(changes)).await;
                     }
                     Message::Changes(changes) => {
                         debug!(changes_count = changes.len(), "received changes");
@@ -55,8 +55,8 @@ impl Connection {
                                 peer_hashes_1.lock().unwrap().insert(hash);
                             }
                         }
-                        apply_changes.send(changes.clone()).await.unwrap();
-                        send_new_changes.send(changes).unwrap();
+                        let _ = apply_changes.send(changes.clone()).await;
+                        let _ = send_new_changes.send(changes);
                     }
                 }
             }
@@ -83,7 +83,7 @@ impl Connection {
                     }
                 }
 
-                send_msg_2.send(Message::Changes(changes)).await.unwrap();
+                let _ = send_msg_2.send(Message::Changes(changes)).await;
             }
         });
 
@@ -94,15 +94,21 @@ impl Connection {
 
             loop {
                 let heads = Self::get_heads(&get_heads).await;
-                send_msg_3.send(Message::Heads(heads)).await.unwrap();
+                let _ = send_msg_3.send(Message::Heads(heads)).await;
                 interval.as_mut().tick().await;
             }
         });
 
         let (recv, send, interval) = tokio::join![recv, send, interval];
-        recv.unwrap();
-        send.unwrap();
-        interval.unwrap();
+        if let Err(e) = recv {
+            warn!(error = ?e, "error joining recv")
+        }
+        if let Err(e) = send {
+            warn!(error = ?e, "error joining send")
+        }
+        if let Err(e) = interval {
+            warn!(error = ?e, "error joining interval")
+        }
     }
 
     async fn get_heads(
@@ -111,7 +117,7 @@ impl Connection {
         >,
     ) -> Heads {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        get_heads.send(tx).await.unwrap();
+        let _ = get_heads.send(tx).await;
 
         rx.await.unwrap()
     }
@@ -124,7 +130,7 @@ impl Connection {
         heads: Heads,
     ) -> Changes {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        get_changes.send((heads, tx)).await.unwrap();
+        let _ = get_changes.send((heads, tx)).await;
 
         rx.await.unwrap()
     }
