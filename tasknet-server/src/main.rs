@@ -92,18 +92,21 @@ async fn main() {
                         tokio::spawn(async move {
                             while let Some(msg) = msgs_out_rx.recv().await {
                                 let text = String::try_from(msg).unwrap();
-                                tx.send(Message::text(text)).await.unwrap();
+                                let _ = tx.send(Message::text(text)).await;
                             }
                         });
 
                         tokio::spawn(async move {
                             while let Some(Ok(msg)) = rx.next().await {
-                                if let Ok(msg) =
-                                    tasknet_sync::Message::try_from(msg.to_str().unwrap())
-                                {
-                                    let _ = msgs_in_tx.send(msg).await;
+                                let text_msg = msg.to_str();
+                                if let Ok(msg) = text_msg {
+                                    if let Ok(msg) = tasknet_sync::Message::try_from(msg) {
+                                        let _ = msgs_in_tx.send(msg).await;
+                                    } else {
+                                        eprintln!("unexpected message {:?}", msg)
+                                    }
                                 } else {
-                                    eprintln!("unexpected message {:?}", msg)
+                                    eprintln!("found non text msg: {:?}", msg)
                                 }
                             }
                         });

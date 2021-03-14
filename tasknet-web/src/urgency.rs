@@ -1,4 +1,4 @@
-use crate::task::{Priority, Status, Task};
+use crate::task::{DateTime, Priority, Status, Task};
 
 const NEXT_COEFFICIENT: f64 = 15.0;
 const DUE_COEFFICIENT: f64 = 12.0;
@@ -25,7 +25,7 @@ pub fn calculate(task: &Task) -> Option<f64> {
         Status::Deleted | Status::Completed | Status::Recurring => None,
         Status::Waiting => Some(
             WAITING_COEFFICIENT
-                + urgency_age(*task.entry())
+                + urgency_age(task.entry())
                 + urgency_project(task.project())
                 + urgency_due(task.due())
                 + urgency_scheduled(task.scheduled())
@@ -35,7 +35,7 @@ pub fn calculate(task: &Task) -> Option<f64> {
                 + urgency_notes(task.notes()),
         ),
         Status::Pending => Some(
-            urgency_age(*task.entry())
+            urgency_age(task.entry())
                 + urgency_project(task.project())
                 + urgency_active(task.start())
                 + urgency_due(task.due())
@@ -49,9 +49,9 @@ pub fn calculate(task: &Task) -> Option<f64> {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn urgency_age(entry: chrono::DateTime<chrono::Utc>) -> f64 {
+fn urgency_age(entry: &DateTime) -> f64 {
     let days = (chrono::offset::Utc::now())
-        .signed_duration_since(entry)
+        .signed_duration_since(**entry)
         .num_seconds() as f64;
     (days / (AGE_MAX_DAYS * SECONDS_IN_A_DAY)) * AGE_COEFFICIENT
 }
@@ -64,7 +64,7 @@ const fn urgency_project(project: &[String]) -> f64 {
     }
 }
 
-const fn urgency_active(start: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
+const fn urgency_active(start: &Option<DateTime>) -> f64 {
     if start.is_some() {
         ACTIVE_COEFFICIENT
     } else {
@@ -73,10 +73,10 @@ const fn urgency_active(start: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn urgency_due(due: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
-    due.map_or(0.0, |due| {
+fn urgency_due(due: &Option<DateTime>) -> f64 {
+    due.as_ref().map_or(0.0, |due| {
         let days_overdue = (chrono::offset::Utc::now())
-            .signed_duration_since(due)
+            .signed_duration_since(**due)
             .num_days();
         (if days_overdue > 7 {
             1.0
@@ -89,10 +89,10 @@ fn urgency_due(due: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn urgency_scheduled(scheduled: &Option<chrono::DateTime<chrono::Utc>>) -> f64 {
-    scheduled.map_or(0.0, |scheduled| {
+fn urgency_scheduled(scheduled: &Option<DateTime>) -> f64 {
+    scheduled.as_ref().map_or(0.0, |scheduled| {
         let days_overdue = (chrono::offset::Utc::now())
-            .signed_duration_since(scheduled)
+            .signed_duration_since(**scheduled)
             .num_days();
         (if days_overdue > 7 {
             1.0

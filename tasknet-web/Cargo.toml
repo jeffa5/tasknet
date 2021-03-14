@@ -22,6 +22,7 @@ uuid = {version = "0.8.1", features = ["serde", "v4"] }
 chrono = {version = "0.4.19", features = ["wasmbind","serde"]}
 automerge = { git = "https://github.com/jeffa5/automerge-rs", branch = "update-uuid" }
 automerge-protocol = { git = "https://github.com/jeffa5/automerge-rs", branch = "update-uuid" }
+automergeable = { git = "https://github.com/jeffa5/automergeable", branch = "main" }
 apply = "0.3.0"
 derivative = "2.2.0"
 tasknet-sync = { path = "../tasknet-sync" }

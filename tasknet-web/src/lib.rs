@@ -182,7 +182,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::CreateTask => {
             let id = uuid::Uuid::new_v4();
+            log!("creating task");
             let msg = model.global.document.add_task(id);
+            log!("msg", msg);
             if let Some(msg) = msg {
                 orders.send_msg(msg);
             }
@@ -209,21 +211,21 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             for r in recurring {
                 let mut children: Vec<_> = tasks
                     .iter()
-                    .filter(|(i, t)| t.parent().map_or(false, |p| p == **i))
+                    .filter(|(i, t)| t.parent().as_ref().map_or(false, |p| *p == **i))
                     .collect();
-                children.sort_by_key(|c| c.1.entry());
+                children.sort_by_key(|c| **c.1.entry());
                 let last_child = children.last();
                 if let Some(child) = last_child {
                     // if child's entry is older than the recurring duration, create a new child
-                    if chrono::offset::Utc::now() - *child.1.entry()
+                    if chrono::offset::Utc::now() - **child.1.entry()
                         > r.1.recur().as_ref().unwrap().duration()
                     {
                         log!("old enough");
-                        let new_child = r.1.new_child(*r.0);
+                        let new_child = r.1.new_child(**r.0);
                         new_tasks.push(new_child)
                     }
                 } else {
-                    let new_child = r.1.new_child(*r.0);
+                    let new_child = r.1.new_child(**r.0);
                     new_tasks.push(new_child)
                 }
             }
@@ -248,7 +250,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .unwrap();
             orders.skip().send_msg(Msg::ApplyPatch(patch));
         }
-        Msg::ApplyPatch(patch) => model.global.document.frontend.apply_patch(patch).unwrap(),
+        Msg::ApplyPatch(patch) => model.global.document.inner.apply_patch(patch).unwrap(),
         Msg::SyncMessageReceivedHeads(heads) => {
             let changes = model.global.document.backend.get_changes(&heads);
             if !changes.is_empty() {
@@ -276,7 +278,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     .backend
                     .apply_changes(changes)
                     .unwrap();
-                model.global.document.frontend.apply_patch(patch).unwrap();
+                model.global.document.inner.apply_patch(patch).unwrap();
             }
         }
         Msg::ViewTask(msg) => {

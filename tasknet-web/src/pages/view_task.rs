@@ -9,7 +9,7 @@ use seed::{prelude::*, *};
 
 use crate::{
     components::{duration_string, view_button, view_text_input},
-    task::{Priority, RecurUnit, Status, Task},
+    task::{DateTime, Id, Priority, RecurUnit, Status, Task},
     urgency, GlobalModel, Msg as GMsg, Recur, Urls,
 };
 
@@ -66,8 +66,8 @@ pub fn update(
         Msg::SelectedTaskDescriptionChanged(new_description) => {
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, _task| {
-                    Task::set_description(path, &new_description)
+                .change_task(&model.selected_task, |task| {
+                    task.set_description(new_description)
                 });
             if let Some(msg) = msg {
                 orders.send_msg(msg);
@@ -77,18 +77,15 @@ pub fn update(
             let new_project = new_project.trim();
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, _task| {
-                    Task::set_project(
-                        path,
-                        if new_project.is_empty() {
-                            Vec::new()
-                        } else {
-                            new_project
-                                .split('.')
-                                .map(std::borrow::ToOwned::to_owned)
-                                .collect()
-                        },
-                    )
+                .change_task(&model.selected_task, |task| {
+                    task.set_project(if new_project.is_empty() {
+                        Vec::new()
+                    } else {
+                        new_project
+                            .split('.')
+                            .map(std::borrow::ToOwned::to_owned)
+                            .collect()
+                    })
                 });
             if let Some(msg) = msg {
                 orders.send_msg(msg);
@@ -98,22 +95,19 @@ pub fn update(
             let new_end = new_tags.ends_with(' ');
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, _task| {
-                    Task::set_tags(
-                        path,
-                        if new_tags.is_empty() {
-                            Vec::new()
-                        } else {
-                            let mut tags: Vec<_> = new_tags
-                                .split_whitespace()
-                                .map(std::borrow::ToOwned::to_owned)
-                                .collect();
-                            if new_end {
-                                tags.push(String::new())
-                            }
-                            tags
-                        },
-                    )
+                .change_task(&model.selected_task, |task| {
+                    task.set_tags(if new_tags.is_empty() {
+                        Vec::new()
+                    } else {
+                        let mut tags: Vec<_> = new_tags
+                            .split_whitespace()
+                            .map(std::borrow::ToOwned::to_owned)
+                            .collect();
+                        if new_end {
+                            tags.push(String::new())
+                        }
+                        tags
+                    })
                 });
             if let Some(msg) = msg {
                 orders.send_msg(msg);
@@ -122,8 +116,8 @@ pub fn update(
         Msg::SelectedTaskPriorityChanged(new_priority) => {
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, _task| {
-                    Task::set_priority(path, Priority::try_from(new_priority).ok())
+                .change_task(&model.selected_task, |task| {
+                    task.set_priority(Priority::try_from(new_priority).ok())
                 });
             if let Some(msg) = msg {
                 orders.send_msg(msg);
@@ -132,9 +126,7 @@ pub fn update(
         Msg::SelectedTaskNotesChanged(new_notes) => {
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, _task| {
-                    Task::set_notes(path, &new_notes)
-                });
+                .change_task(&model.selected_task, |task| task.set_notes(new_notes));
             if let Some(msg) = msg {
                 orders.send_msg(msg);
             }
@@ -142,29 +134,26 @@ pub fn update(
         Msg::SelectedTaskDueDateChanged(new_date) => {
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, task| {
+                .change_task(&model.selected_task, |task| {
                     let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
                     match new_date {
                         Ok(new_date) => {
                             let due = task.due();
                             match due {
-                                None => Task::set_due(
-                                    path,
-                                    Some(chrono::DateTime::from_utc(
-                                        new_date.and_hms(0, 0, 0),
-                                        chrono::Utc,
-                                    )),
-                                ),
+                                None => task.set_due(Some(DateTime(chrono::DateTime::from_utc(
+                                    new_date.and_hms(0, 0, 0),
+                                    chrono::Utc,
+                                )))),
                                 Some(due) => {
                                     let due = due
                                         .with_year(new_date.year())
                                         .and_then(|due| due.with_month(new_date.month()))
                                         .and_then(|due| due.with_day(new_date.day()));
-                                    Task::set_due(path, due)
+                                    task.set_due(due.map(DateTime))
                                 }
                             }
                         }
-                        Err(_) => Task::set_due(path, None),
+                        Err(_) => task.set_due(None),
                     }
                 });
             if let Some(msg) = msg {
@@ -174,7 +163,7 @@ pub fn update(
         Msg::SelectedTaskDueTimeChanged(new_time) => {
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, task| {
+                .change_task(&model.selected_task, |task| {
                     let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
                     match new_time {
                         Ok(new_time) => {
@@ -185,17 +174,17 @@ pub fn update(
                                     let now = now
                                         .with_hour(new_time.hour())
                                         .and_then(|now| now.with_minute(new_time.minute()));
-                                    Task::set_due(path, now)
+                                    task.set_due(now.map(DateTime))
                                 }
                                 Some(due) => {
                                     let due = due
                                         .with_hour(new_time.hour())
                                         .and_then(|due| due.with_minute(new_time.minute()));
-                                    Task::set_due(path, due)
+                                    task.set_due(due.map(DateTime))
                                 }
                             }
                         }
-                        Err(_) => Task::set_due(path, None),
+                        Err(_) => task.set_due(None),
                     }
                 });
             if let Some(msg) = msg {
@@ -205,19 +194,18 @@ pub fn update(
         Msg::SelectedTaskScheduledDateChanged(new_date) => {
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, task| {
+                .change_task(&model.selected_task, |task| {
                     let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
                     match new_date {
                         Ok(new_date) => {
                             let scheduled = task.scheduled();
                             match scheduled {
-                                None => Task::set_scheduled(
-                                    path,
-                                    Some(chrono::DateTime::from_utc(
+                                None => {
+                                    task.set_scheduled(Some(DateTime(chrono::DateTime::from_utc(
                                         new_date.and_hms(0, 0, 0),
                                         chrono::Utc,
-                                    )),
-                                ),
+                                    ))))
+                                }
                                 Some(scheduled) => {
                                     let scheduled = scheduled
                                         .with_year(new_date.year())
@@ -225,11 +213,11 @@ pub fn update(
                                             scheduled.with_month(new_date.month())
                                         })
                                         .and_then(|scheduled| scheduled.with_day(new_date.day()));
-                                    Task::set_scheduled(path, scheduled)
+                                    task.set_scheduled(scheduled.map(DateTime))
                                 }
                             }
                         }
-                        Err(_) => Task::set_scheduled(path, None),
+                        Err(_) => task.set_scheduled(None),
                     }
                 });
             if let Some(msg) = msg {
@@ -239,7 +227,7 @@ pub fn update(
         Msg::SelectedTaskScheduledTimeChanged(new_time) => {
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, task| {
+                .change_task(&model.selected_task, |task| {
                     let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
                     match new_time {
                         Ok(new_time) => {
@@ -250,17 +238,17 @@ pub fn update(
                                     let now = now
                                         .with_hour(new_time.hour())
                                         .and_then(|now| now.with_minute(new_time.minute()));
-                                    Task::set_scheduled(path, now)
+                                    task.set_scheduled(now.map(DateTime))
                                 }
                                 Some(scheduled) => {
                                     let scheduled = scheduled.with_hour(new_time.hour()).and_then(
                                         |scheduled| scheduled.with_minute(new_time.minute()),
                                     );
-                                    Task::set_scheduled(path, scheduled)
+                                    task.set_scheduled(scheduled.map(DateTime))
                                 }
                             }
                         }
-                        Err(_) => Task::set_scheduled(path, None),
+                        Err(_) => task.set_scheduled(None),
                     }
                 });
             if let Some(msg) = msg {
@@ -296,17 +284,19 @@ pub fn update(
             orders.request_url(Urls::new(&global_model.base_url).home());
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, task| match task.status() {
+                .change_task(&model.selected_task, |task| match task.status() {
                     Status::Pending | Status::Completed | Status::Waiting | Status::Recurring => {
-                        Task::delete(path)
+                        task.delete()
                     }
                     Status::Deleted => match window().confirm_with_message(
                         "Are you sure you want to permanently delete this task?",
                     ) {
                         Ok(true) => {
-                            vec![automerge::LocalChange::delete(path.parent())]
+                            // TODO: handle full deletion
+                            log!("full deletion is todo");
+                            // vec![automerge::LocalChange::delete(path.parent())]
                         }
-                        Ok(false) | Err(_) => Vec::new(),
+                        Ok(false) | Err(_) => {}
                     },
                 });
             if let Some(msg) = msg {
@@ -317,7 +307,7 @@ pub fn update(
             orders.request_url(Urls::new(&global_model.base_url).home());
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, _task| Task::complete(path));
+                .change_task(&model.selected_task, |task| task.complete());
             if let Some(msg) = msg {
                 orders.send_msg(msg);
             }
@@ -326,7 +316,7 @@ pub fn update(
             orders.request_url(Urls::new(&global_model.base_url).home());
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, task| task.activate(path));
+                .change_task(&model.selected_task, |task| task.activate());
             if let Some(msg) = msg {
                 orders.send_msg(msg);
             }
@@ -335,7 +325,7 @@ pub fn update(
             orders.request_url(Urls::new(&global_model.base_url).home());
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, _task| Task::deactivate(path));
+                .change_task(&model.selected_task, |task| task.deactivate());
             if let Some(msg) = msg {
                 orders.send_msg(msg);
             }
@@ -344,7 +334,7 @@ pub fn update(
             orders.request_url(Urls::new(&global_model.base_url).home());
             let msg = global_model
                 .document
-                .change_task(&model.selected_task, |path, task| task.restore(path));
+                .change_task(&model.selected_task, |task| task.restore());
             if let Some(msg) = msg {
                 orders.send_msg(msg);
             }
@@ -365,7 +355,7 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
 
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
-fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> {
+fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
     let is_pending = matches!(task.status(), Status::Pending);
     let start = task.start();
     let end = task.end();
@@ -608,7 +598,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                     C!["mr-4"],
                     attrs! {
                         At::Type => "date",
-                        At::Value => task.due().map_or_else(String::new, |due| due.format("%Y-%m-%d").to_string()),
+                        At::Value => task.due().as_ref().map_or_else(String::new, |due| due.format("%Y-%m-%d").to_string()),
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(
                         Msg::SelectedTaskDueDateChanged(s)
@@ -617,7 +607,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                 input![
                     attrs! {
                         At::Type => "time",
-                        At::Value => task.due().map_or_else(String::new, |due| due.format("%H:%M").to_string()),
+                        At::Value => task.due().as_ref().map_or_else(String::new, |due| due.format("%H:%M").to_string()),
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(
                         Msg::SelectedTaskDueTimeChanged(s)
@@ -642,7 +632,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                     C!["mr-4"],
                     attrs! {
                         At::Type => "date",
-                        At::Value => task.scheduled().map_or_else(String::new, |scheduled| scheduled.format("%Y-%m-%d").to_string()),
+                        At::Value => task.scheduled().as_ref().map_or_else(String::new, |scheduled| scheduled.format("%Y-%m-%d").to_string()),
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(
                         Msg::SelectedTaskScheduledDateChanged(s)
@@ -651,7 +641,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                 input![
                     attrs! {
                         At::Type => "time",
-                        At::Value => task.scheduled().map_or_else(String::new, |scheduled| scheduled.format("%H:%M").to_string()),
+                        At::Value => task.scheduled().as_ref().map_or_else(String::new, |scheduled| scheduled.format("%H:%M").to_string()),
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(
                         Msg::SelectedTaskScheduledTimeChanged(s)

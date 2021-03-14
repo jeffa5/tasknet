@@ -9,7 +9,7 @@ use seed::{prelude::*, *};
 
 use crate::{
     components::{duration_string, view_button, view_checkbox, view_text_input},
-    task::{Priority, Status, Task},
+    task::{Id, Priority, Status, Task},
     urgency, Filters, GlobalModel, Msg as GMsg,
 };
 
@@ -226,7 +226,7 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
+fn view_tasks(tasks: &HashMap<Id, Task>, model: &Model) -> Node<GMsg> {
     let mut tasks: Vec<_> = tasks
         .iter()
         .filter(|(_, t)| model.filters.filter_task(t))
@@ -240,7 +240,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
     let tasks = tasks
         .iter()
         .map(|(uuid, t)| ViewableTask {
-            age: duration_string((chrono::offset::Utc::now()).signed_duration_since(*t.entry())),
+            age: duration_string((chrono::offset::Utc::now()).signed_duration_since(**t.entry())),
             status: match t.status() {
                 Status::Pending => "Pending".to_owned(),
                 Status::Completed => "Completed".to_owned(),
@@ -251,12 +251,12 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
             project: t.project().to_owned(),
             description: t.description().to_owned(),
             urgency: urgency::calculate(t),
-            uuid: **uuid,
+            uuid: ***uuid,
             tags: t.tags().to_owned(),
             priority: t.priority().to_owned(),
             active: t.start().is_some(),
-            due: t.due().to_owned(),
-            scheduled: t.scheduled().to_owned(),
+            due: t.due().as_ref().map(|d| **d).to_owned(),
+            scheduled: t.scheduled().as_ref().map(|d| **d).to_owned(),
         })
         .collect::<Vec<_>>();
 
@@ -431,7 +431,7 @@ struct ViewableTask {
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> {
+fn view_filters(model: &Model, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
     let no_context_match = !model
         .contexts
         .values()

@@ -1,16 +1,25 @@
 use std::{collections::HashMap, convert::TryFrom, str::FromStr};
 
 use automerge::{Backend, Frontend, Path};
+use automergeable::Automergeable;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
-use crate::{task::Task, Msg};
+use crate::{
+    task::{Id, Task},
+    Msg,
+};
 
-pub const TASKS_STORAGE_KEY: &str = "tasknet-tasks-automerge";
+pub const TASKS_STORAGE_KEY: &str = "tasknet-automerge";
 
 pub struct Document {
-    pub frontend: Frontend,
+    pub inner: automergeable::Document<DocumentInner>,
     pub backend: Backend,
+}
+
+#[derive(Debug, Default, Clone, Automergeable)]
+pub struct DocumentInner {
+    tasks: HashMap<Id, Task>,
 }
 
 impl Document {
@@ -22,68 +31,32 @@ impl Document {
                 Backend::init()
             }
         };
-        let mut frontend = Frontend::new();
-        frontend.apply_patch(backend.get_patch().unwrap()).unwrap();
-        if frontend.value_at_path(&Path::root().key("tasks")).is_none() {
-            let changes = frontend
-                .change::<_, automerge::InvalidChangeRequest>(None, |d| {
-                    d.add_change(automerge::LocalChange::set(
-                        Path::root().key("tasks"),
-                        automerge::Value::Map(HashMap::new(), automerge_protocol::MapType::Map),
-                    ))?;
-                    Ok(())
-                })
-                .unwrap();
-            if let Some(changes) = changes {
-                let (patch, _) = backend.apply_local_change(changes).unwrap();
-                frontend.apply_patch(patch).unwrap();
-            }
-        }
-        Self { frontend, backend }
+        let patch = backend.get_patch().unwrap();
+        let inner = automergeable::Document::<DocumentInner>::new_with_patch(patch).unwrap();
+        Self { inner, backend }
     }
 
     pub fn task(&self, uuid: &uuid::Uuid) -> Option<Task> {
-        self.frontend
-            .get_value(&Path::root().key("tasks").key(uuid.to_string()))
-            .map(|v| Task::try_from(v).unwrap())
+        self.inner
+            .get()
+            .and_then(|v| v.tasks.get(&Id(*uuid)).cloned())
     }
 
-    pub fn tasks(&self) -> HashMap<uuid::Uuid, Task> {
-        self.frontend
-            .get_value(&Path::root().key("tasks"))
-            .map(|v| {
-                if let automerge::Value::Map(map, automerge_protocol::MapType::Map) = v {
-                    map.into_iter()
-                        .map(|(k, v)| {
-                            (
-                                uuid::Uuid::from_str(&k).unwrap(),
-                                Task::try_from(v).unwrap(),
-                            )
-                        })
-                        .collect()
-                } else {
-                    panic!("expected a map")
-                }
-            })
-            .unwrap_or_default()
+    pub fn tasks(&self) -> HashMap<Id, Task> {
+        self.inner.get().map(|v| v.tasks).unwrap_or_default()
     }
 
     #[must_use]
     pub fn change_task<F>(&mut self, uuid: &uuid::Uuid, f: F) -> Option<Msg>
     where
-        F: FnOnce(Path, Task) -> Vec<automerge::LocalChange>,
+        F: FnOnce(&mut Task),
     {
         let changes = self
-            .frontend
-            .change::<_, automerge::InvalidChangeRequest>(None, |d| {
-                let task = d
-                    .value_at_path(&Path::root().key("tasks").key(uuid.to_string()))
-                    .map(|v| Task::try_from(v).unwrap());
+            .inner
+            .change::<_, automerge::InvalidChangeRequest>(|d| {
+                let task = d.tasks.get_mut(&Id(*uuid));
                 if let Some(task) = task {
-                    let changes = f(Path::root().key("tasks").key(uuid.to_string()), task);
-                    for change in changes {
-                        d.add_change(change)?
-                    }
+                    let changes = f(task);
                 }
                 Ok(())
             })
@@ -93,21 +66,20 @@ impl Document {
 
     #[must_use]
     pub fn add_task(&mut self, uuid: uuid::Uuid) -> Option<Msg> {
+        log!("getting changes");
         let changes = self
-            .frontend
-            .change::<_, automerge::InvalidChangeRequest>(None, |d| {
-                let task = d
-                    .value_at_path(&Path::root().key("tasks").key(uuid.to_string()))
-                    .map(|v| Task::try_from(v).unwrap());
+            .inner
+            .change::<_, automerge::InvalidChangeRequest>(|d| {
+                let task = d.tasks.get(&Id(uuid));
+                log!("task", task);
                 if task.is_none() {
-                    let changes = Task::create(uuid);
-                    for change in changes {
-                        d.add_change(change).unwrap()
-                    }
+                    d.tasks.insert(Id(uuid), Task::new());
+                    log!("inserted task");
                 }
                 Ok(())
             })
             .unwrap();
+        log!("got changes");
         changes.map(Msg::ApplyChange)
     }
 
