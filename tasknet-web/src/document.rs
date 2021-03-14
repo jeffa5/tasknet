@@ -1,6 +1,6 @@
-use std::{collections::HashMap, convert::TryFrom, str::FromStr};
+use std::collections::HashMap;
 
-use automerge::{Backend, Frontend, Path};
+use automerge::Backend;
 use automergeable::Automergeable;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
@@ -24,7 +24,7 @@ pub struct DocumentInner {
 
 impl Document {
     pub fn new() -> Self {
-        let mut backend = match LocalStorage::get(TASKS_STORAGE_KEY) {
+        let backend = match LocalStorage::get(TASKS_STORAGE_KEY) {
             Ok(tasks) => Backend::load(tasks).unwrap(),
             Err(e) => {
                 log!("err loading tasks", e);
@@ -56,7 +56,7 @@ impl Document {
             .change::<_, automerge::InvalidChangeRequest>(|d| {
                 let task = d.tasks.get_mut(&Id(*uuid));
                 if let Some(task) = task {
-                    let changes = f(task);
+                    f(task)
                 }
                 Ok(())
             })
@@ -67,7 +67,7 @@ impl Document {
     #[must_use]
     pub fn add_task(&mut self, uuid: uuid::Uuid) -> Option<Msg> {
         log!("getting changes");
-        let changes = self
+        let change_result = self
             .inner
             .change::<_, automerge::InvalidChangeRequest>(|d| {
                 let task = d.tasks.get(&Id(uuid));
@@ -77,8 +77,9 @@ impl Document {
                     log!("inserted task");
                 }
                 Ok(())
-            })
-            .unwrap();
+            });
+        log!("change result", change_result);
+        let changes = change_result.unwrap();
         log!("got changes");
         changes.map(Msg::ApplyChange)
     }
