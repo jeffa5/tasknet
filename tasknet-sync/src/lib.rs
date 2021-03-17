@@ -4,6 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use automergeable::automerge_protocol;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 

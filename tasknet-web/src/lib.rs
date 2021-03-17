@@ -4,6 +4,7 @@
 use std::{convert::TryFrom, rc::Rc};
 
 use apply::Apply;
+use automergeable::{automerge, automerge_protocol};
 use derivative::Derivative;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};

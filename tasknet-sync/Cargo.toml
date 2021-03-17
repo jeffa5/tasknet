@@ -5,8 +5,7 @@ authors = ["Andrew Jeffery <dev@jeffas.io>"]
 edition = "2018"
 
 [dependencies]
-automerge = { git = "https://github.com/jeffa5/automerge-rs", branch = "update-uuid" }
-automerge-protocol = { git = "https://github.com/jeffa5/automerge-rs", branch = "update-uuid" }
+automergeable = { git = "https://github.com/jeffa5/automergeable", branch = "main" }
 tokio = { version = "1.2.0", features = ["macros", "time", "sync", "rt-multi-thread"] }
 serde = "1.0.118"
 serde_json = "1.0.62"

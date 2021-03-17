@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use automerge::Backend;
-use automergeable::Automergeable;
+use automergeable::{automerge, Automergeable};
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
@@ -14,7 +13,7 @@ pub const TASKS_STORAGE_KEY: &str = "tasknet-automerge";
 
 pub struct Document {
     pub inner: automergeable::Document<DocumentInner>,
-    pub backend: Backend,
+    pub backend: automerge::Backend,
 }
 
 #[derive(Debug, Default, Clone, Automergeable)]
@@ -25,10 +24,10 @@ pub struct DocumentInner {
 impl Document {
     pub fn new() -> Self {
         let backend = match LocalStorage::get(TASKS_STORAGE_KEY) {
-            Ok(tasks) => Backend::load(tasks).unwrap(),
+            Ok(tasks) => automerge::Backend::load(tasks).unwrap(),
             Err(e) => {
                 log!("err loading tasks", e);
-                Backend::init()
+                automerge::Backend::init()
             }
         };
         let patch = backend.get_patch().unwrap();

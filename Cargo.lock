@@ -48,22 +48,9 @@ name = "automerge"
 version = "0.0.2"
 source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#9cd5c971761dd8072cc4fd50dbc1414e42e57bbe"
 dependencies = [
- "automerge-backend 0.0.1 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
- "automerge-frontend 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
- "serde",
- "serde_json",
- "uuid 0.5.1",
-]
-
-[[package]]
-name = "automerge"
-version = "0.0.2"
-source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#b290f9117aced3e3ed1535ed0ccde3a819d88232"
-dependencies = [
- "automerge-backend 0.0.1 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
- "automerge-frontend 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
+ "automerge-backend",
+ "automerge-frontend",
+ "automerge-protocol",
  "serde",
  "serde_json",
  "uuid 0.5.1",
@@ -74,29 +61,7 @@ name = "automerge-backend"
 version = "0.0.1"
 source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#9cd5c971761dd8072cc4fd50dbc1414e42e57bbe"
 dependencies = [
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
- "fxhash",
- "hex",
- "itertools",
- "js-sys",
- "leb128",
- "maplit",
- "rand 0.7.3",
- "serde",
- "serde_json",
- "sha2",
- "thiserror",
- "tracing",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
-name = "automerge-backend"
-version = "0.0.1"
-source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#b290f9117aced3e3ed1535ed0ccde3a819d88232"
-dependencies = [
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
+ "automerge-protocol",
  "fxhash",
  "hex",
  "itertools",
@@ -118,23 +83,7 @@ name = "automerge-frontend"
 version = "0.1.0"
 source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#9cd5c971761dd8072cc4fd50dbc1414e42e57bbe"
 dependencies = [
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
- "futures",
- "im-rc",
- "maplit",
- "serde",
- "serde_json",
- "thiserror",
- "uuid 0.5.1",
-]
-
-[[package]]
-name = "automerge-frontend"
-version = "0.1.0"
-source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#b290f9117aced3e3ed1535ed0ccde3a819d88232"
-dependencies = [
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
- "chrono",
+ "automerge-protocol",
  "futures",
  "im-rc",
  "maplit",
@@ -153,27 +102,16 @@ dependencies = [
  "serde",
  "thiserror",
  "uuid 0.5.1",
-]
-
-[[package]]
-name = "automerge-protocol"
-version = "0.1.0"
-source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#b290f9117aced3e3ed1535ed0ccde3a819d88232"
-dependencies = [
- "hex",
- "serde",
- "thiserror",
- "uuid 0.8.2",
 ]
 
 [[package]]
 name = "automergeable"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#5a1bf9dbb82e86d70b055bd83f78decc824ffcc6"
+source = "git+https://github.com/jeffa5/automergeable?branch=main#1f81b61366c110c0bb0f4694eecaef46916116d3"
 dependencies = [
- "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
- "automerge-frontend 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "automerge",
+ "automerge-frontend",
+ "automerge-protocol",
  "automergeable-derive",
  "automergeable-traits",
  "thiserror",
@@ -182,9 +120,9 @@ dependencies = [
 [[package]]
 name = "automergeable-derive"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#5a1bf9dbb82e86d70b055bd83f78decc824ffcc6"
+source = "git+https://github.com/jeffa5/automergeable?branch=main#1f81b61366c110c0bb0f4694eecaef46916116d3"
 dependencies = [
- "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "automerge",
  "automergeable-traits",
  "proc-macro2",
  "quote",
@@ -194,10 +132,10 @@ dependencies = [
 [[package]]
 name = "automergeable-traits"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#5a1bf9dbb82e86d70b055bd83f78decc824ffcc6"
+source = "git+https://github.com/jeffa5/automergeable?branch=main#1f81b61366c110c0bb0f4694eecaef46916116d3"
 dependencies = [
- "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "automerge",
+ "automerge-protocol",
  "serde_json",
  "thiserror",
 ]
@@ -1544,8 +1482,6 @@ name = "tasknet"
 version = "0.1.0"
 dependencies = [
  "apply",
- "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
  "automergeable",
  "chrono",
  "derivative",
@@ -1564,8 +1500,7 @@ dependencies = [
 name = "tasknet-server"
 version = "0.1.0"
 dependencies = [
- "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
+ "automergeable",
  "env_logger",
  "futures-util",
  "serde_json",
@@ -1579,8 +1514,7 @@ dependencies = [
 name = "tasknet-sync"
 version = "0.1.0"
 dependencies = [
- "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
- "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
+ "automergeable",
  "serde",
  "serde_json",
  "tokio",

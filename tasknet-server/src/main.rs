@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use automerge::Change;
+use automergeable::{automerge, automerge::Change, automerge_protocol};
 use futures_util::{SinkExt, StreamExt};
 use tracing::warn;
 use warp::{filters::ws::Message, Filter};
