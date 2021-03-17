@@ -46,11 +46,24 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 [[package]]
 name = "automerge"
 version = "0.0.2"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#9cd5c971761dd8072cc4fd50dbc1414e42e57bbe"
+dependencies = [
+ "automerge-backend 0.0.1 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "automerge-frontend 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "serde",
+ "serde_json",
+ "uuid 0.5.1",
+]
+
+[[package]]
+name = "automerge"
+version = "0.0.2"
 source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#b290f9117aced3e3ed1535ed0ccde3a819d88232"
 dependencies = [
- "automerge-backend",
- "automerge-frontend",
- "automerge-protocol",
+ "automerge-backend 0.0.1 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
+ "automerge-frontend 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
  "serde",
  "serde_json",
  "uuid 0.5.1",
@@ -59,9 +72,31 @@ dependencies = [
 [[package]]
 name = "automerge-backend"
 version = "0.0.1"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#9cd5c971761dd8072cc4fd50dbc1414e42e57bbe"
+dependencies = [
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "fxhash",
+ "hex",
+ "itertools",
+ "js-sys",
+ "leb128",
+ "maplit",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "tracing",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "automerge-backend"
+version = "0.0.1"
 source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#b290f9117aced3e3ed1535ed0ccde3a819d88232"
 dependencies = [
- "automerge-protocol",
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
  "fxhash",
  "hex",
  "itertools",
@@ -81,15 +116,41 @@ dependencies = [
 [[package]]
 name = "automerge-frontend"
 version = "0.1.0"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#9cd5c971761dd8072cc4fd50dbc1414e42e57bbe"
+dependencies = [
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "futures",
+ "im-rc",
+ "maplit",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "uuid 0.5.1",
+]
+
+[[package]]
+name = "automerge-frontend"
+version = "0.1.0"
 source = "git+https://github.com/jeffa5/automerge-rs?branch=update-uuid#b290f9117aced3e3ed1535ed0ccde3a819d88232"
 dependencies = [
- "automerge-protocol",
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
  "chrono",
  "futures",
  "im-rc",
  "maplit",
  "serde",
  "serde_json",
+ "thiserror",
+ "uuid 0.5.1",
+]
+
+[[package]]
+name = "automerge-protocol"
+version = "0.1.0"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#9cd5c971761dd8072cc4fd50dbc1414e42e57bbe"
+dependencies = [
+ "hex",
+ "serde",
  "thiserror",
  "uuid 0.5.1",
 ]
@@ -108,11 +169,11 @@ dependencies = [
 [[package]]
 name = "automergeable"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#80063c2a3b984083292194ab14ad9d2aff1acd9e"
+source = "git+https://github.com/jeffa5/automergeable?branch=main#5a1bf9dbb82e86d70b055bd83f78decc824ffcc6"
 dependencies = [
- "automerge",
- "automerge-frontend",
- "automerge-protocol",
+ "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "automerge-frontend 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
  "automergeable-derive",
  "automergeable-traits",
  "thiserror",
@@ -121,9 +182,9 @@ dependencies = [
 [[package]]
 name = "automergeable-derive"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#80063c2a3b984083292194ab14ad9d2aff1acd9e"
+source = "git+https://github.com/jeffa5/automergeable?branch=main#5a1bf9dbb82e86d70b055bd83f78decc824ffcc6"
 dependencies = [
- "automerge",
+ "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
  "automergeable-traits",
  "proc-macro2",
  "quote",
@@ -133,10 +194,10 @@ dependencies = [
 [[package]]
 name = "automergeable-traits"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#80063c2a3b984083292194ab14ad9d2aff1acd9e"
+source = "git+https://github.com/jeffa5/automergeable?branch=main#5a1bf9dbb82e86d70b055bd83f78decc824ffcc6"
 dependencies = [
- "automerge",
- "automerge-protocol",
+ "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change)",
  "serde_json",
  "thiserror",
 ]
@@ -283,8 +344,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03a5d7b21829bc7b4bf4754a978a241ae54ea55a40f92bb20216e54096f4b951"
 dependencies = [
  "percent-encoding",
- "time 0.2.25",
- "version_check 0.9.2",
+ "time 0.2.26",
+ "version_check 0.9.3",
 ]
 
 [[package]]
@@ -523,7 +584,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
 dependencies = [
  "typenum",
- "version_check 0.9.2",
+ "version_check 0.9.3",
 ]
 
 [[package]]
@@ -747,7 +808,7 @@ dependencies = [
  "rand_xoshiro",
  "sized-chunks",
  "typenum",
- "version_check 0.9.2",
+ "version_check 0.9.3",
 ]
 
 [[package]]
@@ -807,9 +868,9 @@ checksum = "3576a87f2ba00f6f106fdfcd16db1d698d648a26ad8e0573cad8537c3c362d2a"
 
 [[package]]
 name = "libc"
-version = "0.2.88"
+version = "0.2.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03b07a082330a35e43f63177cc01689da34fbffa0105e1246cf0311472cac73a"
+checksum = "538c092e5586f4cdd7dd8078c4a79220e3e168880218124dcbce860f0ea938c6"
 
 [[package]]
 name = "log"
@@ -856,9 +917,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.7.9"
+version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5dede4e2065b3842b8b0af444119f3aa331cc7cc2dd20388bfb0f5d5a38823a"
+checksum = "2182a122f3b7f3f5329cb1972cee089ba2459a0a80a56935e6e674f096f8d839"
 dependencies = [
  "libc",
  "log",
@@ -1287,7 +1348,7 @@ dependencies = [
  "serde",
  "serde_json",
  "uuid 0.8.2",
- "version_check 0.9.2",
+ "version_check 0.9.3",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -1415,7 +1476,7 @@ version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2beb4d1860a61f571530b3f855a1b538d0200f7871c63331ecd6f17b1f014f8"
 dependencies = [
- "version_check 0.9.2",
+ "version_check 0.9.3",
 ]
 
 [[package]]
@@ -1483,8 +1544,8 @@ name = "tasknet"
 version = "0.1.0"
 dependencies = [
  "apply",
- "automerge",
- "automerge-protocol",
+ "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
  "automergeable",
  "chrono",
  "derivative",
@@ -1503,8 +1564,8 @@ dependencies = [
 name = "tasknet-server"
 version = "0.1.0"
 dependencies = [
- "automerge",
- "automerge-protocol",
+ "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
  "env_logger",
  "futures-util",
  "serde_json",
@@ -1518,8 +1579,8 @@ dependencies = [
 name = "tasknet-sync"
 version = "0.1.0"
 dependencies = [
- "automerge",
- "automerge-protocol",
+ "automerge 0.0.2 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
+ "automerge-protocol 0.1.0 (git+https://github.com/jeffa5/automerge-rs?branch=update-uuid)",
  "serde",
  "serde_json",
  "tokio",
@@ -1582,16 +1643,16 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.2.25"
+version = "0.2.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1195b046942c221454c2539395f85413b33383a067449d78aab2b7b052a142f7"
+checksum = "08a8cbfbf47955132d0202d1662f49b2423ae35862aee471f3ba4b133358f372"
 dependencies = [
  "const_fn",
  "libc",
  "standback",
  "stdweb",
  "time-macros",
- "version_check 0.9.2",
+ "version_check 0.9.3",
  "winapi",
 ]
 
@@ -1793,7 +1854,7 @@ version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50f37be617794602aabbeee0be4f259dc1778fabe05e2d67ee8f79326d5cb4f6"
 dependencies = [
- "version_check 0.9.2",
+ "version_check 0.9.3",
 ]
 
 [[package]]
@@ -1871,9 +1932,9 @@ checksum = "914b1a6776c4c929a602fafd8bc742e06365d4bcbe48c30f9cca5824f70dc9dd"
 
 [[package]]
 name = "version_check"
-version = "0.9.2"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5a972e5669d67ba988ce3dc826706fb0a8b01471c088cb0b6110b805cc36aed"
+checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "want"
