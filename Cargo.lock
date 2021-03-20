@@ -107,7 +107,7 @@ dependencies = [
 [[package]]
 name = "automergeable"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#dce4043a0bcb9dd42cc8fa9ab4a670390180b918"
+source = "git+https://github.com/jeffa5/automergeable?branch=main#31899c8a6b68e9d2059a4bae59a3241964698e2b"
 dependencies = [
  "automerge",
  "automerge-frontend",
@@ -120,7 +120,7 @@ dependencies = [
 [[package]]
 name = "automergeable-derive"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#dce4043a0bcb9dd42cc8fa9ab4a670390180b918"
+source = "git+https://github.com/jeffa5/automergeable?branch=main#31899c8a6b68e9d2059a4bae59a3241964698e2b"
 dependencies = [
  "automerge",
  "automergeable-traits",
@@ -132,7 +132,7 @@ dependencies = [
 [[package]]
 name = "automergeable-traits"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#dce4043a0bcb9dd42cc8fa9ab4a670390180b918"
+source = "git+https://github.com/jeffa5/automergeable?branch=main#31899c8a6b68e9d2059a4bae59a3241964698e2b"
 dependencies = [
  "automerge",
  "automerge-protocol",
@@ -1433,6 +1433,7 @@ dependencies = [
  "automergeable",
  "chrono",
  "derivative",
+ "getrandom 0.2.2",
  "pretty_assertions",
  "regex",
  "seed",

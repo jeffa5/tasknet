@@ -31,7 +31,11 @@ impl Document {
             }
         };
         let patch = backend.get_patch().unwrap();
-        let inner = automergeable::Document::<DocumentInner>::new_with_patch(patch).unwrap();
+        let mut inner =
+            automergeable::Document::<DocumentInner>::new_with_timestamper(Box::new(|| {
+                Some(chrono::Utc::now().timestamp())
+            }));
+        inner.apply_patch(patch).unwrap();
         Self { inner, backend }
     }
 
