@@ -183,9 +183,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::CreateTask => {
             let id = uuid::Uuid::new_v4();
-            log!("creating task");
             let msg = model.global.document.add_task(id);
-            log!("msg", msg);
             if let Some(msg) = msg {
                 orders.send_msg(msg);
             }

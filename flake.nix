@@ -31,6 +31,8 @@
             pkgconfig
             openssl
 
+            nodejs
+
             rnix-lsp
             nixpkgs-fmt
           ];

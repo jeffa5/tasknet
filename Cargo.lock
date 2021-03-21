@@ -46,7 +46,7 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 [[package]]
 name = "automerge"
 version = "0.0.2"
-source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#ba3f0babf846ce9b213486afc6a5e994c1b496a8"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=remove-rc#ca5ddff556ededb930b77cb5823383d1450b73b0"
 dependencies = [
  "automerge-backend",
  "automerge-frontend",
@@ -59,7 +59,7 @@ dependencies = [
 [[package]]
 name = "automerge-backend"
 version = "0.0.1"
-source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#ba3f0babf846ce9b213486afc6a5e994c1b496a8"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=remove-rc#ca5ddff556ededb930b77cb5823383d1450b73b0"
 dependencies = [
  "automerge-protocol",
  "fxhash",
@@ -81,11 +81,11 @@ dependencies = [
 [[package]]
 name = "automerge-frontend"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#ba3f0babf846ce9b213486afc6a5e994c1b496a8"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=remove-rc#ca5ddff556ededb930b77cb5823383d1450b73b0"
 dependencies = [
  "automerge-protocol",
  "futures",
- "im-rc",
+ "im",
  "maplit",
  "serde",
  "serde_json",
@@ -96,7 +96,7 @@ dependencies = [
 [[package]]
 name = "automerge-protocol"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automerge-rs?branch=fix-panic-in-change#ba3f0babf846ce9b213486afc6a5e994c1b496a8"
+source = "git+https://github.com/jeffa5/automerge-rs?branch=remove-rc#ca5ddff556ededb930b77cb5823383d1450b73b0"
 dependencies = [
  "hex",
  "serde",
@@ -107,7 +107,7 @@ dependencies = [
 [[package]]
 name = "automergeable"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#31899c8a6b68e9d2059a4bae59a3241964698e2b"
+source = "git+https://github.com/jeffa5/automergeable?branch=remove-rc#28caad881bef578210ba82a3434356ef3aa1c018"
 dependencies = [
  "automerge",
  "automerge-frontend",
@@ -120,7 +120,7 @@ dependencies = [
 [[package]]
 name = "automergeable-derive"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#31899c8a6b68e9d2059a4bae59a3241964698e2b"
+source = "git+https://github.com/jeffa5/automergeable?branch=remove-rc#28caad881bef578210ba82a3434356ef3aa1c018"
 dependencies = [
  "automerge",
  "automergeable-traits",
@@ -132,7 +132,7 @@ dependencies = [
 [[package]]
 name = "automergeable-traits"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automergeable?branch=main#31899c8a6b68e9d2059a4bae59a3241964698e2b"
+source = "git+https://github.com/jeffa5/automergeable?branch=remove-rc#28caad881bef578210ba82a3434356ef3aa1c018"
 dependencies = [
  "automerge",
  "automerge-protocol",
@@ -731,10 +731,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "im-rc"
+name = "im"
 version = "15.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ca8957e71f04a205cb162508f9326aea04676c8dfd0711220190d6b83664f3f"
+checksum = "111c1983f3c5bb72732df25cddacee9b546d08325fb584b5ebd38148be7b0246"
 dependencies = [
  "bitmaps",
  "rand_core 0.5.1",
