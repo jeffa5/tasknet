@@ -105,6 +105,8 @@ async fn main() {
                                     } else {
                                         eprintln!("unexpected message {:?}", msg)
                                     }
+                                } else if msg.is_close() {
+                                    // do nothing as it is a close
                                 } else {
                                     eprintln!("found non text msg: {:?}", msg)
                                 }
