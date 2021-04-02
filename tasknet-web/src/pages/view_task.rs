@@ -711,7 +711,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                 div![ view_button("Permanently delete", GMsg::ViewTask(Msg::DeleteSelectedTask))]
             ),
             IF!(matches!(task.status(), Status::Deleted) =>
-                div![ view_button("Undelete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
+                div![ view_button("Restore", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
             ),
             IF!(matches!(task.status(), Status::Completed) =>
                 div![ view_button("Uncomplete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
