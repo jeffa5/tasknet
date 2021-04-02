@@ -153,7 +153,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::CreateTask => {
             let id = uuid::Uuid::new_v4();
-            let msg = model.global.document.add_task(id);
+            let msg = model.global.document.add_task(id, Task::new());
             if let Some(msg) = msg {
                 orders.send_msg(msg);
             }
@@ -189,7 +189,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
             }
             for (i, t) in new_tasks {
-                // model.global.tasks.insert(i, t);
+                let msg = model.global.document.add_task(i, t);
+                if let Some(msg) = msg {
+                    orders.send_msg(msg);
+                }
             }
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {

@@ -68,13 +68,13 @@ impl Document {
     }
 
     #[must_use]
-    pub fn add_task(&mut self, uuid: uuid::Uuid) -> Option<Msg> {
+    pub fn add_task(&mut self, uuid: uuid::Uuid, task: Task) -> Option<Msg> {
         let change_result = self
             .inner
             .change::<_, automerge::InvalidChangeRequest>(|d| {
-                let task = d.tasks.get(&Id(uuid));
-                if task.is_none() {
-                    d.tasks.insert(Id(uuid), Task::new());
+                let existing = d.tasks.get(&Id(uuid));
+                if existing.is_none() {
+                    d.tasks.insert(Id(uuid), task);
                 }
                 Ok(())
             });
