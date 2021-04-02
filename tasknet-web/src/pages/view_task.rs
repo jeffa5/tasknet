@@ -19,7 +19,7 @@ pub fn init(uuid: uuid::Uuid, task: Task, orders: &mut impl Orders<GMsg>) -> Mod
     orders.stream(streams::window_event(Ev::KeyUp, |event| {
         let key_event: web_sys::KeyboardEvent = event.unchecked_into();
         match key_event.key().as_ref() {
-            ESCAPE_KEY => Some(GMsg::ViewTask(Msg::SaveSelectedTask)),
+            ESCAPE_KEY => Some(GMsg::SelectTask(None)),
             _ => None,
         }
     }));
@@ -31,8 +31,8 @@ pub fn init(uuid: uuid::Uuid, task: Task, orders: &mut impl Orders<GMsg>) -> Mod
 
 #[derive(Debug)]
 pub struct Model {
-    selected_task_id: uuid::Uuid,
-    selected_task: Task,
+    pub selected_task_id: uuid::Uuid,
+    pub selected_task: Task,
 }
 
 #[derive(Debug, Clone)]
@@ -53,7 +53,6 @@ pub enum Msg {
     StartSelectedTask,
     StopSelectedTask,
     MoveSelectedTaskToPending,
-    SaveSelectedTask,
 }
 
 #[allow(clippy::too_many_lines)]
@@ -216,82 +215,38 @@ pub fn update(
             })),
             Err(()) => model.selected_task.set_recur(None),
         },
-        Msg::DeleteSelectedTask => {
-            orders.request_url(Urls::new(&global_model.base_url).home());
-            match model.selected_task.status() {
-                Status::Pending | Status::Completed | Status::Waiting | Status::Recurring => {
-                    model.selected_task.delete()
-                }
-                Status::Deleted => match window()
-                    .confirm_with_message("Are you sure you want to permanently delete this task?")
-                {
-                    Ok(true) => {
-                        // TODO: handle full deletion
-                        log!("full deletion is todo");
-                        // vec![automerge::LocalChange::delete(path.parent())]
+        Msg::DeleteSelectedTask => match model.selected_task.status() {
+            Status::Pending | Status::Completed | Status::Waiting | Status::Recurring => {
+                model.selected_task.delete();
+                orders.send_msg(GMsg::SelectTask(None));
+            }
+            Status::Deleted => match window()
+                .confirm_with_message("Are you sure you want to permanently delete this task?")
+            {
+                Ok(true) => {
+                    orders.request_url(Urls::new(&global_model.base_url).home());
+                    let msg = global_model.document.remove_task(model.selected_task_id);
+                    if let Some(msg) = msg {
+                        orders.send_msg(msg);
                     }
-                    Ok(false) | Err(_) => {}
-                },
-            }
-        }
+                }
+                Ok(false) | Err(_) => {}
+            },
+        },
         Msg::CompleteSelectedTask => {
-            orders.request_url(Urls::new(&global_model.base_url).home());
-            let msg = global_model
-                .document
-                .change_task(&model.selected_task_id.clone(), |task| {
-                    model.selected_task.complete();
-                    *task = model.selected_task.clone()
-                });
-            if let Some(msg) = msg {
-                orders.send_msg(msg);
-            }
+            model.selected_task.complete();
+            orders.send_msg(GMsg::SelectTask(None));
         }
         Msg::StartSelectedTask => {
-            orders.request_url(Urls::new(&global_model.base_url).home());
-            let msg = global_model
-                .document
-                .change_task(&model.selected_task_id.clone(), |task| {
-                    model.selected_task.activate();
-                    *task = model.selected_task.clone()
-                });
-            if let Some(msg) = msg {
-                orders.send_msg(msg);
-            }
+            model.selected_task.activate();
+            orders.send_msg(GMsg::SelectTask(None));
         }
         Msg::StopSelectedTask => {
-            orders.request_url(Urls::new(&global_model.base_url).home());
-            let msg = global_model
-                .document
-                .change_task(&model.selected_task_id.clone(), |task| {
-                    model.selected_task.deactivate();
-                    *task = model.selected_task.clone()
-                });
-            if let Some(msg) = msg {
-                orders.send_msg(msg);
-            }
+            model.selected_task.deactivate();
+            orders.send_msg(GMsg::SelectTask(None));
         }
         Msg::MoveSelectedTaskToPending => {
-            orders.request_url(Urls::new(&global_model.base_url).home());
-            let msg = global_model
-                .document
-                .change_task(&model.selected_task_id.clone(), |task| {
-                    model.selected_task.restore();
-                    *task = model.selected_task.clone()
-                });
-            if let Some(msg) = msg {
-                orders.send_msg(msg);
-            }
-        }
-        Msg::SaveSelectedTask => {
-            orders.request_url(Urls::new(&global_model.base_url).home());
-            let msg = global_model
-                .document
-                .change_task(&model.selected_task_id.clone(), |task| {
-                    *task = model.selected_task.clone()
-                });
-            if let Some(msg) = msg {
-                orders.send_msg(msg);
-            }
+            model.selected_task.restore();
             orders.send_msg(GMsg::SelectTask(None));
         }
     }
@@ -761,7 +716,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
             IF!(matches!(task.status(), Status::Completed) =>
                 div![ view_button("Uncomplete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
             ),
-            view_button("Close", GMsg::ViewTask(Msg::SaveSelectedTask))
+            view_button("Close", GMsg::SelectTask(None))
         ]
     ]
 }

@@ -50,32 +50,23 @@ impl Document {
     }
 
     #[must_use]
-    pub fn change_task<F>(&mut self, uuid: &uuid::Uuid, f: F) -> Option<Msg>
-    where
-        F: FnOnce(&mut Task),
-    {
-        let changes = self
-            .inner
-            .change::<_, automerge::InvalidChangeRequest>(|d| {
-                let task = d.tasks.get_mut(&Id(*uuid));
-                if let Some(task) = task {
-                    f(task)
-                }
-                Ok(())
-            })
-            .unwrap();
-        changes.map(Msg::ApplyChange)
-    }
-
-    #[must_use]
-    pub fn add_task(&mut self, uuid: uuid::Uuid, task: Task) -> Option<Msg> {
+    pub fn set_task(&mut self, uuid: uuid::Uuid, task: Task) -> Option<Msg> {
         let change_result = self
             .inner
             .change::<_, automerge::InvalidChangeRequest>(|d| {
-                let existing = d.tasks.get(&Id(uuid));
-                if existing.is_none() {
-                    d.tasks.insert(Id(uuid), task);
-                }
+                d.tasks.insert(Id(uuid), task);
+                Ok(())
+            });
+        let change = change_result.unwrap();
+        change.map(Msg::ApplyChange)
+    }
+
+    #[must_use]
+    pub fn remove_task(&mut self, uuid: uuid::Uuid) -> Option<Msg> {
+        let change_result = self
+            .inner
+            .change::<_, automerge::InvalidChangeRequest>(|d| {
+                d.tasks.remove(&Id(uuid));
                 Ok(())
             });
         let change = change_result.unwrap();

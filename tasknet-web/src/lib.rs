@@ -147,13 +147,22 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::SelectTask(None) => {
             orders.request_url(Urls::new(&model.global.base_url).home());
+            if let Page::ViewTask(page_model) = &model.page {
+                let msg = model.global.document.set_task(
+                    page_model.selected_task_id,
+                    page_model.selected_task.clone(),
+                );
+                if let Some(msg) = msg {
+                    orders.send_msg(msg);
+                }
+            }
         }
         Msg::SelectTask(Some(uuid)) => {
             orders.request_url(Urls::new(&model.global.base_url).view_task(&uuid));
         }
         Msg::CreateTask => {
             let id = uuid::Uuid::new_v4();
-            let msg = model.global.document.add_task(id, Task::new());
+            let msg = model.global.document.set_task(id, Task::new());
             if let Some(msg) = msg {
                 orders.send_msg(msg);
             }
@@ -189,10 +198,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
             }
             for (i, t) in new_tasks {
-                let msg = model.global.document.add_task(i, t);
-                if let Some(msg) = msg {
-                    orders.send_msg(msg);
-                }
+                log!("recurring add", i, t);
+                // let msg = model.global.document.set_task(i, t);
+                // if let Some(msg) = msg {
+                //     orders.send_msg(msg);
+                // }
             }
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
@@ -243,11 +253,7 @@ fn view_titlebar() -> Node<Msg> {
         C!["flex", "flex-row", "justify-between"],
         div![
             C!["flex", "flex-row", "justify-start"],
-            a![
-                C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300",],
-                attrs! {At::Href => "/tasknet"},
-                "TaskNet"
-            ]
+            view_button("Tasknet", Msg::SelectTask(None)),
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
