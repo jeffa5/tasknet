@@ -19,7 +19,7 @@ pub fn init(uuid: uuid::Uuid, task: Task, orders: &mut impl Orders<GMsg>) -> Mod
     orders.stream(streams::window_event(Ev::KeyUp, |event| {
         let key_event: web_sys::KeyboardEvent = event.unchecked_into();
         match key_event.key().as_ref() {
-            ESCAPE_KEY => Some(GMsg::ViewTask(Msg::EscapeKey)),
+            ESCAPE_KEY => Some(GMsg::ViewTask(Msg::SaveSelectedTask)),
             _ => None,
         }
     }));
@@ -53,7 +53,7 @@ pub enum Msg {
     StartSelectedTask,
     StopSelectedTask,
     MoveSelectedTaskToPending,
-    EscapeKey,
+    SaveSelectedTask,
 }
 
 #[allow(clippy::too_many_lines)]
@@ -238,22 +238,63 @@ pub fn update(
         }
         Msg::CompleteSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            model.selected_task.complete()
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task_id.clone(), |task| {
+                    model.selected_task.complete();
+                    *task = model.selected_task.clone()
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::StartSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            model.selected_task.activate()
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task_id.clone(), |task| {
+                    model.selected_task.activate();
+                    *task = model.selected_task.clone()
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::StopSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            model.selected_task.deactivate()
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task_id.clone(), |task| {
+                    model.selected_task.deactivate();
+                    *task = model.selected_task.clone()
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
         Msg::MoveSelectedTaskToPending => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            model.selected_task.restore()
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task_id.clone(), |task| {
+                    model.selected_task.restore();
+                    *task = model.selected_task.clone()
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
         }
-        Msg::EscapeKey => {
+        Msg::SaveSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
+            let msg = global_model
+                .document
+                .change_task(&model.selected_task_id.clone(), |task| {
+                    *task = model.selected_task.clone()
+                });
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
+            orders.send_msg(GMsg::SelectTask(None));
         }
     }
 }
@@ -722,7 +763,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
             IF!(matches!(task.status(), Status::Completed) =>
                 div![ view_button("Uncomplete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
             ),
-            view_button("Close", GMsg::SelectTask(None))
+            view_button("Close", GMsg::ViewTask(Msg::SaveSelectedTask))
         ]
     ]
 }
