@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use apply::Apply;
 use automergeable::automerge_protocol;
+use chrono::Utc;
 use derivative::Derivative;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
@@ -204,33 +205,38 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .filter(|(_, t)| t.status() == &Status::Recurring)
                 .collect();
             let mut new_tasks = Vec::new();
-            for r in recurring {
-                let mut children: Vec<_> = tasks
-                    .iter()
-                    .filter(|(i, t)| t.parent().as_ref().map_or(false, |p| *p == **i))
-                    .collect();
-                children.sort_by_key(|c| **c.1.entry());
-                let last_child = children.last();
-                if let Some(child) = last_child {
+            for (id, task) in recurring {
+                let latest_child: Option<&Task> = tasks
+                    .values()
+                    .filter(|t| t.parent().as_ref().map_or(false, |p| *p == *id))
+                    .fold(None, |acc, t| {
+                        if let Some(acc) = acc {
+                            if **t.entry() > **acc.entry() {
+                                Some(t)
+                            } else {
+                                Some(acc)
+                            }
+                        } else {
+                            Some(t)
+                        }
+                    });
+                if let Some(child) = latest_child {
                     // if child's entry is older than the recurring duration, create a new child
-                    if chrono::offset::Utc::now() - **child.1.entry()
-                        > r.1.recur().as_ref().unwrap().duration()
-                    {
-                        log!("old enough");
-                        let new_child = r.1.new_child(**r.0);
+                    let time_since_last = Utc::now() - **child.entry();
+                    if time_since_last > task.recur().as_ref().unwrap().duration() {
+                        let new_child = task.new_child(**id);
                         new_tasks.push(new_child)
                     }
                 } else {
-                    let new_child = r.1.new_child(**r.0);
+                    let new_child = task.new_child(**id);
                     new_tasks.push(new_child)
                 }
             }
             for (i, t) in new_tasks {
-                log!("recurring add", i, t);
-                // let msg = model.global.document.set_task(i, t);
-                // if let Some(msg) = msg {
-                //     orders.send_msg(msg);
-                // }
+                let msg = model.global.document.set_task(i, t);
+                if let Some(msg) = msg {
+                    orders.send_msg(msg);
+                }
             }
         }
         Msg::BackendCompactTick => {
