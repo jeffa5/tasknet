@@ -193,7 +193,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::ExportTasks => {
             let tasks = model.global.document.tasks();
             window()
-                .alert_with_message(&serde_json::to_string(&tasks).unwrap())
+                .prompt_with_message_and_default("", &serde_json::to_string(&tasks).unwrap())
                 .unwrap();
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
@@ -250,7 +250,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .unwrap();
             orders.skip().send_msg(Msg::ApplyPatch(patch));
         }
-        Msg::ApplyPatch(patch) => model.global.document.inner.apply_patch(patch).unwrap(),
+        Msg::ApplyPatch(patch) => {
+            log!("apply patch");
+            model.global.document.inner.apply_patch(patch).unwrap();
+            log!("applied patch")
+        }
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {
                 pages::view_task::update(msg, &mut model.global, lm, orders)
