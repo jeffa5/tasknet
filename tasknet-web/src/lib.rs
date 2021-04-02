@@ -43,6 +43,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders
         .stream(streams::interval(1000, || Msg::OnRenderTick))
         .stream(streams::interval(60000, || Msg::OnRecurTick))
+        .stream(streams::interval(60000, || Msg::BackendCompactTick))
         .subscribe(Msg::UrlChanged);
     let document = Document::new();
     let page = Page::init(url.clone(), &document, orders);
@@ -134,6 +135,7 @@ pub enum Msg {
     CreateTask,
     OnRenderTick,
     OnRecurTick,
+    BackendCompactTick,
     UrlChanged(subs::UrlChanged),
     ApplyChange(automerge_protocol::UncompressedChange),
     ApplyPatch(automerge_protocol::Patch),
@@ -205,6 +207,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 // }
             }
         }
+        Msg::BackendCompactTick => {
+            log!("compacting");
+            model.global.document.backend.compact().unwrap()
+        }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
             model.page = Page::init(url, &model.global.document, orders)
         }
@@ -229,8 +235,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
     }
-    LocalStorage::insert(document::TASKS_STORAGE_KEY, &model.global.document.save())
-        .expect("save tasks to LocalStorage");
 }
 
 // ------ ------

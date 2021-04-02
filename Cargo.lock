@@ -96,6 +96,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "automerge-persistent"
+version = "0.1.0"
+source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#93ab50c6e51d5c4c95cbf04ccbc0590ea90b09fc"
+dependencies = [
+ "automerge",
+ "automerge-backend",
+ "automerge-protocol",
+ "thiserror",
+]
+
+[[package]]
+name = "automerge-persistent-localstorage"
+version = "0.1.0"
+source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#93ab50c6e51d5c4c95cbf04ccbc0590ea90b09fc"
+dependencies = [
+ "automerge",
+ "automerge-persistent",
+ "automerge-protocol",
+ "serde",
+ "serde_json",
+ "web-sys",
+]
+
+[[package]]
 name = "automerge-protocol"
 version = "0.1.0"
 source = "git+https://github.com/jeffa5/automerge-rs?branch=main#d3d1b48c4889e374b58e723c16b3c13a5a5d30bb"
@@ -1433,6 +1457,8 @@ name = "tasknet"
 version = "0.1.0"
 dependencies = [
  "apply",
+ "automerge-persistent",
+ "automerge-persistent-localstorage",
  "automergeable",
  "chrono",
  "derivative",

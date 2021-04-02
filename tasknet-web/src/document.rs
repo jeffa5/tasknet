@@ -2,18 +2,18 @@ use std::collections::HashMap;
 
 use automergeable::{automerge, Automergeable};
 #[allow(clippy::wildcard_imports)]
-use seed::{prelude::*, *};
+use seed::prelude::*;
 
 use crate::{
     task::{Id, Task},
     Msg,
 };
 
-pub const TASKS_STORAGE_KEY: &str = "tasknet-automerge";
-
 pub struct Document {
     pub inner: automergeable::Document<DocumentInner>,
-    pub backend: automerge::Backend,
+    pub backend: automerge_persistent::PersistentBackend<
+        automerge_persistent_localstorage::LocalStoragePersister,
+    >,
 }
 
 #[derive(Debug, Default, Clone, Automergeable)]
@@ -23,13 +23,12 @@ pub struct DocumentInner {
 
 impl Document {
     pub fn new() -> Self {
-        let backend = match LocalStorage::get(TASKS_STORAGE_KEY) {
-            Ok(tasks) => automerge::Backend::load(tasks).unwrap(),
-            Err(e) => {
-                log!("err loading tasks", e);
-                automerge::Backend::init()
-            }
-        };
+        let persister = automerge_persistent_localstorage::LocalStoragePersister::new(
+            LocalStorage::storage().unwrap(),
+            "automerge-persistent-document".to_owned(),
+            "automerge-persistent-changes".to_owned(),
+        );
+        let backend = automerge_persistent::PersistentBackend::load(persister).unwrap();
         let patch = backend.get_patch().unwrap();
         let mut inner =
             automergeable::Document::<DocumentInner>::new_with_timestamper(Box::new(|| {
@@ -71,9 +70,5 @@ impl Document {
             });
         let change = change_result.unwrap();
         change.map(Msg::ApplyChange)
-    }
-
-    pub fn save(&self) -> Vec<u8> {
-        self.backend.save().unwrap()
     }
 }
