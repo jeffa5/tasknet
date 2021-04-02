@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use automergeable::{automerge, Automergeable};
 #[allow(clippy::wildcard_imports)]
-use seed::prelude::*;
+use seed::{prelude::*, *};
 
 use crate::{
     task::{Id, Task},
@@ -28,13 +28,18 @@ impl Document {
             "automerge-persistent-document".to_owned(),
             "automerge-persistent-changes".to_owned(),
         );
+        log!("loading");
         let backend = automerge_persistent::PersistentBackend::load(persister).unwrap();
+        log!("loaded");
         let patch = backend.get_patch().unwrap();
+        log!("got patch");
         let mut inner =
             automergeable::Document::<DocumentInner>::new_with_timestamper(Box::new(|| {
                 Some(chrono::Utc::now().timestamp())
             }));
+        log!("made document");
         inner.apply_patch(patch).unwrap();
+        log!("applied patch");
         Self { inner, backend }
     }
 

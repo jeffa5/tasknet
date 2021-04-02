@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use apply::Apply;
 use automergeable::automerge_protocol;
 use derivative::Derivative;
@@ -133,6 +135,8 @@ impl Page {
 pub enum Msg {
     SelectTask(Option<uuid::Uuid>),
     CreateTask,
+    ImportTasks,
+    ExportTasks,
     OnRenderTick,
     OnRecurTick,
     BackendCompactTick,
@@ -169,6 +173,28 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 orders.send_msg(msg);
             }
             orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
+        }
+        Msg::ImportTasks => {
+            let tasks: HashMap<uuid::Uuid, Task> = serde_json::from_str(
+                &window()
+                    .prompt()
+                    .unwrap()
+                    .unwrap_or_else(|| "{}".to_owned()),
+            )
+            .unwrap();
+            for (id, task) in tasks {
+                log!("importing", id);
+                let msg = model.global.document.set_task(id, task);
+                if let Some(msg) = msg {
+                    orders.skip().send_msg(msg);
+                }
+            }
+        }
+        Msg::ExportTasks => {
+            let tasks = model.global.document.tasks();
+            window()
+                .alert_with_message(&serde_json::to_string(&tasks).unwrap())
+                .unwrap();
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
@@ -209,7 +235,8 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::BackendCompactTick => {
             log!("compacting");
-            model.global.document.backend.compact().unwrap()
+            model.global.document.backend.compact().unwrap();
+            log!("compacted");
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
             model.page = Page::init(url, &model.global.document, orders)
@@ -261,6 +288,8 @@ fn view_titlebar() -> Node<Msg> {
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
+            view_button("Import", Msg::ImportTasks),
+            view_button("Export", Msg::ExportTasks),
             view_button("Create", Msg::CreateTask),
         ]
     ]
