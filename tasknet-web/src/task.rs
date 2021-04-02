@@ -7,7 +7,6 @@ use std::{
 use automergeable::Automergeable;
 use chrono::TimeZone;
 #[allow(clippy::wildcard_imports)]
-use seed::{prelude::*, *};
 use serde::{Deserialize, Serialize};
 
 // Based on https://taskwarrior.org/docs/design/task.html
@@ -96,7 +95,7 @@ pub struct Task {
     depends: HashSet<Id>,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     #[serde(default)]
-    udas: HashMap<String, UDA>,
+    udas: HashMap<String, Uda>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Automergeable)]
@@ -377,7 +376,7 @@ impl std::convert::TryFrom<String> for Priority {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Automergeable)]
 #[serde(untagged)]
-pub enum UDA {
+pub enum Uda {
     Duration(String), // TODO: use custom newtype struct
     String(String),
     Number(f64),

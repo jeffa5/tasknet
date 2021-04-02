@@ -14,7 +14,7 @@ mod urgency;
 use components::view_button;
 use document::Document;
 use filters::Filters;
-use task::{Recur, Status};
+use task::{Recur, Status, Task};
 
 const VIEW_TASK: &str = "view";
 
