@@ -78,8 +78,8 @@ impl Document {
                 }
                 Ok(())
             });
-        let changes = change_result.unwrap();
-        changes.map(Msg::ApplyChange)
+        let change = change_result.unwrap();
+        change.map(Msg::ApplyChange)
     }
 
     pub fn save(&self) -> Vec<u8> {

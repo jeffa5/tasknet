@@ -47,37 +47,16 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     });
     orders
         .stream(streams::interval(1000, || Msg::OnRenderTick))
-        .stream(streams::interval(1000, || Msg::OnSyncTick))
         .stream(streams::interval(60000, || Msg::OnRecurTick))
         .subscribe(Msg::UrlChanged);
     let document = Document::new();
     let page = Page::init(url.clone(), &document, orders);
-    let msg_sender = orders.msg_sender();
-    let sync_socket = WebSocket::builder("ws://127.0.0.1:8080/sync", orders)
-        .on_message(|msg| decode_ws_message(msg, msg_sender))
-        .build_and_open()
-        .unwrap();
     Model {
         global: GlobalModel {
             document,
-            sync_socket,
             base_url: url.to_hash_base_url(),
         },
         page,
-    }
-}
-
-fn decode_ws_message(msg: WebSocketMessage, msg_sender: Rc<dyn Fn(Option<Msg>)>) {
-    let text = msg.text().unwrap();
-    if let Ok(message) = tasknet_sync::Message::try_from(text) {
-        match message {
-            tasknet_sync::Message::Heads(heads) => {
-                msg_sender(Some(Msg::SyncMessageReceivedHeads(heads)))
-            }
-            tasknet_sync::Message::Changes(changes) => {
-                msg_sender(Some(Msg::SyncMessageReceivedChanges(changes)))
-            }
-        }
     }
 }
 
@@ -90,7 +69,6 @@ fn decode_ws_message(msg: WebSocketMessage, msg_sender: Rc<dyn Fn(Option<Msg>)>)
 pub struct GlobalModel {
     #[derivative(Debug = "ignore")]
     document: Document,
-    sync_socket: seed::browser::web_socket::WebSocket,
     base_url: Url,
 }
 
@@ -135,8 +113,8 @@ impl Page {
             Some(VIEW_TASK) => match url.next_hash_path_part() {
                 Some(uuid) => {
                     if let Ok(uuid) = uuid::Uuid::parse_str(uuid) {
-                        if document.task(&uuid).is_some() {
-                            Self::ViewTask(pages::view_task::init(uuid, orders))
+                        if let Some(task) = document.task(&uuid) {
+                            Self::ViewTask(pages::view_task::init(uuid, task, orders))
                         } else {
                             Self::Home(pages::home::init())
                         }
@@ -155,18 +133,15 @@ impl Page {
 //    Update
 // ------ ------
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Msg {
     SelectTask(Option<uuid::Uuid>),
     CreateTask,
     OnRenderTick,
-    OnSyncTick,
     OnRecurTick,
     UrlChanged(subs::UrlChanged),
     ApplyChange(automerge_protocol::UncompressedChange),
     ApplyPatch(automerge_protocol::Patch),
-    SyncMessageReceivedHeads(Vec<automerge_protocol::ChangeHash>),
-    SyncMessageReceivedChanges(Vec<automerge_protocol::UncompressedChange>),
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
 }
@@ -190,16 +165,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
-        Msg::OnSyncTick => {
-            let heads = model.global.document.backend.get_heads();
-            if !heads.is_empty() {
-                model
-                    .global
-                    .sync_socket
-                    .send_text(String::try_from(tasknet_sync::Message::Heads(heads)).unwrap())
-                    .unwrap();
-            }
-        }
         Msg::OnRecurTick => {
             let tasks = model.global.document.tasks();
             let recurring: Vec<_> = tasks
@@ -242,44 +207,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .backend
                 .apply_local_change(change.clone())
                 .unwrap();
-            model
-                .global
-                .sync_socket
-                .send_text(String::try_from(tasknet_sync::Message::Changes(vec![change])).unwrap())
-                .unwrap();
             orders.skip().send_msg(Msg::ApplyPatch(patch));
         }
         Msg::ApplyPatch(patch) => model.global.document.inner.apply_patch(patch).unwrap(),
-        Msg::SyncMessageReceivedHeads(heads) => {
-            let changes = model.global.document.backend.get_changes(&heads);
-            if !changes.is_empty() {
-                model
-                    .global
-                    .sync_socket
-                    .send_text(
-                        String::try_from(tasknet_sync::Message::Changes(
-                            changes.iter().map(|c| c.decode()).collect::<Vec<_>>(),
-                        ))
-                        .unwrap(),
-                    )
-                    .unwrap();
-            }
-        }
-        Msg::SyncMessageReceivedChanges(changes) => {
-            if !changes.is_empty() {
-                let changes = changes
-                    .into_iter()
-                    .map(automerge::Change::from)
-                    .collect::<Vec<_>>();
-                let patch = model
-                    .global
-                    .document
-                    .backend
-                    .apply_changes(changes)
-                    .unwrap();
-                model.global.document.inner.apply_patch(patch).unwrap();
-            }
-        }
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {
                 pages::view_task::update(msg, &mut model.global, lm, orders)

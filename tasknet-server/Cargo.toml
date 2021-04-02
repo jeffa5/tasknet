@@ -10,6 +10,6 @@ futures-util = "0.3.12"
 serde_json = "1.0.62"
 tokio = { version = "1.2.0", features = ["macros", "rt-multi-thread"] }
 warp = "0.3.0"
-automergeable = { git = "https://github.com/jeffa5/automergeable", branch = "remove-rc" }
+automergeable = { git = "https://github.com/jeffa5/automergeable", branch = "main" }
 tasknet-sync = { path = "../tasknet-sync" }
 tracing = "0.1.23"
