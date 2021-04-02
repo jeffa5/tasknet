@@ -1,10 +1,5 @@
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
-
-use std::{convert::TryFrom, rc::Rc};
-
 use apply::Apply;
-use automergeable::{automerge, automerge_protocol};
+use automergeable::automerge_protocol;
 use derivative::Derivative;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
@@ -205,7 +200,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .global
                 .document
                 .backend
-                .apply_local_change(change.clone())
+                .apply_local_change(change)
                 .unwrap();
             orders.skip().send_msg(Msg::ApplyPatch(patch));
         }

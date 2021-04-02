@@ -397,7 +397,7 @@ impl FromStr for Id {
     type Err = uuid::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        uuid::Uuid::from_str(s).map(|u| Id(u))
+        uuid::Uuid::from_str(s).map(Id)
     }
 }
 

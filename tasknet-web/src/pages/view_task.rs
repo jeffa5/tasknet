@@ -194,30 +194,28 @@ pub fn update(
             }
         }
         Msg::SelectedTaskRecurAmountChanged(new_amount) => {
-            // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
-            //     if let Ok(n) = new_amount.parse::<u16>() {
-            //         if n > 0 {
-            //             task.set_recur(Some(Recur {
-            //                 amount: n,
-            //                 unit: task.recur().as_ref().map_or(RecurUnit::Week, |r| r.unit),
-            //             }))
-            //         } else {
-            //             task.set_recur(None)
-            //         }
-            //     }
-            // }
+            if let Ok(n) = new_amount.parse::<u16>() {
+                if n > 0 {
+                    model.selected_task.set_recur(Some(Recur {
+                        amount: n,
+                        unit: model
+                            .selected_task
+                            .recur()
+                            .as_ref()
+                            .map_or(RecurUnit::Week, |r| r.unit),
+                    }))
+                } else {
+                    model.selected_task.set_recur(None)
+                }
+            }
         }
-        Msg::SelectedTaskRecurUnitChanged(new_unit) => {
-            // if let Some(task) = &mut global_model.document.get_mut(&model.selected_task) {
-            //     match RecurUnit::try_from(new_unit) {
-            //         Ok(unit) => task.set_recur(Some(Recur {
-            //             amount: task.recur().as_ref().map_or(1, |r| r.amount),
-            //             unit,
-            //         })),
-            //         Err(()) => task.set_recur(None),
-            //     }
-            // }
-        }
+        Msg::SelectedTaskRecurUnitChanged(new_unit) => match RecurUnit::try_from(new_unit) {
+            Ok(unit) => model.selected_task.set_recur(Some(Recur {
+                amount: model.selected_task.recur().as_ref().map_or(1, |r| r.amount),
+                unit,
+            })),
+            Err(()) => model.selected_task.set_recur(None),
+        },
         Msg::DeleteSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
             match model.selected_task.status() {
