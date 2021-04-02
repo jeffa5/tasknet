@@ -105,7 +105,7 @@ dependencies = [
 [[package]]
 name = "automerge-persistent"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#dc56a770ec4df9e1fa44be562e0d4db417b441de"
+source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#0518ae9b25396ded6464a2dc9c00014458a99ca4"
 dependencies = [
  "automerge",
  "automerge-backend",
@@ -116,12 +116,11 @@ dependencies = [
 [[package]]
 name = "automerge-persistent-localstorage"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#dc56a770ec4df9e1fa44be562e0d4db417b441de"
+source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#0518ae9b25396ded6464a2dc9c00014458a99ca4"
 dependencies = [
  "automerge",
  "automerge-persistent",
  "automerge-protocol",
- "seed",
  "serde",
  "serde_json",
  "web-sys",
