@@ -9,6 +9,8 @@ use crate::{
     Msg,
 };
 
+const TASKS_STORAGE_KEY: &str = "tasknet-tasks";
+
 pub struct Document {
     pub inner: automergeable::Document<DocumentInner>,
     pub backend: automerge_persistent::PersistentBackend<
@@ -62,6 +64,7 @@ impl Document {
                 Ok(())
             });
         let change = change_result.unwrap();
+        LocalStorage::insert(TASKS_STORAGE_KEY, &self.tasks()).expect("save tasks to LocalStorage");
         change.map(Msg::ApplyChange)
     }
 
@@ -74,6 +77,7 @@ impl Document {
                 Ok(())
             });
         let change = change_result.unwrap();
+        LocalStorage::insert(TASKS_STORAGE_KEY, &self.tasks()).expect("save tasks to LocalStorage");
         change.map(Msg::ApplyChange)
     }
 }
