@@ -115,7 +115,7 @@ impl Page {
                         if let Some(task) = document.task(&uuid) {
                             Self::ViewTask(pages::view_task::init(uuid, task, orders))
                         } else {
-                            Self::Home(pages::home::init())
+                            Self::ViewTask(pages::view_task::init(uuid, Task::new(), orders))
                         }
                     } else {
                         Self::Home(pages::home::init())
@@ -169,10 +169,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::CreateTask => {
             let id = uuid::Uuid::new_v4();
-            let msg = model.global.document.set_task(id, Task::new());
-            if let Some(msg) = msg {
-                orders.send_msg(msg);
-            }
             orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
         }
         Msg::ImportTasks => {
