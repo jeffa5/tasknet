@@ -238,11 +238,29 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
 
 #[allow(clippy::too_many_lines)]
 fn view_tasks(tasks: &HashMap<Id, Task>, model: &Model) -> Node<GMsg> {
-    let mut tasks: Vec<_> = tasks
+    let tasks: Vec<_> = tasks
         .iter()
         .filter(|(_, t)| model.filters.filter_task(t))
         .collect();
 
+    if tasks.is_empty() {
+        div![
+            C![
+                "flex",
+                "flex-col",
+                "flex-wrap",
+                "items-center",
+                "font-bold",
+                "m-2"
+            ],
+            span!["No tasks to show, either create a task or change some filters."]
+        ]
+    } else {
+        view_tasks_table(tasks, model)
+    }
+}
+
+fn view_tasks_table(mut tasks: Vec<(&Id, &Task)>, model: &Model) -> Node<GMsg> {
     tasks.sort_by(|(_, t1), (_, t2)| sort_viewable_task(model.sort_field, t1, t2));
     if matches!(model.sort_direction, SortDirection::Descending) {
         tasks.reverse();
