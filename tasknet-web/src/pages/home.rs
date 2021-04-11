@@ -103,6 +103,7 @@ pub enum Msg {
     FiltersDescriptionChanged(String),
     FiltersReset,
     FiltersSave,
+    ToggleShowFilters,
     SelectedContextChanged(String),
     ContextsRemove,
     ToggleSort(Field),
@@ -195,6 +196,9 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                 }
             }
         }
+        Msg::ToggleShowFilters => {
+            model.filters.show = !model.filters.show;
+        }
         Msg::SelectedContextChanged(c) => {
             if let Some(filters) = model.contexts.get(&c) {
                 model.filters = filters.clone()
@@ -222,7 +226,14 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
 
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     let tasks = global_model.document.tasks();
-    div![view_filters(model, &tasks), view_tasks(&tasks, model),]
+    div![
+        if model.filters.show {
+            view_filters(model, &tasks)
+        } else {
+            empty!()
+        },
+        view_tasks(&tasks, model)
+    ]
 }
 
 #[allow(clippy::too_many_lines)]

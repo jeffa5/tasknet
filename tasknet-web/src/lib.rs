@@ -271,7 +271,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 fn view(model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-col", "container", "mx-auto"],
-        view_titlebar(),
+        view_titlebar(model),
         match &model.page {
             Page::Home(lm) => pages::home::view(&model.global, lm),
             Page::ViewTask(lm) => pages::view_task::view(&model.global, lm),
@@ -279,7 +279,8 @@ fn view(model: &Model) -> Node<Msg> {
     ]
 }
 
-fn view_titlebar() -> Node<Msg> {
+fn view_titlebar(model: &Model) -> Node<Msg> {
+    let is_home = matches!(model.page, Page::Home(_));
     div![
         C!["flex", "flex-row", "justify-between"],
         div![
@@ -288,6 +289,14 @@ fn view_titlebar() -> Node<Msg> {
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
+            if is_home {
+                view_button(
+                    "Toggle Filters",
+                    Msg::Home(pages::home::Msg::ToggleShowFilters),
+                )
+            } else {
+                empty!()
+            },
             view_button("Import Tasks", Msg::ImportTasks),
             view_button("Export Tasks", Msg::ExportTasks),
             view_button("Create", Msg::CreateTask),

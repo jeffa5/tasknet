@@ -6,6 +6,8 @@ use crate::task::{Priority, Status, Task};
 #[allow(clippy::struct_excessive_bools)]
 pub struct Filters {
     #[serde(default)]
+    pub show: bool,
+    #[serde(default)]
     pub status_pending: bool,
     #[serde(default)]
     pub status_completed: bool,
@@ -34,6 +36,7 @@ pub struct Filters {
 impl Default for Filters {
     fn default() -> Self {
         Self {
+            show: true,
             status_pending: true,
             status_completed: false,
             status_deleted: false,
