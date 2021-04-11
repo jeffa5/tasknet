@@ -318,6 +318,7 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             "\u{26A0} Unsaved changes"
         ]
     };
+    let disable_changes = model.task.description().is_empty();
     let start = model.task.start();
     let end = model.task.end();
     let urgency = urgency::calculate(&model.task);
@@ -748,28 +749,32 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             IF!(is_pending =>
                 div![
                     if start.is_some() {
-                        view_button("Stop", GMsg::ViewTask(Msg::StopSelectedTask))
+                        view_button("Stop", GMsg::ViewTask(Msg::StopSelectedTask),disable_changes)
                     } else {
-                        view_button("Start", GMsg::ViewTask(Msg::StartSelectedTask))
+                        view_button("Start", GMsg::ViewTask(Msg::StartSelectedTask),disable_changes)
                     }
                 ]
             ),
             IF!(is_pending =>
-                div![ view_button("Complete", GMsg::ViewTask(Msg::CompleteSelectedTask))]
+                div![ view_button("Complete", GMsg::ViewTask(Msg::CompleteSelectedTask),disable_changes)]
             ),
             IF!(matches!(model.task.status(), Status::Pending|Status::Waiting|Status::Recurring) =>
-                div![ view_button("Delete", GMsg::ViewTask(Msg::DeleteSelectedTask))]
+                div![ view_button("Delete", GMsg::ViewTask(Msg::DeleteSelectedTask),disable_changes)]
             ),
             IF!(matches!(model.task.status(), Status::Deleted) =>
-                div![ view_button("Permanently delete", GMsg::ViewTask(Msg::DeleteSelectedTask))]
+                div![ view_button("Permanently delete", GMsg::ViewTask(Msg::DeleteSelectedTask),disable_changes)]
             ),
             IF!(matches!(model.task.status(), Status::Deleted) =>
-                div![ view_button("Restore", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
+                div![ view_button("Restore", GMsg::ViewTask(Msg::MoveSelectedTaskToPending),disable_changes)]
             ),
             IF!(matches!(model.task.status(), Status::Completed) =>
-                div![ view_button("Uncomplete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
+                div![ view_button("Uncomplete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending),disable_changes)]
             ),
-            view_button("Save & Close", GMsg::ViewTask(Msg::SaveCloseTask))
+            view_button(
+                "Save & Close",
+                GMsg::ViewTask(Msg::SaveCloseTask),
+                disable_changes
+            )
         ]
     ]
 }

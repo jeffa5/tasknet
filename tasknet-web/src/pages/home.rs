@@ -570,9 +570,9 @@ fn view_filters(model: &Model, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
         ],
         div![
             C!["flex", "flex-col"],
-            view_button("Reset Filters", GMsg::Home(Msg::FiltersReset)),
-            view_button("Save to context", GMsg::Home(Msg::FiltersSave)),
-            view_button("Remove context", GMsg::Home(Msg::ContextsRemove)),
+            view_button("Reset Filters", GMsg::Home(Msg::FiltersReset), false),
+            view_button("Save to context", GMsg::Home(Msg::FiltersSave), false),
+            view_button("Remove context", GMsg::Home(Msg::ContextsRemove), false),
         ],
         div![
             C!["flex", "flex-col"],

@@ -5,12 +5,30 @@ use seed::{prelude::*, *};
 
 use crate::Msg;
 
-pub fn view_button(text: &str, msg: Msg) -> Node<Msg> {
-    button![
-        C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300"],
-        mouse_ev(Ev::Click, |_| msg),
-        text
-    ]
+pub fn view_button(text: &str, msg: Msg, disabled: bool) -> Node<Msg> {
+    if disabled {
+        button![
+            attrs! {
+                At::Disabled => AtValue::None,
+            },
+            C![
+                "bg-gray-200",
+                "py-2",
+                "px-4",
+                "m-2",
+                "hover:bg-gray-300",
+                "opacity-60",
+            ],
+            mouse_ev(Ev::Click, |_| msg),
+            text
+        ]
+    } else {
+        button![
+            C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300",],
+            mouse_ev(Ev::Click, |_| msg),
+            text
+        ]
+    }
 }
 
 pub fn view_checkbox(name: &str, title: &str, checked: bool, msg: Msg) -> Node<Msg> {

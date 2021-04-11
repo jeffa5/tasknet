@@ -285,7 +285,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
         C!["flex", "flex-row", "justify-between"],
         div![
             C!["flex", "flex-row", "justify-start"],
-            view_button("Tasknet", Msg::SelectTask(None)),
+            view_button("Tasknet", Msg::SelectTask(None), false),
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
@@ -293,13 +293,14 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
                 view_button(
                     "Toggle Filters",
                     Msg::Home(pages::home::Msg::ToggleShowFilters),
+                    false,
                 )
             } else {
                 empty!()
             },
-            view_button("Import Tasks", Msg::ImportTasks),
-            view_button("Export Tasks", Msg::ExportTasks),
-            view_button("Create", Msg::CreateTask),
+            view_button("Import Tasks", Msg::ImportTasks, false),
+            view_button("Export Tasks", Msg::ExportTasks, false),
+            view_button("Create", Msg::CreateTask, false),
         ]
     ]
 }
