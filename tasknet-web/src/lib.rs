@@ -154,15 +154,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::SelectTask(None) => {
             orders.request_url(Urls::new(&model.global.base_url).home());
-            if let Page::ViewTask(page_model) = &model.page {
-                let msg = model.global.document.set_task(
-                    page_model.selected_task_id,
-                    page_model.selected_task.clone(),
-                );
-                if let Some(msg) = msg {
-                    orders.send_msg(msg);
-                }
-            }
         }
         Msg::SelectTask(Some(uuid)) => {
             orders.request_url(Urls::new(&model.global.base_url).view_task(&uuid));

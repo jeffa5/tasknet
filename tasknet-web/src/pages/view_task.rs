@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeSet, HashMap},
-    convert::TryFrom,
-};
+use std::{collections::BTreeSet, convert::TryFrom};
 
 use chrono::{Datelike, Timelike};
 #[allow(clippy::wildcard_imports)]
@@ -9,7 +6,7 @@ use seed::{prelude::*, *};
 
 use crate::{
     components::{duration_string, view_button, view_text_input},
-    task::{DateTime, Id, Priority, RecurUnit, Status, Task},
+    task::{DateTime, Priority, RecurUnit, Status, Task},
     urgency, GlobalModel, Msg as GMsg, Recur, Urls,
 };
 
@@ -24,15 +21,15 @@ pub fn init(uuid: uuid::Uuid, task: Task, orders: &mut impl Orders<GMsg>) -> Mod
         }
     }));
     Model {
-        selected_task_id: uuid,
-        selected_task: task,
+        task_id: uuid,
+        task,
     }
 }
 
 #[derive(Debug)]
 pub struct Model {
-    pub selected_task_id: uuid::Uuid,
-    pub selected_task: Task,
+    pub task_id: uuid::Uuid,
+    pub task: Task,
 }
 
 #[derive(Debug, Clone)]
@@ -53,6 +50,7 @@ pub enum Msg {
     StartSelectedTask,
     StopSelectedTask,
     MoveSelectedTaskToPending,
+    SaveCloseTask,
 }
 
 #[allow(clippy::too_many_lines)]
@@ -65,11 +63,11 @@ pub fn update(
 ) {
     match msg {
         Msg::SelectedTaskDescriptionChanged(new_description) => {
-            model.selected_task.set_description(new_description)
+            model.task.set_description(new_description)
         }
         Msg::SelectedTaskProjectChanged(new_project) => {
             let new_project = new_project.trim();
-            model.selected_task.set_project(if new_project.is_empty() {
+            model.task.set_project(if new_project.is_empty() {
                 Vec::new()
             } else {
                 new_project
@@ -80,7 +78,7 @@ pub fn update(
         }
         Msg::SelectedTaskTagsChanged(new_tags) => {
             let new_end = new_tags.ends_with(' ');
-            model.selected_task.set_tags(if new_tags.is_empty() {
+            model.task.set_tags(if new_tags.is_empty() {
                 Vec::new()
             } else {
                 let mut tags: Vec<_> = new_tags
@@ -94,130 +92,137 @@ pub fn update(
             })
         }
         Msg::SelectedTaskPriorityChanged(new_priority) => model
-            .selected_task
+            .task
             .set_priority(Priority::try_from(new_priority).ok()),
-        Msg::SelectedTaskNotesChanged(new_notes) => model.selected_task.set_notes(new_notes),
+        Msg::SelectedTaskNotesChanged(new_notes) => model.task.set_notes(new_notes),
         Msg::SelectedTaskDueDateChanged(new_date) => {
             let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
             match new_date {
                 Ok(new_date) => {
-                    let due = model.selected_task.due();
+                    let due = model.task.due();
                     match due {
-                        None => {
-                            model
-                                .selected_task
-                                .set_due(Some(DateTime(chrono::DateTime::from_utc(
-                                    new_date.and_hms(0, 0, 0),
-                                    chrono::Utc,
-                                ))))
-                        }
+                        None => model.task.set_due(Some(DateTime(chrono::DateTime::from_utc(
+                            new_date.and_hms(0, 0, 0),
+                            chrono::Utc,
+                        )))),
                         Some(due) => {
                             let due = due
                                 .with_year(new_date.year())
                                 .and_then(|due| due.with_month(new_date.month()))
                                 .and_then(|due| due.with_day(new_date.day()));
-                            model.selected_task.set_due(due.map(DateTime))
+                            model.task.set_due(due.map(DateTime))
                         }
                     }
                 }
-                Err(_) => model.selected_task.set_due(None),
+                Err(_) => model.task.set_due(None),
             }
         }
         Msg::SelectedTaskDueTimeChanged(new_time) => {
             let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
             match new_time {
                 Ok(new_time) => {
-                    let due = model.selected_task.due();
+                    let due = model.task.due();
                     match due {
                         None => {
                             let now = chrono::offset::Utc::now();
                             let now = now
                                 .with_hour(new_time.hour())
                                 .and_then(|now| now.with_minute(new_time.minute()));
-                            model.selected_task.set_due(now.map(DateTime))
+                            model.task.set_due(now.map(DateTime))
                         }
                         Some(due) => {
                             let due = due
                                 .with_hour(new_time.hour())
                                 .and_then(|due| due.with_minute(new_time.minute()));
-                            model.selected_task.set_due(due.map(DateTime))
+                            model.task.set_due(due.map(DateTime))
                         }
                     }
                 }
-                Err(_) => model.selected_task.set_due(None),
+                Err(_) => model.task.set_due(None),
             }
         }
         Msg::SelectedTaskScheduledDateChanged(new_date) => {
             let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
             match new_date {
                 Ok(new_date) => {
-                    let scheduled = model.selected_task.scheduled();
+                    let scheduled = model.task.scheduled();
                     match scheduled {
-                        None => model.selected_task.set_scheduled(Some(DateTime(
-                            chrono::DateTime::from_utc(new_date.and_hms(0, 0, 0), chrono::Utc),
-                        ))),
+                        None => {
+                            model
+                                .task
+                                .set_scheduled(Some(DateTime(chrono::DateTime::from_utc(
+                                    new_date.and_hms(0, 0, 0),
+                                    chrono::Utc,
+                                ))))
+                        }
                         Some(scheduled) => {
                             let scheduled = scheduled
                                 .with_year(new_date.year())
                                 .and_then(|scheduled| scheduled.with_month(new_date.month()))
                                 .and_then(|scheduled| scheduled.with_day(new_date.day()));
-                            model.selected_task.set_scheduled(scheduled.map(DateTime))
+                            model.task.set_scheduled(scheduled.map(DateTime))
                         }
                     }
                 }
-                Err(_) => model.selected_task.set_scheduled(None),
+                Err(_) => model.task.set_scheduled(None),
             }
         }
         Msg::SelectedTaskScheduledTimeChanged(new_time) => {
             let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
             match new_time {
                 Ok(new_time) => {
-                    let scheduled = model.selected_task.scheduled();
+                    let scheduled = model.task.scheduled();
                     match scheduled {
                         None => {
                             let now = chrono::offset::Utc::now();
                             let now = now
                                 .with_hour(new_time.hour())
                                 .and_then(|now| now.with_minute(new_time.minute()));
-                            model.selected_task.set_scheduled(now.map(DateTime))
+                            model.task.set_scheduled(now.map(DateTime))
                         }
                         Some(scheduled) => {
                             let scheduled = scheduled
                                 .with_hour(new_time.hour())
                                 .and_then(|scheduled| scheduled.with_minute(new_time.minute()));
-                            model.selected_task.set_scheduled(scheduled.map(DateTime))
+                            model.task.set_scheduled(scheduled.map(DateTime))
                         }
                     }
                 }
-                Err(_) => model.selected_task.set_scheduled(None),
+                Err(_) => model.task.set_scheduled(None),
             }
         }
         Msg::SelectedTaskRecurAmountChanged(new_amount) => {
             if let Ok(n) = new_amount.parse::<u16>() {
                 if n > 0 {
-                    model.selected_task.set_recur(Some(Recur {
+                    model.task.set_recur(Some(Recur {
                         amount: n,
                         unit: model
-                            .selected_task
+                            .task
                             .recur()
                             .as_ref()
                             .map_or(RecurUnit::Week, |r| r.unit),
                     }))
                 } else {
-                    model.selected_task.set_recur(None)
+                    model.task.set_recur(None)
                 }
             }
         }
         Msg::SelectedTaskRecurUnitChanged(new_unit) => match RecurUnit::try_from(new_unit) {
-            Ok(unit) => model.selected_task.set_recur(Some(Recur {
-                amount: model.selected_task.recur().as_ref().map_or(1, |r| r.amount),
+            Ok(unit) => model.task.set_recur(Some(Recur {
+                amount: model.task.recur().as_ref().map_or(1, |r| r.amount),
                 unit,
             })),
-            Err(()) => model.selected_task.set_recur(None),
+            Err(()) => model.task.set_recur(None),
         },
-        Msg::DeleteSelectedTask => match model.selected_task.status() {
+        Msg::DeleteSelectedTask => match model.task.status() {
             Status::Pending | Status::Completed | Status::Waiting | Status::Recurring => {
-                model.selected_task.delete();
+                model.task.delete();
+                let msg = global_model
+                    .document
+                    .set_task(model.task_id, model.task.clone());
+                if let Some(msg) = msg {
+                    orders.send_msg(msg);
+                }
                 orders.send_msg(GMsg::SelectTask(None));
             }
             Status::Deleted => match window()
@@ -225,7 +230,7 @@ pub fn update(
             {
                 Ok(true) => {
                     orders.request_url(Urls::new(&global_model.base_url).home());
-                    let msg = global_model.document.remove_task(model.selected_task_id);
+                    let msg = global_model.document.remove_task(model.task_id);
                     if let Some(msg) = msg {
                         orders.send_msg(msg);
                     }
@@ -234,42 +239,94 @@ pub fn update(
             },
         },
         Msg::CompleteSelectedTask => {
-            model.selected_task.complete();
+            model.task.complete();
+            let msg = global_model
+                .document
+                .set_task(model.task_id, model.task.clone());
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
             orders.send_msg(GMsg::SelectTask(None));
         }
         Msg::StartSelectedTask => {
-            model.selected_task.activate();
+            model.task.activate();
+            let msg = global_model
+                .document
+                .set_task(model.task_id, model.task.clone());
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
             orders.send_msg(GMsg::SelectTask(None));
         }
         Msg::StopSelectedTask => {
-            model.selected_task.deactivate();
+            model.task.deactivate();
+            let msg = global_model
+                .document
+                .set_task(model.task_id, model.task.clone());
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
             orders.send_msg(GMsg::SelectTask(None));
         }
         Msg::MoveSelectedTaskToPending => {
-            model.selected_task.restore();
+            model.task.restore();
+            let msg = global_model
+                .document
+                .set_task(model.task_id, model.task.clone());
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
+            orders.send_msg(GMsg::SelectTask(None));
+        }
+        Msg::SaveCloseTask => {
+            let msg = global_model
+                .document
+                .set_task(model.task_id, model.task.clone());
+            if let Some(msg) = msg {
+                orders.send_msg(msg);
+            }
             orders.send_msg(GMsg::SelectTask(None));
         }
     }
 }
 
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
-    div![view_selected_task(
-        &model.selected_task,
-        &global_model.document.tasks()
-    ),]
+    div![view_selected_task(global_model, model)]
 }
 
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
-fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
-    let is_pending = matches!(task.status(), Status::Pending);
-    let start = task.start();
-    let end = task.end();
-    let urgency = urgency::calculate(task);
-    let active = task.start().is_some();
-    let is_next = task.tags().contains(&"next".to_owned());
-    let project_lowercase = task.project().join(".").to_lowercase();
-    let project_suggestions = tasks
+fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
+    let is_pending = matches!(model.task.status(), Status::Pending);
+    let status_text = match model.task.status() {
+        Status::Pending => "Pending",
+        Status::Deleted => "Deleted",
+        Status::Completed => "Completed",
+        Status::Waiting => "Waiting",
+        Status::Recurring => "Recurring",
+    };
+    let changes_text = if model.task
+        == global_model
+            .document
+            .task(&model.task_id)
+            .unwrap_or_default()
+    {
+        span![C!["font-bold", "text-green-500"], "\u{2713} All saved"]
+    } else {
+        span![
+            C!["font-bold", "text-yellow-500"],
+            "\u{26A0} Unsaved changes"
+        ]
+    };
+    let start = model.task.start();
+    let end = model.task.end();
+    let urgency = urgency::calculate(&model.task);
+    let active = model.task.start().is_some();
+    let is_next = model.task.tags().contains(&"next".to_owned());
+    let project_lowercase = model.task.project().join(".").to_lowercase();
+    let project_suggestions = global_model
+        .document
+        .tasks()
         .values()
         .filter_map(|t| {
             let t_proj = t.project().join(".").to_lowercase();
@@ -280,14 +337,16 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
             }
         })
         .collect::<BTreeSet<_>>();
-    let mut tags_suggestions = tasks
+    let mut tags_suggestions = global_model
+        .document
+        .tasks()
         .values()
         .flat_map(|saved_task| {
             saved_task
                 .tags()
                 .iter()
                 .filter_map(|saved_tag| {
-                    let input_tags = task.tags();
+                    let input_tags = model.task.tags();
                     if input_tags.is_empty()
                         || (!input_tags.contains(&saved_tag.to_lowercase())
                             && input_tags
@@ -325,15 +384,9 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
             }
         ],
         div![
-            C!["pl-2"],
-            span![C!["font-bold"], "Status: "],
-            match task.status() {
-                Status::Pending => "Pending",
-                Status::Deleted => "Deleted",
-                Status::Completed => "Completed",
-                Status::Waiting => "Waiting",
-                Status::Recurring => "Recurring",
-            }
+            C!["flex", "flex-row", "justify-between", "pl-2"],
+            div![span![C!["font-bold"], "Status: "], status_text],
+            div![changes_text]
         ],
         if let Some(urgency) = urgency {
             div![
@@ -347,7 +400,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
         div![
             C!["pl-2"],
             span![C!["font-bold"], "Entry: "],
-            task.entry().to_string()
+            model.task.entry().to_string()
         ],
         if let Some(start) = start {
             div![
@@ -365,14 +418,14 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
         },
         view_text_input(
             "Description",
-            task.description(),
+            model.task.description(),
             true,
             BTreeSet::new(),
             |s| GMsg::ViewTask(Msg::SelectedTaskDescriptionChanged(s))
         ),
         view_text_input(
             "Project",
-            &task.project().join("."),
+            &model.task.project().join("."),
             false,
             project_suggestions,
             |s| GMsg::ViewTask(Msg::SelectedTaskProjectChanged(s))
@@ -385,14 +438,14 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                 input![
                     C!["flex-grow", "border", "mr-2"],
                     attrs! {
-                        At::Value => task.tags().join(" "),
+                        At::Value => model.task.tags().join(" "),
                         At::AutoFocus => AtValue::Ignored
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(Msg::SelectedTaskTagsChanged(
                         s
                     )))
                 ],
-                if task.tags().join(" ").is_empty() {
+                if model.task.tags().join(" ").is_empty() {
                     pre![" "]
                 } else {
                     button![
@@ -409,7 +462,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     .into_iter()
                     .map(|sug| {
                         let sug_clone = sug.clone();
-                        let tags = task.tags().join(" ");
+                        let tags = model.task.tags().join(" ");
                         button![
                             C!["mr-2", "mt-2", "px-1", "bg-gray-200"],
                             mouse_ev(Ev::Click, move |_| {
@@ -448,7 +501,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     option![
                         attrs! {
                             At::Value => "",
-                            At::Selected => if task.priority().is_none() {
+                            At::Selected => if model.task.priority().is_none() {
                                 AtValue::None
                             } else {
                                 AtValue::Ignored
@@ -459,7 +512,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     option![
                         attrs! {
                             At::Value => "L",
-                            At::Selected => if let Some(Priority::Low) = task.priority() {
+                            At::Selected => if let Some(Priority::Low) = model.task.priority() {
                                 AtValue::None
                             } else {
                                 AtValue::Ignored
@@ -470,7 +523,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     option![
                         attrs! {
                             At::Value => "M",
-                            At::Selected => if let Some(Priority::Medium)  = task.priority() {
+                            At::Selected => if let Some(Priority::Medium)  = model.task.priority() {
                                 AtValue::None
                             } else {
                                 AtValue::Ignored
@@ -481,7 +534,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     option![
                         attrs! {
                             At::Value => "H",
-                            At::Selected => if let Some(Priority::High) = task.priority() {
+                            At::Selected => if let Some(Priority::High) = model.task.priority() {
                                 AtValue::None
                             } else {
                                 AtValue::Ignored
@@ -504,7 +557,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     C!["mr-4"],
                     attrs! {
                         At::Type => "date",
-                        At::Value => task.due().as_ref().map_or_else(String::new, |due| due.format("%Y-%m-%d").to_string()),
+                        At::Value => model.task.due().as_ref().map_or_else(String::new, |due| due.format("%Y-%m-%d").to_string()),
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(
                         Msg::SelectedTaskDueDateChanged(s)
@@ -513,13 +566,13 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                 input![
                     attrs! {
                         At::Type => "time",
-                        At::Value => task.due().as_ref().map_or_else(String::new, |due| due.format("%H:%M").to_string()),
+                        At::Value => model.task.due().as_ref().map_or_else(String::new, |due| due.format("%H:%M").to_string()),
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(
                         Msg::SelectedTaskDueTimeChanged(s)
                     ))
                 ],
-                if let Some(due) = task.due() {
+                if let Some(due) = model.task.due() {
                     span![
                         C!["ml-2"],
                         duration_string(due.signed_duration_since(chrono::offset::Utc::now()))
@@ -538,7 +591,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     C!["mr-4"],
                     attrs! {
                         At::Type => "date",
-                        At::Value => task.scheduled().as_ref().map_or_else(String::new, |scheduled| scheduled.format("%Y-%m-%d").to_string()),
+                        At::Value => model.task.scheduled().as_ref().map_or_else(String::new, |scheduled| scheduled.format("%Y-%m-%d").to_string()),
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(
                         Msg::SelectedTaskScheduledDateChanged(s)
@@ -547,13 +600,13 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                 input![
                     attrs! {
                         At::Type => "time",
-                        At::Value => task.scheduled().as_ref().map_or_else(String::new, |scheduled| scheduled.format("%H:%M").to_string()),
+                        At::Value => model.task.scheduled().as_ref().map_or_else(String::new, |scheduled| scheduled.format("%H:%M").to_string()),
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(
                         Msg::SelectedTaskScheduledTimeChanged(s)
                     ))
                 ],
-                if let Some(scheduled) = task.scheduled() {
+                if let Some(scheduled) = model.task.scheduled() {
                     span![
                         C!["ml-2"],
                         duration_string(
@@ -573,7 +626,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                 input![
                     attrs! {
                         At::Type => "number",
-                        At::Value => task.recur().as_ref().map_or(0, |r|r.amount),
+                        At::Value => model.task.recur().as_ref().map_or(0, |r|r.amount),
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(
                         Msg::SelectedTaskRecurAmountChanged(s)
@@ -585,7 +638,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     option![
                         attrs! {
                             At::Value => "",
-                            At::Selected => if task.status() == &Status::Recurring {
+                            At::Selected => if model.task.status() == &Status::Recurring {
                                 AtValue::Ignored
                             } else {
                                 AtValue::None
@@ -596,7 +649,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     option![
                         attrs! {
                             At::Value => "Year",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
+                            At::Selected => model.task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
                                 if recur.unit == RecurUnit::Year {
                                     AtValue::None
                                 } else {
@@ -609,7 +662,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     option![
                         attrs! {
                             At::Value => "Month",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
+                            At::Selected => model.task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
                                 if recur.unit == RecurUnit::Month {
                                     AtValue::None
                                 } else {
@@ -622,7 +675,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     option![
                         attrs! {
                             At::Value => "Week",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
+                            At::Selected => model.task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
                                 if recur.unit == RecurUnit::Week {
                                     AtValue::None
                                 } else {
@@ -635,7 +688,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     option![
                         attrs! {
                             At::Value => "Day",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
+                            At::Selected => model.task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
                                 if recur.unit == RecurUnit::Day {
                                     AtValue::None
                                 } else {
@@ -648,7 +701,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                     option![
                         attrs! {
                             At::Value => "Hour",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
+                            At::Selected => model.task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
                                 if recur.unit == RecurUnit::Hour {
                                     AtValue::None
                                 } else {
@@ -672,13 +725,13 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
                 textarea![
                     C!["flex-grow", "border", "mr-2"],
                     attrs! {
-                        At::Value => task.notes(),
+                        At::Value => model.task.notes(),
                     },
                     input_ev(Ev::Input, |s| GMsg::ViewTask(
                         Msg::SelectedTaskNotesChanged(s)
                     ))
                 ],
-                if task.notes().is_empty() {
+                if model.task.notes().is_empty() {
                     pre![" "]
                 } else {
                     button![
@@ -704,19 +757,19 @@ fn view_selected_task(task: &Task, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
             IF!(is_pending =>
                 div![ view_button("Complete", GMsg::ViewTask(Msg::CompleteSelectedTask))]
             ),
-            IF!(matches!(task.status(), Status::Pending|Status::Waiting|Status::Recurring) =>
+            IF!(matches!(model.task.status(), Status::Pending|Status::Waiting|Status::Recurring) =>
                 div![ view_button("Delete", GMsg::ViewTask(Msg::DeleteSelectedTask))]
             ),
-            IF!(matches!(task.status(), Status::Deleted) =>
+            IF!(matches!(model.task.status(), Status::Deleted) =>
                 div![ view_button("Permanently delete", GMsg::ViewTask(Msg::DeleteSelectedTask))]
             ),
-            IF!(matches!(task.status(), Status::Deleted) =>
+            IF!(matches!(model.task.status(), Status::Deleted) =>
                 div![ view_button("Restore", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
             ),
-            IF!(matches!(task.status(), Status::Completed) =>
+            IF!(matches!(model.task.status(), Status::Completed) =>
                 div![ view_button("Uncomplete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
             ),
-            view_button("Close", GMsg::SelectTask(None))
+            view_button("Save & Close", GMsg::ViewTask(Msg::SaveCloseTask))
         ]
     ]
 }
