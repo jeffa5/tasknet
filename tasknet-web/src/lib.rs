@@ -165,7 +165,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::ImportTasks => {
             let tasks: HashMap<uuid::Uuid, Task> = serde_json::from_str(
                 &window()
-                    .prompt()
+                    .prompt_with_message("Paste the tasks json here")
                     .unwrap()
                     .unwrap_or_else(|| "{}".to_owned()),
             )
@@ -181,7 +181,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::ExportTasks => {
             let tasks = model.global.document.tasks();
             window()
-                .prompt_with_message_and_default("", &serde_json::to_string(&tasks).unwrap())
+                .prompt_with_message_and_default(
+                    "Copy this",
+                    &serde_json::to_string(&tasks).unwrap(),
+                )
                 .unwrap();
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
@@ -285,8 +288,8 @@ fn view_titlebar() -> Node<Msg> {
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
-            view_button("Import", Msg::ImportTasks),
-            view_button("Export", Msg::ExportTasks),
+            view_button("Import Tasks", Msg::ImportTasks),
+            view_button("Export Tasks", Msg::ExportTasks),
             view_button("Create", Msg::CreateTask),
         ]
     ]
