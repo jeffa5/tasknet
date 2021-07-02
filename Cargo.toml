@@ -9,3 +9,9 @@ members = [
 lto = true
 opt-level = 'z'
 codegen-units = 1
+
+[patch."https://github.com/automerge/automerge-rs"]
+automerge = { git = "https://github.com/automerge//automerge-rs", branch = "send" }
+automerge-protocol = { git = "https://github.com/automerge//automerge-rs", branch = "send" }
+automerge-backend = { git = "https://github.com/automerge//automerge-rs", branch = "send" }
+automerge-frontend = { git = "https://github.com/automerge//automerge-rs", branch = "send" }

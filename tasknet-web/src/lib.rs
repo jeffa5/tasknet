@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use apply::Apply;
-use automergeable::automerge_protocol;
 use chrono::Utc;
 use derivative::Derivative;
 #[allow(clippy::wildcard_imports)]
@@ -20,6 +19,7 @@ use filters::Filters;
 use task::{Recur, Status, Task};
 
 const VIEW_TASK: &str = "view";
+const SERVER_PEER_ID: &[u8] = b"server";
 
 // ------ ------
 //     Init
@@ -47,6 +47,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .stream(streams::interval(1000, || Msg::OnRenderTick))
         .stream(streams::interval(60000, || Msg::OnRecurTick))
         .stream(streams::interval(60000, || Msg::BackendCompactTick))
+        .stream(streams::interval(60000, || Msg::BackendPeriodicSyncTick))
         .subscribe(Msg::UrlChanged);
     let document = Document::new();
     let page = Page::init(url.clone(), &document, orders);
@@ -141,8 +142,9 @@ pub enum Msg {
     OnRenderTick,
     OnRecurTick,
     BackendCompactTick,
+    BackendPeriodicSyncTick,
     UrlChanged(subs::UrlChanged),
-    ApplyChange(automerge_protocol::UncompressedChange),
+    ApplyChange(automerge_protocol::Change),
     ApplyPatch(automerge_protocol::Patch),
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
@@ -231,14 +233,23 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::BackendCompactTick => {
             log!("compacting");
-            model.global.document.backend.compact().unwrap();
+            model.global.document.backend.compact(&[]).unwrap();
             log!("compacted");
+        }
+        Msg::BackendPeriodicSyncTick => {
+            log!("periodic sync");
+            model
+                .global
+                .document
+                .backend
+                .generate_sync_message(SERVER_PEER_ID.to_vec())
+                .unwrap();
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
             model.page = Page::init(url, &model.global.document, orders)
         }
         Msg::ApplyChange(change) => {
-            let (patch, _) = model
+            let patch = model
                 .global
                 .document
                 .backend

@@ -3,8 +3,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use automergeable::{automerge, automerge::Change, automerge_protocol};
 use futures_util::{SinkExt, StreamExt};
+use tokio::sync::{mpsc, oneshot, broadcast};
 use tracing::warn;
 use warp::{filters::ws::Message, Filter};
 
@@ -15,25 +15,29 @@ async fn main() {
     let sync_log = warp::log("tasknet::sync");
     // use spawn local here with channels to interact with the document?
     let local = tokio::task::LocalSet::new();
+
     let (get_heads_tx, mut get_heads_rx): (
-        tokio::sync::mpsc::Sender<
-            tokio::sync::oneshot::Sender<Vec<automerge_protocol::ChangeHash>>,
+        mpsc::Sender<
+            oneshot::Sender<Vec<automerge_protocol::ChangeHash>>,
         >,
         _,
-    ) = tokio::sync::mpsc::channel(1);
+    ) = mpsc::channel(1);
+
     let (apply_changes_tx, mut apply_changes_rx): (
-        tokio::sync::mpsc::Sender<Vec<automerge_protocol::UncompressedChange>>,
-        tokio::sync::mpsc::Receiver<Vec<automerge_protocol::UncompressedChange>>,
-    ) = tokio::sync::mpsc::channel(1);
+        mpsc::Sender<Vec<automerge_protocol::Change>>,
+        mpsc::Receiver<Vec<automerge_protocol::Change>>,
+    ) = mpsc::channel(1);
+
     let (get_changes_tx, mut get_changes_rx): (
-        tokio::sync::mpsc::Sender<(
+        mpsc::Sender<(
             Vec<automerge_protocol::ChangeHash>,
-            tokio::sync::oneshot::Sender<_>,
+            oneshot::Sender<_>,
         )>,
-        tokio::sync::mpsc::Receiver<_>,
-    ) = tokio::sync::mpsc::channel(1);
+        mpsc::Receiver<_>,
+    ) = mpsc::channel(1);
+
     let doc_task = local.run_until(async {
-        let doc = Arc::new(Mutex::new(automerge::Backend::init()));
+        let doc = Arc::new(Mutex::new(automerge::Backend::new()));
         let doc_clone = doc.clone();
         let heads_task = tokio::task::spawn_local(async move {
             while let Some(heads_tx) = get_heads_rx.recv().await {
@@ -44,7 +48,10 @@ async fn main() {
         let doc_clone = doc.clone();
         let changes_task = tokio::task::spawn_local(async move {
             while let Some(changes) = apply_changes_rx.recv().await {
-                let changes = changes.iter().map(Change::from).collect::<Vec<_>>();
+                let changes = changes
+                    .iter()
+                    .map(automerge_backend::Change::from)
+                    .collect::<Vec<_>>();
                 doc_clone.lock().unwrap().apply_changes(changes).unwrap();
             }
         });
@@ -69,7 +76,9 @@ async fn main() {
             warn!(error = ?e, "error joining get_changes task")
         }
     });
-    let (new_changes_tx, _new_changes_rx) = tokio::sync::broadcast::channel(1);
+
+    let (new_changes_tx, _new_changes_rx) = broadcast::channel(1);
+
     let routes = warp::get()
         .and(
             warp::path("tasknet").and(warp::fs::dir("tasknet-web/local/tasknet").with(tasknet_log)),
@@ -86,8 +95,8 @@ async fn main() {
                     ws.on_upgrade(|websocket| async move {
                         let (mut tx, mut rx) = websocket.split();
 
-                        let (msgs_out_tx, mut msgs_out_rx) = tokio::sync::mpsc::channel(1);
-                        let (msgs_in_tx, msgs_in_rx) = tokio::sync::mpsc::channel(1);
+                        let (msgs_out_tx, mut msgs_out_rx) = mpsc::channel(1);
+                        let (msgs_in_tx, msgs_in_rx) = mpsc::channel(1);
 
                         tokio::spawn(async move {
                             while let Some(msg) = msgs_out_rx.recv().await {
@@ -127,5 +136,8 @@ async fn main() {
                 }
             })
             .with(sync_log));
+
+    println!("Serving page on http://localhost:8080/tasknet");
+
     tokio::join![doc_task, warp::serve(routes).run(([127, 0, 0, 1], 8080))];
 }

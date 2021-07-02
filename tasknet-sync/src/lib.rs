@@ -4,7 +4,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use automergeable::automerge_protocol;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 
@@ -18,15 +17,11 @@ impl Connection {
         >,
         get_changes: tokio::sync::mpsc::Sender<(
             Vec<automerge_protocol::ChangeHash>,
-            tokio::sync::oneshot::Sender<Vec<automerge_protocol::UncompressedChange>>,
+            tokio::sync::oneshot::Sender<Vec<automerge_protocol::Change>>,
         )>,
-        send_new_changes: tokio::sync::broadcast::Sender<
-            Vec<automerge_protocol::UncompressedChange>,
-        >,
-        mut recv_new_changes: tokio::sync::broadcast::Receiver<
-            Vec<automerge_protocol::UncompressedChange>,
-        >,
-        apply_changes: tokio::sync::mpsc::Sender<Vec<automerge_protocol::UncompressedChange>>,
+        send_new_changes: tokio::sync::broadcast::Sender<Vec<automerge_protocol::Change>>,
+        mut recv_new_changes: tokio::sync::broadcast::Receiver<Vec<automerge_protocol::Change>>,
+        apply_changes: tokio::sync::mpsc::Sender<Vec<automerge_protocol::Change>>,
     ) {
         let peer_hashes = Arc::new(Mutex::new(HashSet::new()));
 
@@ -126,7 +121,7 @@ impl Connection {
     async fn get_changes(
         get_changes: &tokio::sync::mpsc::Sender<(
             Vec<automerge_protocol::ChangeHash>,
-            tokio::sync::oneshot::Sender<Vec<automerge_protocol::UncompressedChange>>,
+            tokio::sync::oneshot::Sender<Vec<automerge_protocol::Change>>,
         )>,
         heads: Heads,
     ) -> Changes {
@@ -139,7 +134,7 @@ impl Connection {
 
 pub type Heads = Vec<automerge_protocol::ChangeHash>;
 
-pub type Changes = Vec<automerge_protocol::UncompressedChange>;
+pub type Changes = Vec<automerge_protocol::Change>;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

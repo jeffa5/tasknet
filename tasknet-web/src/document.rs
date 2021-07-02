@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use automergeable::{automerge, Automergeable};
+use automergeable::Automergeable;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
@@ -12,9 +12,10 @@ use crate::{
 const TASKS_STORAGE_KEY: &str = "tasknet-tasks";
 
 pub struct Document {
-    pub inner: automergeable::Document<DocumentInner>,
+    pub inner: automergeable::Document<DocumentInner, automerge::Frontend>,
     pub backend: automerge_persistent::PersistentBackend<
         automerge_persistent_localstorage::LocalStoragePersister,
+        automerge::Backend,
     >,
 }
 
@@ -29,54 +30,55 @@ impl Document {
             LocalStorage::storage().unwrap(),
             "automerge-persistent-document".to_owned(),
             "automerge-persistent-changes".to_owned(),
-        );
+            "automerge-persistent-sync-states".to_owned(),
+        )
+        .unwrap();
         log!("loading");
         let backend = automerge_persistent::PersistentBackend::load(persister).unwrap();
         log!("loaded");
         let patch = backend.get_patch().unwrap();
         log!("got patch");
-        let mut inner =
-            automergeable::Document::<DocumentInner>::new_with_timestamper(Box::new(|| {
+        let mut inner = automergeable::Document::<DocumentInner, automerge::Frontend>::new(
+            automerge::Frontend::new_with_timestamper(Box::new(|| {
                 Some(chrono::Utc::now().timestamp())
-            }));
+            })),
+        );
         log!("made document");
         inner.apply_patch(patch).unwrap();
         log!("applied patch");
         Self { inner, backend }
     }
 
-    pub fn task(&self, uuid: &uuid::Uuid) -> Option<Task> {
-        self.inner
-            .get()
-            .and_then(|v| v.tasks.get(&Id(*uuid)).cloned())
+    pub fn task(&self, uuid: &uuid::Uuid) -> Option<&Task> {
+        self.inner.get().tasks.get(&Id(*uuid))
     }
 
-    pub fn tasks(&self) -> HashMap<Id, Task> {
-        self.inner.get().map(|v| v.tasks).unwrap_or_default()
+    pub fn tasks(&self) -> &HashMap<Id, Task> {
+        &self.inner.get().tasks
     }
 
     #[must_use]
     pub fn set_task(&mut self, uuid: uuid::Uuid, task: Task) -> Option<Msg> {
-        let change_result = self
+        let ((), change) = self
             .inner
-            .change::<_, automerge::InvalidChangeRequest>(|d| {
+            .change::<_, (), automerge::InvalidChangeRequest>(|d| {
                 d.tasks.insert(Id(uuid), task);
                 Ok(())
-            });
-        let change = change_result.unwrap();
+            })
+            .unwrap();
         LocalStorage::insert(TASKS_STORAGE_KEY, &self.tasks()).expect("save tasks to LocalStorage");
         change.map(Msg::ApplyChange)
     }
 
     #[must_use]
     pub fn remove_task(&mut self, uuid: uuid::Uuid) -> Option<Msg> {
-        let change_result = self
+        let ((), change) = self
             .inner
-            .change::<_, automerge::InvalidChangeRequest>(|d| {
+            .change::<_, _, automerge::InvalidChangeRequest>(|d| {
                 d.tasks.remove(&Id(uuid));
                 Ok(())
-            });
-        let change = change_result.unwrap();
+            })
+            .unwrap();
         LocalStorage::insert(TASKS_STORAGE_KEY, &self.tasks()).expect("save tasks to LocalStorage");
         change.map(Msg::ApplyChange)
     }

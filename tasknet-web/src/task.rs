@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Deref,
-    str::FromStr,
-};
+use std::{collections::HashMap, ops::Deref, str::FromStr};
 
 use automergeable::Automergeable;
 use chrono::TimeZone;
@@ -32,27 +28,23 @@ impl Deref for DateTime {
     }
 }
 
-impl automergeable::traits::ToAutomerge for DateTime {
-    fn to_automerge(&self) -> automergeable::automerge::Value {
-        automergeable::automerge::Value::Primitive(automergeable::automerge::Primitive::Timestamp(
-            self.timestamp(),
-        ))
+impl automergeable::ToAutomerge for DateTime {
+    fn to_automerge(&self) -> automerge::Value {
+        automerge::Value::Primitive(automerge::Primitive::Timestamp(self.timestamp()))
     }
 }
 
-impl automergeable::traits::FromAutomerge for DateTime {
+impl automergeable::FromAutomerge for DateTime {
     fn from_automerge(
-        value: &automergeable::automerge::Value,
-    ) -> std::result::Result<Self, automergeable::traits::FromAutomergeError> {
-        if let automergeable::automerge::Value::Primitive(
-            automergeable::automerge::Primitive::Timestamp(i),
-        ) = value
-        {
+        value: &automerge::Value,
+    ) -> std::result::Result<Self, automergeable::FromAutomergeError> {
+        if let automerge::Value::Primitive(automerge::Primitive::Timestamp(i)) = value {
             let dt = chrono::Utc.timestamp(*i, 0);
             Ok(DateTime(dt))
         } else {
-            Err(automergeable::traits::FromAutomergeError::WrongType {
+            Err(automergeable::FromAutomergeError::WrongType {
                 found: value.clone(),
+                expected: "a timestamp".to_owned(),
             })
         }
     }
@@ -90,9 +82,9 @@ pub struct Task {
     tags: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     priority: Option<Priority>,
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
-    depends: HashSet<Id>,
+    depends: Vec<Id>,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     #[serde(default)]
     udas: HashMap<String, Uda>,
@@ -138,7 +130,7 @@ impl Task {
             project: Vec::new(),
             tags: Vec::new(),
             priority: None,
-            depends: HashSet::new(),
+            depends: Vec::new(),
             udas: HashMap::new(),
         }
     }
@@ -408,26 +400,22 @@ impl Deref for Id {
     }
 }
 
-impl automergeable::traits::ToAutomerge for Id {
-    fn to_automerge(&self) -> automergeable::automerge::Value {
-        automergeable::automerge::Value::Primitive(automergeable::automerge::Primitive::Str(
-            self.to_string(),
-        ))
+impl automergeable::ToAutomerge for Id {
+    fn to_automerge(&self) -> automerge::Value {
+        automerge::Value::Primitive(automerge::Primitive::Str(self.to_string().into()))
     }
 }
 
-impl automergeable::traits::FromAutomerge for Id {
+impl automergeable::FromAutomerge for Id {
     fn from_automerge(
-        value: &automergeable::automerge::Value,
-    ) -> std::result::Result<Self, automergeable::traits::FromAutomergeError> {
-        if let automergeable::automerge::Value::Primitive(
-            automergeable::automerge::Primitive::Str(s),
-        ) = value
-        {
+        value: &automerge::Value,
+    ) -> std::result::Result<Self, automergeable::FromAutomergeError> {
+        if let automerge::Value::Primitive(automerge::Primitive::Str(s)) = value {
             Ok(Id(uuid::Uuid::parse_str(s).unwrap()))
         } else {
-            Err(automergeable::traits::FromAutomergeError::WrongType {
+            Err(automergeable::FromAutomergeError::WrongType {
                 found: value.clone(),
+                expected: "a primitive string".to_owned(),
             })
         }
     }

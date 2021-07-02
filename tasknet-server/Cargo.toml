@@ -11,5 +11,8 @@ serde_json = "1.0.62"
 tokio = { version = "1.2.0", features = ["macros", "rt-multi-thread"] }
 warp = "0.3.0"
 automergeable = { git = "https://github.com/jeffa5/automergeable", branch = "main" }
+automerge = { git = "https://github.com/automerge/automerge-rs", branch = "main" }
+automerge-protocol = { git = "https://github.com/automerge/automerge-rs", branch = "main" }
+automerge-backend = { git = "https://github.com/automerge/automerge-rs", branch = "main" }
 tasknet-sync = { path = "../tasknet-sync" }
 tracing = "0.1.23"
