@@ -4,7 +4,7 @@ use std::{
 };
 
 use futures_util::{SinkExt, StreamExt};
-use tokio::sync::{mpsc, oneshot, broadcast};
+use tokio::sync::{broadcast, mpsc, oneshot};
 use tracing::warn;
 use warp::{filters::ws::Message, Filter};
 
@@ -17,9 +17,7 @@ async fn main() {
     let local = tokio::task::LocalSet::new();
 
     let (get_heads_tx, mut get_heads_rx): (
-        mpsc::Sender<
-            oneshot::Sender<Vec<automerge_protocol::ChangeHash>>,
-        >,
+        mpsc::Sender<oneshot::Sender<Vec<automerge_protocol::ChangeHash>>>,
         _,
     ) = mpsc::channel(1);
 
@@ -29,10 +27,7 @@ async fn main() {
     ) = mpsc::channel(1);
 
     let (get_changes_tx, mut get_changes_rx): (
-        mpsc::Sender<(
-            Vec<automerge_protocol::ChangeHash>,
-            oneshot::Sender<_>,
-        )>,
+        mpsc::Sender<(Vec<automerge_protocol::ChangeHash>, oneshot::Sender<_>)>,
         mpsc::Receiver<_>,
     ) = mpsc::channel(1);
 

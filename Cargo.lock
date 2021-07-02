@@ -119,7 +119,7 @@ dependencies = [
 [[package]]
 name = "automerge-persistent"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#561bc037138aadedae54e3971d478a435e5dee74"
+source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#a1a04dbbe1ef571e2073e0ef6d61cf65a6ddd25c"
 dependencies = [
  "async-trait",
  "automerge",
@@ -131,12 +131,13 @@ dependencies = [
 [[package]]
 name = "automerge-persistent-localstorage"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#561bc037138aadedae54e3971d478a435e5dee74"
+source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#a1a04dbbe1ef571e2073e0ef6d61cf65a6ddd25c"
 dependencies = [
  "async-trait",
  "automerge",
  "automerge-persistent",
  "automerge-protocol",
+ "hex",
  "serde",
  "serde_json",
  "thiserror",

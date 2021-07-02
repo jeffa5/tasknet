@@ -114,7 +114,7 @@ impl Page {
                 Some(uuid) => {
                     if let Ok(uuid) = uuid::Uuid::parse_str(uuid) {
                         if let Some(task) = document.task(&uuid) {
-                            Self::ViewTask(pages::view_task::init(uuid, task, orders))
+                            Self::ViewTask(pages::view_task::init(uuid, task.clone(), orders))
                         } else {
                             Self::ViewTask(pages::view_task::init(uuid, Task::new(), orders))
                         }
@@ -172,12 +172,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     .unwrap_or_else(|| "{}".to_owned()),
             )
             .unwrap();
-            for (id, task) in tasks {
-                log!("importing", id);
-                let msg = model.global.document.set_task(id, task);
-                if let Some(msg) = msg {
-                    orders.skip().send_msg(msg);
-                }
+            log!("importing", tasks.len(), "tasks");
+            let msg = model.global.document.set_tasks(tasks);
+            if let Some(msg) = msg {
+                orders.skip().send_msg(msg);
             }
         }
         Msg::ExportTasks => {

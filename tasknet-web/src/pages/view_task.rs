@@ -309,6 +309,7 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
         == global_model
             .document
             .task(&model.task_id)
+            .cloned()
             .unwrap_or_default()
     {
         span![C!["font-bold", "text-green-500"], "\u{2713} All saved"]

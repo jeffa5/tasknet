@@ -58,6 +58,21 @@ impl Document {
     }
 
     #[must_use]
+    pub fn set_tasks(&mut self, tasks: HashMap<uuid::Uuid, Task>) -> Option<Msg> {
+        let ((), change) = self
+            .inner
+            .change::<_, (), automerge::InvalidChangeRequest>(|d| {
+                for (id, task) in tasks {
+                    d.tasks.insert(Id(id), task);
+                }
+                Ok(())
+            })
+            .unwrap();
+        LocalStorage::insert(TASKS_STORAGE_KEY, &self.tasks()).expect("save tasks to LocalStorage");
+        change.map(Msg::ApplyChange)
+    }
+
+    #[must_use]
     pub fn set_task(&mut self, uuid: uuid::Uuid, task: Task) -> Option<Msg> {
         let ((), change) = self
             .inner
