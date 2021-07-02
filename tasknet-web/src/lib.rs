@@ -18,9 +18,45 @@ use components::view_button;
 use document::Document;
 use filters::Filters;
 use task::{Recur, Status, Task};
+use tasknet_sync::Message;
 
 const VIEW_TASK: &str = "view";
 const SERVER_PEER_ID: &[u8] = b"server";
+
+fn ws_url() -> String {
+    let location = window().location();
+    format!(
+        "ws://{}:{}/sync",
+        location.hostname().unwrap(),
+        location.port().unwrap()
+    )
+}
+
+fn create_websocket(orders: &impl Orders<Msg>) -> WebSocket {
+    let msg_sender = orders.msg_sender();
+
+    WebSocket::builder(ws_url(), orders)
+        .on_open(|| Msg::WebSocketOpened)
+        .on_message(|message| {
+            spawn_local(async move {
+                let bytes = message
+                    .bytes()
+                    .await
+                    .expect("WebsocketError on binary data");
+
+                let message = Message::from(bytes);
+                match message {
+                    Message::SyncMessage(sync_message) => {
+                        msg_sender(Some(Msg::ReceiveSyncMessage(sync_message)))
+                    }
+                }
+            })
+        })
+        .on_close(Msg::WebSocketClosed)
+        .on_error(|| Msg::WebSocketFailed)
+        .build_and_open()
+        .unwrap()
+}
 
 // ------ ------
 //     Init
@@ -56,6 +92,8 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         global: GlobalModel {
             document,
             base_url: url.to_hash_base_url(),
+            web_socket: create_websocket(orders),
+            web_socket_reconnector: None,
         },
         page,
     }
@@ -71,6 +109,9 @@ pub struct GlobalModel {
     #[derivative(Debug = "ignore")]
     document: Document,
     base_url: Url,
+    // TODO: move to SyncModel,
+    web_socket: WebSocket,
+    web_socket_reconnector: Option<StreamHandle>,
 }
 
 #[derive(Debug)]
@@ -145,7 +186,12 @@ pub enum Msg {
     BackendCompactTick,
     BackendPeriodicSyncTick,
     SendSyncMessage,
-    ReceiveSyncMessage(Vec<u8>),
+    ReceiveSyncMessage(SyncMessage),
+    WebSocketOpened,
+    WebSocketClosed(CloseEvent),
+    WebSocketFailed,
+    ReconnectWebSocket(usize),
+    SendWebSocketMessage(Message),
     UrlChanged(subs::UrlChanged),
     ApplyChange(automerge_protocol::Change),
     ApplyPatch(automerge_protocol::Patch),
@@ -249,13 +295,15 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .generate_sync_message(SERVER_PEER_ID.to_vec())
                 .unwrap();
             if let Some(sync_message) = sync_message {
-                let bytes = sync_message.encode().unwrap();
-                // TODO: send bytes to server
+                orders
+                    .skip()
+                    .send_msg(Msg::SendWebSocketMessage(Message::SyncMessage(
+                        sync_message,
+                    )));
                 log!("send sync message");
             }
         }
-        Msg::ReceiveSyncMessage(bytes) => {
-            let sync_message = SyncMessage::decode(&bytes).unwrap();
+        Msg::ReceiveSyncMessage(sync_message) => {
             let patch = model
                 .global
                 .document
@@ -267,6 +315,41 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
             // we may now want to send another message so give that a call
             orders.skip().send_msg(Msg::SendSyncMessage);
+        }
+        Msg::WebSocketOpened => {
+            model.global.web_socket_reconnector = None;
+            log!("WebSocket connection is open now");
+        }
+        Msg::WebSocketClosed(close_event) => {
+            log!("==================");
+            log!("WebSocket connection was closed:");
+            log!("Clean:", close_event.was_clean());
+            log!("Code:", close_event.code());
+            log!("Reason:", close_event.reason());
+            log!("==================");
+
+            // Chrome doesn't invoke `on_error` when the connection is lost.
+            if !close_event.was_clean() && model.global.web_socket_reconnector.is_none() {
+                model.global.web_socket_reconnector = Some(
+                    orders.stream_with_handle(streams::backoff(None, Msg::ReconnectWebSocket)),
+                );
+            }
+        }
+        Msg::WebSocketFailed => {
+            log!("WebSocket failed");
+            if model.global.web_socket_reconnector.is_none() {
+                model.global.web_socket_reconnector = Some(
+                    orders.stream_with_handle(streams::backoff(None, Msg::ReconnectWebSocket)),
+                );
+            }
+        }
+        Msg::ReconnectWebSocket(retries) => {
+            log!("Reconnect attempt:", retries);
+            model.global.web_socket = create_websocket(orders);
+        }
+        Msg::SendWebSocketMessage(message) => {
+            let bytes = Vec::<u8>::from(message);
+            model.global.web_socket.send_bytes(&bytes).unwrap();
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
             model.page = Page::init(url, &model.global.document, orders)

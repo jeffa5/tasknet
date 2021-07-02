@@ -1609,6 +1609,7 @@ dependencies = [
 name = "tasknet-sync"
 version = "0.1.0"
 dependencies = [
+ "automerge-backend",
  "automerge-protocol",
  "automergeable",
  "serde",
