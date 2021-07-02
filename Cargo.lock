@@ -1569,6 +1569,7 @@ version = "0.1.0"
 dependencies = [
  "apply",
  "automerge",
+ "automerge-backend",
  "automerge-persistent",
  "automerge-persistent-localstorage",
  "automerge-protocol",

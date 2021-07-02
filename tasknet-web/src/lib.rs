@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use apply::Apply;
+use automerge_backend::SyncMessage;
 use chrono::Utc;
 use derivative::Derivative;
 #[allow(clippy::wildcard_imports)]
@@ -143,6 +144,8 @@ pub enum Msg {
     OnRecurTick,
     BackendCompactTick,
     BackendPeriodicSyncTick,
+    SendSyncMessage,
+    ReceiveSyncMessage(Vec<u8>),
     UrlChanged(subs::UrlChanged),
     ApplyChange(automerge_protocol::Change),
     ApplyPatch(automerge_protocol::Patch),
@@ -236,12 +239,34 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::BackendPeriodicSyncTick => {
             log!("periodic sync");
-            model
+            orders.skip().send_msg(Msg::SendSyncMessage);
+        }
+        Msg::SendSyncMessage => {
+            let sync_message = model
                 .global
                 .document
                 .backend
                 .generate_sync_message(SERVER_PEER_ID.to_vec())
                 .unwrap();
+            if let Some(sync_message) = sync_message {
+                let bytes = sync_message.encode().unwrap();
+                // TODO: send bytes to server
+                log!("send sync message");
+            }
+        }
+        Msg::ReceiveSyncMessage(bytes) => {
+            let sync_message = SyncMessage::decode(&bytes).unwrap();
+            let patch = model
+                .global
+                .document
+                .backend
+                .receive_sync_message(SERVER_PEER_ID.to_vec(), sync_message)
+                .unwrap();
+            if let Some(patch) = patch {
+                orders.skip().send_msg(Msg::ApplyPatch(patch));
+            }
+            // we may now want to send another message so give that a call
+            orders.skip().send_msg(Msg::SendSyncMessage);
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
             model.page = Page::init(url, &model.global.document, orders)

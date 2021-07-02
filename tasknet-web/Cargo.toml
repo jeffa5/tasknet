@@ -21,6 +21,7 @@ seed = "0.8.0"
 chrono = {version = "0.4.19", features = ["wasmbind","serde"]}
 automerge = { git = "https://github.com/automerge/automerge-rs", branch = "main" }
 automerge-protocol = { git = "https://github.com/automerge/automerge-rs", branch = "main" }
+automerge-backend = { git = "https://github.com/automerge/automerge-rs", branch = "main" }
 automergeable = { git = "https://github.com/jeffa5/automergeable", branch = "main", default-features = false }
 automerge-persistent = { git = "https://github.com/jeffa5/automerge-persistent", branch = "main" }
 automerge-persistent-localstorage = { git = "https://github.com/jeffa5/automerge-persistent", branch = "main" }
