@@ -16,3 +16,4 @@ automerge-protocol = { git = "https://github.com/automerge/automerge-rs", branch
 automerge-backend = { git = "https://github.com/automerge/automerge-rs", branch = "main" }
 tasknet-sync = { path = "../tasknet-sync" }
 tracing = "0.1.23"
+automerge-persistent = { git = "https://github.com/jeffa5/automerge-persistent", branch = "main" }

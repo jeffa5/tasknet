@@ -1539,6 +1539,7 @@ version = "0.1.0"
 dependencies = [
  "automerge",
  "automerge-backend",
+ "automerge-persistent",
  "automerge-protocol",
  "automergeable",
  "env_logger",

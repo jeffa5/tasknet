@@ -1,4 +1,3 @@
-use automerge_backend::SyncState;
 use futures_util::{SinkExt, StreamExt};
 use warp::Filter;
 
@@ -19,8 +18,13 @@ async fn main() {
                     ws.on_upgrade(|websocket| async move {
                         let (mut tx, mut rx) = websocket.split();
 
-                        let mut sync_state = SyncState::default();
-                        let mut backend = automerge::Backend::new();
+                        let mut backend =
+                            automerge_persistent::PersistentBackend::<_, automerge::Backend>::load(
+                                automerge_persistent::MemoryPersister::default(),
+                            )
+                            .unwrap();
+
+                        let peer_id = vec![b'h', b'i'];
 
                         while let Some(Ok(msg)) = rx.next().await {
                             if msg.is_binary() {
@@ -29,10 +33,10 @@ async fn main() {
                                 match message {
                                     tasknet_sync::Message::SyncMessage(sync_message) => {
                                         let _patch = backend
-                                            .receive_sync_message(&mut sync_state, sync_message)
+                                            .receive_sync_message(peer_id.clone(), sync_message)
                                             .unwrap();
                                         let message =
-                                            backend.generate_sync_message(&mut sync_state);
+                                            backend.generate_sync_message(peer_id.clone()).unwrap();
                                         if let Some(message) = message {
                                             let binary = Vec::<u8>::from(
                                                 tasknet_sync::Message::SyncMessage(message),
