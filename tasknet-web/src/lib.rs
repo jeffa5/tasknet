@@ -362,6 +362,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .apply_local_change(change)
                 .unwrap();
             orders.skip().send_msg(Msg::ApplyPatch(patch));
+            orders.skip().send_msg(Msg::SendSyncMessage);
         }
         Msg::ApplyPatch(patch) => {
             log!("apply patch");
