@@ -44,7 +44,6 @@ impl From<Message> for Vec<u8> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
 enum EncodedMessage {
     SyncMessage(Vec<u8>),
 }
