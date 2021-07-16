@@ -4,6 +4,7 @@ use apply::Apply;
 use automerge_backend::SyncMessage;
 use chrono::Utc;
 use derivative::Derivative;
+use seed::browser::web_socket::State;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
@@ -411,6 +412,13 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
             C!["flex", "flex-row", "justify-start"],
             view_button("Tasknet", Msg::SelectTask(None), false),
         ],
+        div![match model.global.web_socket.state() {
+            State::Connecting => "Connecting",
+            State::Open => "Open",
+            State::Closing => "Closing",
+            State::Closed => "Closed",
+            _ => "Unknown",
+        }],
         nav![
             C!["flex", "flex-row", "justify-end"],
             if is_home {
