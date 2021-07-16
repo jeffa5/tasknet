@@ -119,7 +119,7 @@ dependencies = [
 [[package]]
 name = "automerge-persistent"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#2c63399ba3a2f3c28ae0d10f7b844d71fadb0e4a"
+source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#345317a0b5a160c2a07730266e16e9a2a2f1653e"
 dependencies = [
  "async-trait",
  "automerge",
@@ -131,7 +131,7 @@ dependencies = [
 [[package]]
 name = "automerge-persistent-localstorage"
 version = "0.1.0"
-source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#2c63399ba3a2f3c28ae0d10f7b844d71fadb0e4a"
+source = "git+https://github.com/jeffa5/automerge-persistent?branch=main#345317a0b5a160c2a07730266e16e9a2a2f1653e"
 dependencies = [
  "async-trait",
  "automerge",

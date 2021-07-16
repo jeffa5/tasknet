@@ -318,6 +318,12 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::WebSocketOpened => {
             model.global.web_socket_reconnector = None;
+            // reset the sync state to ensure we start clean and avoid loops
+            model
+                .global
+                .document
+                .backend
+                .reset_sync_state(SERVER_PEER_ID);
             log!("WebSocket connection is open now");
         }
         Msg::WebSocketClosed(close_event) => {
