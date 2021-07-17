@@ -4,10 +4,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use futures_util::{stream::SplitSink, SinkExt, StreamExt};
+use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
 use tokio::sync::broadcast;
 use warp::{
     addr::remote,
+    hyper::Uri,
+    path::FullPath,
     ws::{Message, WebSocket},
     Filter,
 };
@@ -53,11 +55,7 @@ async fn main() {
 
     let (sender, _) = broadcast::channel(1);
 
-    let routes = warp::get()
-        .and(
-            warp::path("tasknet").and(warp::fs::dir("tasknet-web/local/tasknet").with(tasknet_log)),
-        )
-        .or(warp::path("sync")
+    let sync = warp::path("sync")
             .and(warp::ws())
             .and(with_backend(backend))
             .and(with_watch_channel(sender))
@@ -121,14 +119,34 @@ async fn main() {
                     })
                 }
             })
-            .with(sync_log));
+            .with(sync_log);
 
-    warp::serve(routes)
-        .tls()
-        .cert_path("certs/server.crt")
-        .key_path("certs/server.key")
+    let statics = warp::any().and(warp::fs::dir("tasknet-web/local/tasknet").with(tasknet_log));
+
+    let routes = warp::get().and(warp::path("tasknet")).and(sync.or(statics));
+
+    let tls_server = tokio::spawn(async move {
+        warp::serve(routes)
+            .tls()
+            .cert_path("certs/server.crt")
+            .key_path("certs/server.key")
+            .run(([127, 0, 0, 1], 8443))
+            .await;
+    });
+
+    let http_server = tokio::spawn(async move {
+        warp::serve(warp::path::full().map(|path: FullPath| {
+            warp::redirect({
+                tracing::warn!("redirecting to path {:?}", path.as_str());
+                // path always starts with '/', even if it was empty
+                Uri::from_maybe_shared(format!("https://localhost:8443{}", path.as_str())).unwrap()
+            })
+        }))
         .run(([127, 0, 0, 1], 8080))
         .await;
+    });
+
+    join_all(vec![tls_server, http_server]).await;
 }
 
 async fn send_message(

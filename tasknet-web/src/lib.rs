@@ -27,9 +27,9 @@ const SERVER_PEER_ID: &[u8] = b"server";
 fn ws_url() -> String {
     let location = window().location();
     format!(
-        "ws://{}:{}/sync",
-        location.hostname().unwrap(),
-        location.port().unwrap()
+        "wss://{}{}/sync",
+        location.host().unwrap(),
+        location.pathname().unwrap()
     )
 }
 
