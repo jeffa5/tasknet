@@ -38,7 +38,8 @@ fn with_watch_channel(
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
+
     let tasknet_log = warp::log("tasknet::web");
     let sync_log = warp::log("tasknet::sync");
 
@@ -70,7 +71,7 @@ async fn main() {
                         let (mut tx, mut rx) = websocket.split();
 
                         let address = address.unwrap();
-                        println!("connection from {:?}", address);
+                        tracing::info!("connection from {:?}", address);
                         let peer_id = format!("{:?}", address).into_bytes();
 
                         // Send a message to the client first. If they don't have any changes
@@ -86,7 +87,7 @@ async fn main() {
                                         let message = tasknet_sync::Message::from(bytes);
                                         match message {
                                             tasknet_sync::Message::SyncMessage(sync_message) => {
-                                                println!("Received sync message from {:?}", address);
+                                                tracing::debug!("Received sync message from {:?}", address);
                                                 let patch = backend
                                                     .lock()
                                                     .unwrap()
@@ -101,10 +102,10 @@ async fn main() {
                                             }
                                         }
                                     } else if msg.is_close() {
-                                        println!("close");
+                                        tracing::debug!("close");
                                         break
                                     } else {
-                                        println!("unhandled message {:?}", msg);
+                                        tracing::warn!("unhandled message {:?}", msg);
                                     }
                                 },
 
@@ -122,7 +123,7 @@ async fn main() {
             })
             .with(sync_log));
 
-    println!("Serving page on http://localhost:8080/tasknet");
+    tracing::info!("Serving page on http://localhost:8080/tasknet");
 
     warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
 }
@@ -139,7 +140,7 @@ async fn send_message(
         .generate_sync_message(peer_id.clone())
         .unwrap();
     if let Some(message) = message {
-        println!("Sending sync message to {:?}", address);
+        tracing::debug!("Sending sync message to {:?}", address);
         let binary = Vec::<u8>::from(tasknet_sync::Message::SyncMessage(message));
         let _ = tx.send(warp::ws::Message::binary(binary)).await;
     }

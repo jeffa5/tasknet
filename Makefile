@@ -1,6 +1,6 @@
 .PHONY: serve
 serve: web
-	cargo run --bin tasknet-server
+	RUST_LOG=info cargo run --bin tasknet-server
 
 .PHONY: web
 web: web-build web-pkg web-statics
