@@ -71,7 +71,7 @@ async fn main() {
                         let (mut tx, mut rx) = websocket.split();
 
                         let address = address.unwrap();
-                        tracing::info!("connection from {:?}", address);
+                        tracing::debug!("connection from {:?}", address);
                         let peer_id = format!("{:?}", address).into_bytes();
 
                         // Send a message to the client first. If they don't have any changes
