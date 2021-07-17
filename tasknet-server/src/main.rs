@@ -123,9 +123,12 @@ async fn main() {
             })
             .with(sync_log));
 
-    tracing::info!("Serving page on http://localhost:8080/tasknet");
-
-    warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
+    warp::serve(routes)
+        .tls()
+        .cert_path("certs/server.crt")
+        .key_path("certs/server.key")
+        .run(([127, 0, 0, 1], 8080))
+        .await;
 }
 
 async fn send_message(

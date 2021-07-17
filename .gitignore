@@ -2,3 +2,8 @@
 /tasknet-web/local
 .direnv
 local
+
+certs/*.pem
+certs/*.csr
+certs/*.crt
+certs/*.key

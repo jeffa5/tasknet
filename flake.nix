@@ -31,6 +31,8 @@
             pkgconfig
             openssl
 
+            cfssl
+
             nodejs
 
             rnix-lsp

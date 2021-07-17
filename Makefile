@@ -1,5 +1,17 @@
+CERTS_DIR ?= certs
+CA_KEYS := $(CERTS_DIR)/ca.pem $(CERTS_DIR)/ca-key.pem $(CERTS_DIR)/ca.csr
+SERVER_KEYS := $(CERTS_DIR)/server.crt $(CERTS_DIR)/server.key $(CERTS_DIR)/server.csr
+
+$(CA_KEYS): $(CERTS_DIR)/ca-csr.json
+	cfssl gencert -initca $(CERTS_DIR)/ca-csr.json | cfssljson -bare $(CERTS_DIR)/ca -
+
+$(SERVER_KEYS): $(CA_KEYS) $(CERTS_DIR)/ca-config.json $(CERTS_DIR)/server.json
+	cfssl gencert -ca=$(CERTS_DIR)/ca.pem -ca-key=$(CERTS_DIR)/ca-key.pem -config=$(CERTS_DIR)/ca-config.json -profile=server $(CERTS_DIR)/server.json | cfssljson -bare $(CERTS_DIR)/server -
+	mv $(CERTS_DIR)/server.pem $(CERTS_DIR)/server.crt
+	mv $(CERTS_DIR)/server-key.pem $(CERTS_DIR)/server.key
+
 .PHONY: serve
-serve: web
+serve: $(SERVER_KEYS) web
 	RUST_LOG=info cargo run --bin tasknet-server
 
 .PHONY: web
@@ -44,4 +56,5 @@ web-test-firefox:
 
 .PHONY: clean
 clean: web-clean
+	rm -f $(CA_KEYS) $(SERVER_KEYS)
 	cargo clean
