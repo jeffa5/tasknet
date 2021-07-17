@@ -1,6 +1,12 @@
+use clap::Clap;
+use options::Options;
+
+mod options;
 mod server;
 
 #[tokio::main]
 async fn main() {
-    server::run().await
+    let options = Options::parse();
+
+    server::run(options).await
 }

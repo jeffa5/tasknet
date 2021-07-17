@@ -15,6 +15,8 @@ use warp::{
     Filter,
 };
 
+use crate::options::Options;
+
 type MemoryBackend = Arc<
     Mutex<
         automerge_persistent::PersistentBackend<
@@ -39,7 +41,7 @@ fn with_watch_channel(
     warp::any().map(move || (sender.clone(), sender.subscribe()))
 }
 
-pub async fn run() {
+pub async fn run(options: Options) {
     tracing_subscriber::fmt::init();
 
     let tasknet_log = warp::log("tasknet::web");
@@ -125,15 +127,17 @@ pub async fn run() {
 
     let routes = warp::get().and(warp::path("tasknet")).and(sync.or(statics));
 
-    let http_listen_address = "127.0.0.1:8080";
-    let https_listen_address = "127.0.0.1:8443";
+    let https_listen_address = options.https_listen_address.clone();
+
+    let http_listen_address = options.http_listen_address.clone();
+    let https_listen_address_2 = options.https_listen_address.clone();
 
     let tls_server = tokio::spawn(async move {
         warp::serve(routes)
             .tls()
-            .cert_path("certs/server.crt")
-            .key_path("certs/server.key")
-            .run(SocketAddr::from_str(https_listen_address).unwrap())
+            .cert_path(options.cert_file)
+            .key_path(options.key_file)
+            .run(SocketAddr::from_str(&https_listen_address).unwrap())
             .await;
     });
 
@@ -142,11 +146,11 @@ pub async fn run() {
             warp::redirect({
                 tracing::warn!("redirecting to path {:?}", path.as_str());
                 // path always starts with '/', even if it was empty
-                Uri::from_maybe_shared(format!("{}{}", https_listen_address, path.as_str()))
+                Uri::from_maybe_shared(format!("{}{}", https_listen_address_2, path.as_str()))
                     .unwrap()
             })
         }))
-        .run(SocketAddr::from_str(http_listen_address).unwrap())
+        .run(SocketAddr::from_str(&http_listen_address).unwrap())
         .await;
     });
 
