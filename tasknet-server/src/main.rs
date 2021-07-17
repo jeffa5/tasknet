@@ -1,6 +1,7 @@
 use std::{
     convert::Infallible,
     net::SocketAddr,
+    str::FromStr,
     sync::{Arc, Mutex},
 };
 
@@ -125,24 +126,28 @@ async fn main() {
 
     let routes = warp::get().and(warp::path("tasknet")).and(sync.or(statics));
 
+    let http_listen_address = "127.0.0.1:8080";
+    let https_listen_address = "127.0.0.1:8443";
+
     let tls_server = tokio::spawn(async move {
         warp::serve(routes)
             .tls()
             .cert_path("certs/server.crt")
             .key_path("certs/server.key")
-            .run(([127, 0, 0, 1], 8443))
+            .run(SocketAddr::from_str(https_listen_address).unwrap())
             .await;
     });
 
     let http_server = tokio::spawn(async move {
-        warp::serve(warp::path::full().map(|path: FullPath| {
+        warp::serve(warp::path::full().map(move |path: FullPath| {
             warp::redirect({
                 tracing::warn!("redirecting to path {:?}", path.as_str());
                 // path always starts with '/', even if it was empty
-                Uri::from_maybe_shared(format!("https://localhost:8443{}", path.as_str())).unwrap()
+                Uri::from_maybe_shared(format!("{}{}", https_listen_address, path.as_str()))
+                    .unwrap()
             })
         }))
-        .run(([127, 0, 0, 1], 8080))
+        .run(SocketAddr::from_str(http_listen_address).unwrap())
         .await;
     });
 
