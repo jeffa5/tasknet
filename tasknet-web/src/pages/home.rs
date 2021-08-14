@@ -10,7 +10,7 @@ use seed::{prelude::*, *};
 use crate::{
     components::{duration_string, view_button, view_checkbox, view_text_input},
     task::{Id, Priority, Status, Task},
-    urgency, Filters, GlobalModel, Msg as GMsg,
+    Filters, GlobalModel, Msg as GMsg,
 };
 
 const FILTERS_STORAGE_KEY: &str = "tasknet-filters";
@@ -87,7 +87,6 @@ impl Display for Field {
 }
 
 #[derive(Debug, Clone)]
-#[allow(clippy::pub_enum_variant_names)]
 pub enum Msg {
     FiltersStatusTogglePending,
     FiltersStatusToggleDeleted,
@@ -228,11 +227,11 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     let tasks = global_model.document.tasks();
     div![
         if model.filters.show {
-            view_filters(model, &tasks)
+            view_filters(model, tasks)
         } else {
             empty!()
         },
-        view_tasks(&tasks, global_model, model)
+        view_tasks(tasks, global_model, model)
     ]
 }
 

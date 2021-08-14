@@ -7,7 +7,7 @@ use seed::{prelude::*, *};
 use crate::{
     components::{duration_string, view_button, view_text_input},
     task::{DateTime, Priority, RecurUnit, Status, Task},
-    urgency, GlobalModel, Msg as GMsg, Recur, Urls,
+    GlobalModel, Msg as GMsg, Recur, Urls,
 };
 
 const ESCAPE_KEY: &str = "Escape";

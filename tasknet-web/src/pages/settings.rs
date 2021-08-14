@@ -38,7 +38,7 @@ pub enum Msg {
 pub fn update(
     msg: Msg,
     global_model: &mut GlobalModel,
-    model: &mut Model,
+    _model: &mut Model,
     orders: &mut impl Orders<GMsg>,
 ) {
     match msg {
@@ -102,7 +102,7 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     ]
 }
 
-fn view_urgency_coefficients(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
+fn view_urgency_coefficients(global_model: &GlobalModel, _model: &Model) -> Node<GMsg> {
     div![
         C!["flex", "flex-col"],
         h1![C!["text-lg", "font-bold"], "Urgency coefficients"],
