@@ -77,7 +77,7 @@ pub fn update(
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
         C!["flex", "flex-col"],
-        h1![C!["text-lg"], "Settings"],
+        h1![C!["text-lg", "text-bold"], "Settings"],
         view_button("Import Tasks", GMsg::Settings(Msg::ImportTasks), false),
         view_button("Export Tasks", GMsg::Settings(Msg::ExportTasks), false),
     ]
