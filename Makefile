@@ -2,6 +2,9 @@ CERTS_DIR ?= certs
 CA_KEYS := $(CERTS_DIR)/ca.pem $(CERTS_DIR)/ca-key.pem $(CERTS_DIR)/ca.csr
 SERVER_KEYS := $(CERTS_DIR)/server.crt $(CERTS_DIR)/server.key $(CERTS_DIR)/server.csr
 
+TASKNET_WEB_LOCAL := tasknet-web/local
+TASKNET_WEB_LOCAL_BUILD := tasknet-web/local-build
+
 $(CA_KEYS): $(CERTS_DIR)/ca-csr.json
 	cfssl gencert -initca $(CERTS_DIR)/ca-csr.json | cfssljson -bare $(CERTS_DIR)/ca -
 
@@ -16,28 +19,30 @@ serve: $(SERVER_KEYS) web
 
 .PHONY: web
 web: web-build web-pkg web-statics
+	mv $(TASKNET_WEB_LOCAL_BUILD) $(TASKNET_WEB_LOCAL)
 
 .PHONY: web-pkg
 web-pkg:
-	mkdir -p tasknet-web/local/tasknet/pkg
-	cp tasknet-web/pkg/package_bg.wasm tasknet-web/local/tasknet/pkg/.
-	cp tasknet-web/pkg/package.js tasknet-web/local/tasknet/pkg/.
+	mkdir -p $(TASKNET_WEB_LOCAL_BUILD)/tasknet/pkg
+	cp tasknet-web/pkg/package_bg.wasm $(TASKNET_WEB_LOCAL_BUILD)/tasknet/pkg/.
+	cp tasknet-web/pkg/package.js $(TASKNET_WEB_LOCAL_BUILD)/tasknet/pkg/.
 
 .PHONY: web-statics
 web-statics:
-	cp -r tasknet-web/assets tasknet-web/local/tasknet/.
-	cp -r tasknet-web/styles tasknet-web/local/tasknet/.
-	cp tasknet-web/index.html tasknet-web/local/tasknet/.
-	cp tasknet-web/service-worker.js tasknet-web/local/tasknet/.
-	cp tasknet-web/tasknet.webmanifest tasknet-web/local/tasknet/.
+	cp -r tasknet-web/assets $(TASKNET_WEB_LOCAL_BUILD)/tasknet/.
+	cp -r tasknet-web/styles $(TASKNET_WEB_LOCAL_BUILD)/tasknet/.
+	cp tasknet-web/index.html $(TASKNET_WEB_LOCAL_BUILD)/tasknet/.
+	cp tasknet-web/service-worker.js $(TASKNET_WEB_LOCAL_BUILD)/tasknet/.
+	cp tasknet-web/tasknet.webmanifest $(TASKNET_WEB_LOCAL_BUILD)/tasknet/.
 
 .PHONY: web-build
-web-build: web-clean
+web-build:
+	rm -rf $(TASKNET_WEB_LOCAL_BUILD)
 	cd tasknet-web && wasm-pack build --target web --out-name package --release
 
 .PHONY: web-clean
 web-clean:
-	rm -rf tasknet-web/local
+	rm -rf $(TASKNET_WEB_LOCAL)
 
 .PHONY: web-test
 web-test: web-test-firefox web-test-chrome web-test-safari
