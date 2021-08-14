@@ -12,6 +12,7 @@ mod components;
 mod document;
 mod filters;
 mod pages;
+mod settings;
 mod task;
 mod urgency;
 
@@ -22,6 +23,7 @@ use task::{Recur, Status, Task};
 use tasknet_sync::Message;
 
 const VIEW_TASK: &str = "view";
+const SETTINGS: &str = "settings";
 const SERVER_PEER_ID: &[u8] = b"server";
 
 fn ws_url() -> String {
@@ -138,6 +140,11 @@ impl<'a> Urls<'a> {
             .add_hash_path_part(VIEW_TASK)
             .add_hash_path_part(uuid.to_string())
     }
+
+    #[must_use]
+    pub fn settings(self) -> Url {
+        self.base_url().add_hash_path_part(SETTINGS)
+    }
 }
 
 // ------ ------
@@ -148,6 +155,7 @@ impl<'a> Urls<'a> {
 enum Page {
     Home(pages::home::Model),
     ViewTask(pages::view_task::Model),
+    Settings(pages::settings::Model),
 }
 
 impl Page {
@@ -167,6 +175,7 @@ impl Page {
                 }
                 None => Self::Home(pages::home::init()),
             },
+            Some(SETTINGS) => Self::Settings(pages::settings::init()),
             None | Some(_) => Self::Home(pages::home::init()),
         }
     }
@@ -182,6 +191,7 @@ pub enum Msg {
     CreateTask,
     ImportTasks,
     ExportTasks,
+    ViewSettings,
     OnRenderTick,
     OnRecurTick,
     BackendCompactTick,
@@ -198,6 +208,7 @@ pub enum Msg {
     ApplyPatch(automerge_protocol::Patch),
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
+    Settings(pages::settings::Msg),
 }
 
 #[allow(clippy::too_many_lines)]
@@ -236,6 +247,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     &serde_json::to_string(&tasks).unwrap(),
                 )
                 .unwrap();
+        }
+        Msg::ViewSettings => {
+            orders.request_url(Urls::new(&model.global.base_url).settings());
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
@@ -386,6 +400,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 pages::home::update(msg, lm, orders)
             }
         }
+        Msg::Settings(msg) => {
+            if let Page::Settings(lm) = &mut model.page {
+                pages::settings::update(msg, lm, orders)
+            }
+        }
     }
 }
 
@@ -400,6 +419,7 @@ fn view(model: &Model) -> Node<Msg> {
         match &model.page {
             Page::Home(lm) => pages::home::view(&model.global, lm),
             Page::ViewTask(lm) => pages::view_task::view(&model.global, lm),
+            Page::Settings(lm) => pages::settings::view(&model.global, lm),
         },
     ]
 }
@@ -435,6 +455,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
             },
             view_button("Import Tasks", Msg::ImportTasks, false),
             view_button("Export Tasks", Msg::ExportTasks, false),
+            view_button("Settings", Msg::ViewSettings, false),
             view_button("Create", Msg::CreateTask, false),
         ]
     ]
