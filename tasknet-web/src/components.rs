@@ -111,8 +111,9 @@ pub fn view_number_input_tr(
 ) -> Node<Msg> {
     let also_f = f.clone();
     tr![
-        td![span![C!["font-bold"], name]],
+        td![span![C!["font-bold", "mr-2"], name]],
         td![input![
+            C!["mr-2"],
             attrs! {
                 At::Type => "number",
                 At::Value => value,
