@@ -95,8 +95,16 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
         C!["flex", "flex-col"],
         h1![C!["text-lg", "font-bold"], "Settings"],
-        view_button("Import Tasks", GMsg::Settings(Msg::ImportTasks), false),
-        view_button("Export Tasks", GMsg::Settings(Msg::ExportTasks), false),
+        div![view_button(
+            "Import Tasks",
+            GMsg::Settings(Msg::ImportTasks),
+            false
+        ),],
+        div![view_button(
+            "Export Tasks",
+            GMsg::Settings(Msg::ExportTasks),
+            false
+        ),],
         view_urgency_coefficients(global_model, model),
     ]
 }
@@ -105,68 +113,71 @@ fn view_urgency_coefficients(global_model: &GlobalModel, model: &Model) -> Node<
     div![
         C!["flex", "flex-col"],
         h1![C!["text-lg", "font-bold"], "Urgency coefficients"],
-        table![
-            C!["table-auto", "w-auto"],
-            view_number_input_tr("Next", global_model.settings.urgency.next as i64, 15, |s| {
-                GMsg::Settings(Msg::SetUrgencyNext(s))
-            }),
-            view_number_input_tr("Due", global_model.settings.urgency.due as i64, 12, |s| {
-                GMsg::Settings(Msg::SetUrgencyDue(s))
-            }),
-            view_number_input_tr(
-                "High priority",
-                global_model.settings.urgency.high_priority as i64,
-                6,
-                |s| { GMsg::Settings(Msg::SetUrgencyHighPriority(s)) }
-            ),
-            view_number_input_tr(
-                "Medium priority",
-                global_model.settings.urgency.medium_priority as i64,
-                4,
-                |s| { GMsg::Settings(Msg::SetUrgencyMediumPriority(s)) }
-            ),
-            view_number_input_tr(
-                "Low priority",
-                global_model.settings.urgency.low_priority as i64,
-                2,
-                |s| { GMsg::Settings(Msg::SetUrgencyLowPriority(s)) }
-            ),
-            view_number_input_tr(
-                "Scheduled",
-                global_model.settings.urgency.scheduled as i64,
-                5,
-                |s| { GMsg::Settings(Msg::SetUrgencyScheduled(s)) }
-            ),
-            view_number_input_tr(
-                "Active",
-                global_model.settings.urgency.active as i64,
-                4,
-                |s| { GMsg::Settings(Msg::SetUrgencyActive(s)) }
-            ),
-            view_number_input_tr("Age", global_model.settings.urgency.age as i64, 2, |s| {
-                GMsg::Settings(Msg::SetUrgencyAge(s))
-            }),
-            view_number_input_tr(
-                "Notes",
-                global_model.settings.urgency.notes as i64,
-                1,
-                |s| { GMsg::Settings(Msg::SetUrgencyNotes(s)) }
-            ),
-            view_number_input_tr("Tags", global_model.settings.urgency.tags as i64, 1, |s| {
-                GMsg::Settings(Msg::SetUrgencyTags(s))
-            }),
-            view_number_input_tr(
-                "Project",
-                global_model.settings.urgency.project as i64,
-                1,
-                |s| { GMsg::Settings(Msg::SetUrgencyProject(s)) }
-            ),
-            view_number_input_tr(
-                "Waiting",
-                global_model.settings.urgency.waiting as i64,
-                -3,
-                |s| { GMsg::Settings(Msg::SetUrgencyWaiting(s)) }
-            ),
+        div![
+            C!["ml-2"],
+            table![
+                C!["table-auto", "w-auto"],
+                view_number_input_tr("Next", global_model.settings.urgency.next as i64, 15, |s| {
+                    GMsg::Settings(Msg::SetUrgencyNext(s))
+                }),
+                view_number_input_tr("Due", global_model.settings.urgency.due as i64, 12, |s| {
+                    GMsg::Settings(Msg::SetUrgencyDue(s))
+                }),
+                view_number_input_tr(
+                    "High priority",
+                    global_model.settings.urgency.high_priority as i64,
+                    6,
+                    |s| { GMsg::Settings(Msg::SetUrgencyHighPriority(s)) }
+                ),
+                view_number_input_tr(
+                    "Medium priority",
+                    global_model.settings.urgency.medium_priority as i64,
+                    4,
+                    |s| { GMsg::Settings(Msg::SetUrgencyMediumPriority(s)) }
+                ),
+                view_number_input_tr(
+                    "Low priority",
+                    global_model.settings.urgency.low_priority as i64,
+                    2,
+                    |s| { GMsg::Settings(Msg::SetUrgencyLowPriority(s)) }
+                ),
+                view_number_input_tr(
+                    "Scheduled",
+                    global_model.settings.urgency.scheduled as i64,
+                    5,
+                    |s| { GMsg::Settings(Msg::SetUrgencyScheduled(s)) }
+                ),
+                view_number_input_tr(
+                    "Active",
+                    global_model.settings.urgency.active as i64,
+                    4,
+                    |s| { GMsg::Settings(Msg::SetUrgencyActive(s)) }
+                ),
+                view_number_input_tr("Age", global_model.settings.urgency.age as i64, 2, |s| {
+                    GMsg::Settings(Msg::SetUrgencyAge(s))
+                }),
+                view_number_input_tr(
+                    "Notes",
+                    global_model.settings.urgency.notes as i64,
+                    1,
+                    |s| { GMsg::Settings(Msg::SetUrgencyNotes(s)) }
+                ),
+                view_number_input_tr("Tags", global_model.settings.urgency.tags as i64, 1, |s| {
+                    GMsg::Settings(Msg::SetUrgencyTags(s))
+                }),
+                view_number_input_tr(
+                    "Project",
+                    global_model.settings.urgency.project as i64,
+                    1,
+                    |s| { GMsg::Settings(Msg::SetUrgencyProject(s)) }
+                ),
+                view_number_input_tr(
+                    "Waiting",
+                    global_model.settings.urgency.waiting as i64,
+                    -3,
+                    |s| { GMsg::Settings(Msg::SetUrgencyWaiting(s)) }
+                ),
+            ],
         ],
     ]
 }
