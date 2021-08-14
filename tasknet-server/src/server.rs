@@ -1,7 +1,6 @@
 use std::{
     convert::Infallible,
     net::SocketAddr,
-    str::FromStr,
     sync::{Arc, Mutex},
 };
 
@@ -125,32 +124,43 @@ pub async fn run(options: Options) {
 
     let statics = warp::any().and(warp::fs::dir("tasknet-web/local/tasknet").with(tasknet_log));
 
-    let routes = warp::get().and(warp::path("tasknet")).and(sync.or(statics));
+    let root_redirect = warp::path::end().map(|| {
+        warp::redirect({
+            tracing::info!("redirecting root to path /tasknet");
+            Uri::from_static("/tasknet")
+        })
+    });
 
-    let https_listen_address = options.https_listen_address.clone();
+    let routes = warp::get()
+        .and(warp::path("tasknet"))
+        .and(sync.or(statics))
+        .or(root_redirect);
 
-    let http_listen_address = options.http_listen_address.clone();
-    let https_listen_address_2 = options.https_listen_address.clone();
+    let https_listen_address = options.https_listen_address;
+
+    let http_listen_address = options.http_listen_address;
+    let https_listen_address_2 = options.https_listen_address;
 
     let tls_server = tokio::spawn(async move {
         warp::serve(routes)
             .tls()
             .cert_path(options.cert_file)
             .key_path(options.key_file)
-            .run(SocketAddr::from_str(&https_listen_address).unwrap())
+            .run(https_listen_address)
             .await;
     });
 
+    // redirect to https
     let http_server = tokio::spawn(async move {
         warp::serve(warp::path::full().map(move |path: FullPath| {
             warp::redirect({
-                tracing::warn!("redirecting to path {:?}", path.as_str());
+                let address = format!("https://{}{}", https_listen_address_2, path.as_str());
+                tracing::warn!("redirecting to {:?}", address);
                 // path always starts with '/', even if it was empty
-                Uri::from_maybe_shared(format!("{}{}", https_listen_address_2, path.as_str()))
-                    .unwrap()
+                Uri::from_maybe_shared(address).unwrap()
             })
         }))
-        .run(SocketAddr::from_str(&http_listen_address).unwrap())
+        .run(http_listen_address)
         .await;
     });
 
