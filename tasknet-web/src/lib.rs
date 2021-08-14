@@ -412,13 +412,16 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
             C!["flex", "flex-row", "justify-start"],
             view_button("Tasknet", Msg::SelectTask(None), false),
         ],
-        div![match model.global.web_socket.state() {
-            State::Connecting => "Connecting",
-            State::Open => "Open",
-            State::Closing => "Closing",
-            State::Closed => "Closed",
-            _ => "Unknown",
-        }],
+        div![
+            C!["my-auto"],
+            match model.global.web_socket.state() {
+                State::Connecting => "Connecting",
+                State::Open => "Open",
+                State::Closing => "Closing",
+                State::Closed => "Closed",
+                _ => "Unknown",
+            }
+        ],
         nav![
             C!["flex", "flex-row", "justify-end"],
             if is_home {
