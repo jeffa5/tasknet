@@ -103,6 +103,33 @@ pub fn view_text_input(
     ]
 }
 
+pub fn view_number_input_tr(
+    name: &str,
+    value: i64,
+    default: i64,
+    f: impl FnOnce(i64) -> Msg + Clone + 'static,
+) -> Node<Msg> {
+    let also_f = f.clone();
+    tr![
+        td![span![C!["font-bold"], name]],
+        td![input![
+            attrs! {
+                At::Type => "number",
+                At::Value => value,
+            },
+            input_ev(Ev::Change, |s| f(s.parse().unwrap()))
+        ]],
+        td![if value == default {
+            pre![" "]
+        } else {
+            button![
+                mouse_ev(Ev::Click, move |_| also_f(default)),
+                span![C!["text-red-600"], "X"]
+            ]
+        }],
+    ]
+}
+
 pub fn duration_string(duration: chrono::Duration) -> String {
     if duration.num_weeks() > 0 {
         format!("{}w", duration.num_weeks())
