@@ -14,9 +14,27 @@
           overlays = [ rust-overlay.overlay ];
           system = "x86_64-linux";
         };
+        lib = pkgs.lib;
         rust = pkgs.rust-bin.nightly.latest.rust;
+        cargoNix = pkgs.callPackage ./Cargo.nix {
+          inherit pkgs;
+          release = true;
+        };
+        docker-repo = "jeffas";
       in
       {
+        packages = lib.attrsets.mapAttrs
+          (name: value: value.build)
+          cargoNix.workspaceMembers // {
+          docker-server = pkgs.dockerTools.buildImage {
+            name = "${docker-repo}/tasknet-server";
+            tag = "${cargoNix.internal.crates.tasknet-server.version}";
+            config = {
+              Entrypoint = [ "${self.packages.${system}.tasknet-server}/bin/tasknet-server" ];
+            };
+          };
+        };
+
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
             (rust.override {
@@ -30,6 +48,8 @@
             wasm-pack
             pkgconfig
             openssl
+
+            crate2nix
 
             cfssl
 

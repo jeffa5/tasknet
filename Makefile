@@ -64,3 +64,8 @@ web-test-firefox:
 clean: web-clean
 	rm -f $(CA_KEYS) $(SERVER_KEYS)
 	cargo clean
+
+.PHONY: docker-build
+docker-build:
+	nix build .#docker-server
+	docker load -i result
