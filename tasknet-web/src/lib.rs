@@ -17,12 +17,14 @@ mod urgency;
 use components::view_button;
 use document::Document;
 use filters::Filters;
+use settings::Settings;
 use task::{Recur, Status, Task};
 use tasknet_sync::Message;
 
 const VIEW_TASK: &str = "view";
 const SETTINGS: &str = "settings";
 const SERVER_PEER_ID: &[u8] = b"server";
+const SETTINGS_STORAGE_KEY: &str = "tasknet-settings";
 
 fn ws_url() -> String {
     let location = window().location();
@@ -89,10 +91,18 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .subscribe(Msg::UrlChanged);
     let document = Document::new();
     let page = Page::init(url.clone(), &document, orders);
+    let settings = match LocalStorage::get(SETTINGS_STORAGE_KEY) {
+        Ok(settings) => settings,
+        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
+            panic!("failed to parse settings: {:?}", err)
+        }
+        Err(_) => Settings::default(),
+    };
     Model {
         global: GlobalModel {
             document,
             base_url: url.to_hash_base_url(),
+            settings,
             web_socket: create_websocket(orders),
             web_socket_reconnector: None,
         },
@@ -110,6 +120,7 @@ pub struct GlobalModel {
     #[derivative(Debug = "ignore")]
     document: Document,
     base_url: Url,
+    settings: Settings,
     // TODO: move to SyncModel,
     web_socket: WebSocket,
     web_socket_reconnector: Option<StreamHandle>,

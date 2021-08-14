@@ -232,12 +232,12 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
         } else {
             empty!()
         },
-        view_tasks(&tasks, model)
+        view_tasks(&tasks, global_model, model)
     ]
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_tasks(tasks: &HashMap<Id, Task>, model: &Model) -> Node<GMsg> {
+fn view_tasks(tasks: &HashMap<Id, Task>, global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     let tasks: Vec<_> = tasks
         .iter()
         .filter(|(_, t)| model.filters.filter_task(t))
@@ -256,12 +256,16 @@ fn view_tasks(tasks: &HashMap<Id, Task>, model: &Model) -> Node<GMsg> {
             span!["No tasks to show, either create a task or change some filters."]
         ]
     } else {
-        view_tasks_table(tasks, model)
+        view_tasks_table(tasks, global_model, model)
     }
 }
 
-fn view_tasks_table(mut tasks: Vec<(&Id, &Task)>, model: &Model) -> Node<GMsg> {
-    tasks.sort_by(|(_, t1), (_, t2)| sort_viewable_task(model.sort_field, t1, t2));
+fn view_tasks_table(
+    mut tasks: Vec<(&Id, &Task)>,
+    global_model: &GlobalModel,
+    model: &Model,
+) -> Node<GMsg> {
+    tasks.sort_by(|(_, t1), (_, t2)| sort_viewable_task(global_model, model.sort_field, t1, t2));
     if matches!(model.sort_direction, SortDirection::Descending) {
         tasks.reverse();
     }
@@ -279,7 +283,7 @@ fn view_tasks_table(mut tasks: Vec<(&Id, &Task)>, model: &Model) -> Node<GMsg> {
             },
             project: t.project().to_owned(),
             description: t.description().to_owned(),
-            urgency: urgency::calculate(t),
+            urgency: global_model.settings.urgency.calculate(t),
             uuid: ***uuid,
             tags: t.tags().to_owned(),
             priority: t.priority().to_owned(),
@@ -406,9 +410,17 @@ fn view_sort_button(model: &Model, field: Field) -> Node<GMsg> {
     ]
 }
 
-fn sort_viewable_task(sort_field: Field, t1: &Task, t2: &Task) -> Ordering {
+fn sort_viewable_task(
+    global_model: &GlobalModel,
+    sort_field: Field,
+    t1: &Task,
+    t2: &Task,
+) -> Ordering {
     match sort_field {
-        Field::Urgency => match (urgency::calculate(t1), urgency::calculate(t2)) {
+        Field::Urgency => match (
+            global_model.settings.urgency.calculate(t1),
+            global_model.settings.urgency.calculate(t2),
+        ) {
             (Some(u1), Some(u2)) => u1.partial_cmp(&u2).unwrap(),
             (Some(_), None) => Ordering::Less,
             (None, Some(_)) => Ordering::Greater,

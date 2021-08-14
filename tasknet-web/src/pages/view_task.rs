@@ -322,7 +322,7 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     let disable_changes = model.task.description().is_empty();
     let start = model.task.start();
     let end = model.task.end();
-    let urgency = urgency::calculate(&model.task);
+    let urgency = global_model.settings.urgency.calculate(&model.task);
     let active = model.task.start().is_some();
     let is_next = model.task.tags().contains(&"next".to_owned());
     let project_lowercase = model.task.project().join(".").to_lowercase();

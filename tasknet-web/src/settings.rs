@@ -1,13 +1,49 @@
 use serde::{Deserialize, Serialize};
 
-use crate::task::{Priority, Status, Task};
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Settings {
+    pub urgency: UrgencySettings,
+}
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-#[allow(clippy::struct_excessive_bools)]
-pub struct Settings {}
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct UrgencySettings {
+    pub next: f64,
+    pub due: f64,
+    pub high_priority: f64,
+    pub medium_priority: f64,
+    pub low_priority: f64,
+    pub scheduled: f64,
+    pub active: f64,
+    pub age: f64,
+    pub notes: f64,
+    pub tags: f64,
+    pub project: f64,
+    pub waiting: f64,
+}
 
 impl Default for Settings {
     fn default() -> Self {
-        Self {}
+        Self {
+            urgency: UrgencySettings::default(),
+        }
+    }
+}
+
+impl Default for UrgencySettings {
+    fn default() -> Self {
+        Self {
+            next: 15.0,
+            due: 12.0,
+            high_priority: 6.0,
+            medium_priority: 3.9,
+            low_priority: 1.8,
+            scheduled: 5.0,
+            active: 4.0,
+            age: 2.0,
+            notes: 1.0,
+            tags: 1.0,
+            project: 1.0,
+            waiting: -3.0,
+        }
     }
 }
