@@ -399,6 +399,7 @@ fn view(model: &Model) -> Node<Msg> {
 
 fn view_titlebar(model: &Model) -> Node<Msg> {
     let is_home = matches!(model.page, Page::Home(_));
+    let is_settings = matches!(model.page, Page::Settings(_));
     div![
         C!["flex", "flex-row", "justify-between"],
         div![
@@ -426,7 +427,11 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
             } else {
                 empty!()
             },
-            view_button("Settings", Msg::ViewSettings, false),
+            if !is_settings {
+                view_button("Settings", Msg::ViewSettings, false)
+            } else {
+                empty!()
+            },
             view_button("Create", Msg::CreateTask, false),
         ]
     ]
