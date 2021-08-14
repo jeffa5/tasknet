@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use apply::Apply;
 use automerge_backend::SyncMessage;
 use chrono::Utc;
@@ -189,8 +187,6 @@ impl Page {
 pub enum Msg {
     SelectTask(Option<uuid::Uuid>),
     CreateTask,
-    ImportTasks,
-    ExportTasks,
     ViewSettings,
     OnRenderTick,
     OnRecurTick,
@@ -224,29 +220,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::CreateTask => {
             let id = uuid::Uuid::new_v4();
             orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
-        }
-        Msg::ImportTasks => {
-            let tasks: HashMap<uuid::Uuid, Task> = serde_json::from_str(
-                &window()
-                    .prompt_with_message("Paste the tasks json here")
-                    .unwrap()
-                    .unwrap_or_else(|| "{}".to_owned()),
-            )
-            .unwrap();
-            log!("importing", tasks.len(), "tasks");
-            let msg = model.global.document.set_tasks(tasks);
-            if let Some(msg) = msg {
-                orders.skip().send_msg(msg);
-            }
-        }
-        Msg::ExportTasks => {
-            let tasks = model.global.document.tasks();
-            window()
-                .prompt_with_message_and_default(
-                    "Copy this",
-                    &serde_json::to_string(&tasks).unwrap(),
-                )
-                .unwrap();
         }
         Msg::ViewSettings => {
             orders.request_url(Urls::new(&model.global.base_url).settings());
@@ -402,7 +375,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::Settings(msg) => {
             if let Page::Settings(lm) = &mut model.page {
-                pages::settings::update(msg, lm, orders)
+                pages::settings::update(msg, &mut model.global, lm, orders)
             }
         }
     }
@@ -453,8 +426,6 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
             } else {
                 empty!()
             },
-            view_button("Import Tasks", Msg::ImportTasks, false),
-            view_button("Export Tasks", Msg::ExportTasks, false),
             view_button("Settings", Msg::ViewSettings, false),
             view_button("Create", Msg::CreateTask, false),
         ]
