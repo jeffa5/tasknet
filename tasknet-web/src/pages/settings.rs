@@ -1,19 +1,12 @@
-use std::{
-    cmp::Ordering,
-    collections::{BTreeSet, HashMap, HashSet},
-    fmt::Display,
-};
+use std::collections::HashMap;
 
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
 use crate::{
-    components::{
-        duration_string, view_button, view_checkbox, view_number_input_tr, view_text_input,
-    },
-    settings::Settings,
-    task::{Id, Priority, Status, Task},
-    urgency, Filters, GlobalModel, Msg as GMsg, SETTINGS_STORAGE_KEY,
+    components::{view_button, view_number_input_tr},
+    task::Task,
+    GlobalModel, Msg as GMsg, SETTINGS_STORAGE_KEY,
 };
 
 pub fn init() -> Model {
