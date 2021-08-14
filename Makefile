@@ -19,6 +19,7 @@ serve: $(SERVER_KEYS) web
 
 .PHONY: web
 web: web-build web-pkg web-statics
+	rm -rf $(TASKNET_WEB_LOCAL)
 	mv $(TASKNET_WEB_LOCAL_BUILD) $(TASKNET_WEB_LOCAL)
 
 .PHONY: web-pkg
@@ -42,7 +43,7 @@ web-build:
 
 .PHONY: web-clean
 web-clean:
-	rm -rf $(TASKNET_WEB_LOCAL)
+	rm -rf $(TASKNET_WEB_LOCAL) $(TASKNET_WEB_LOCAL_BUILD)
 
 .PHONY: web-test
 web-test: web-test-firefox web-test-chrome web-test-safari
