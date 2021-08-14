@@ -416,10 +416,10 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
             C!["my-auto"],
             match model.global.web_socket.state() {
                 State::Connecting => "Connecting",
-                State::Open => "Open",
-                State::Closing => "Closing",
-                State::Closed => "Closed",
-                _ => "Unknown",
+                State::Open => "Online",
+                State::Closing => "Offline",
+                State::Closed => "Offline",
+                _ => "Offline",
             }
         ],
         nav![
