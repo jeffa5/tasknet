@@ -1217,6 +1217,29 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "std" ];
       };
+      "crypto-mac" = rec {
+        crateName = "crypto-mac";
+        version = "0.10.1";
+        edition = "2018";
+        sha256 = "06h84hcaksgjzzzc9g9dpmifwx221qzzif6fw8l807khxh471w5z";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "generic-array";
+            packageId = "generic-array";
+          }
+          {
+            name = "subtle";
+            packageId = "subtle";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "dev" = [ "blobby" ];
+        };
+      };
       "ctor" = rec {
         crateName = "ctor";
         version = "0.1.20";
@@ -1348,6 +1371,19 @@ rec {
           "Denis Kotlyarov (Денис Котляров) <denis2005991@gmail.com>"
         ];
 
+      };
+      "fallible-iterator" = rec {
+        crateName = "fallible-iterator";
+        version = "0.2.0";
+        edition = "2018";
+        sha256 = "1xq759lsr8gqss7hva42azn3whgrbrs2sd9xpn92c5ickxm1fhs4";
+        authors = [
+          "Steven Fackler <sfackler@gmail.com>"
+        ];
+        features = {
+          "default" = [ "std" ];
+        };
+        resolvedDefaultFeatures = [ "default" "std" ];
       };
       "flate2" = rec {
         crateName = "flate2";
@@ -2192,6 +2228,35 @@ rec {
         };
         resolvedDefaultFeatures = [ "alloc" "default" "std" ];
       };
+      "hmac" = rec {
+        crateName = "hmac";
+        version = "0.10.1";
+        edition = "2018";
+        sha256 = "058yxq54x7xn0gk2vy9bl51r32c9z7qlcl2b80bjh3lk3rmiqi61";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "crypto-mac";
+            packageId = "crypto-mac";
+          }
+          {
+            name = "digest";
+            packageId = "digest";
+          }
+        ];
+        devDependencies = [
+          {
+            name = "crypto-mac";
+            packageId = "crypto-mac";
+            features = [ "dev" ];
+          }
+        ];
+        features = {
+          "std" = [ "crypto-mac/std" ];
+        };
+      };
       "http" = rec {
         crateName = "http";
         version = "0.2.4";
@@ -2478,6 +2543,25 @@ rec {
         ];
 
       };
+      "instant" = rec {
+        crateName = "instant";
+        version = "0.1.10";
+        edition = "2018";
+        sha256 = "0ka75wmkh22bkxjw5smhmlwl3xpqnj2xv50w03pmgl892a5k5q5y";
+        authors = [
+          "sebcrozet <developer@crozet.re>"
+        ];
+        dependencies = [
+          {
+            name = "cfg-if";
+            packageId = "cfg-if 1.0.0";
+          }
+        ];
+        features = {
+          "now" = [ "time" ];
+          "wasm-bindgen" = [ "js-sys" "wasm-bindgen_rs" "web-sys" ];
+        };
+      };
       "itertools" = rec {
         crateName = "itertools";
         version = "0.9.0";
@@ -2567,6 +2651,24 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "std" ];
       };
+      "lock_api" = rec {
+        crateName = "lock_api";
+        version = "0.4.4";
+        edition = "2018";
+        sha256 = "1sq7pw7h7jbfvnv5nq3vm912gdwhhv8idi3njifd3xnz0q38i0h3";
+        authors = [
+          "Amanieu d'Antras <amanieu@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "scopeguard";
+            packageId = "scopeguard";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+        };
+      };
       "log" = rec {
         crateName = "log";
         version = "0.4.14";
@@ -2625,6 +2727,43 @@ rec {
           "Simon Sapin <simon.sapin@exyr.org>"
         ];
 
+      };
+      "md-5" = rec {
+        crateName = "md-5";
+        version = "0.9.1";
+        edition = "2018";
+        sha256 = "059ajjacz1q3cms7vl6cvhdqs4qdw2nnwj9dq99ryzv0p6djfnkv";
+        libName = "md5";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "block-buffer";
+            packageId = "block-buffer";
+          }
+          {
+            name = "digest";
+            packageId = "digest";
+          }
+          {
+            name = "opaque-debug";
+            packageId = "opaque-debug";
+          }
+        ];
+        devDependencies = [
+          {
+            name = "digest";
+            packageId = "digest";
+            features = [ "dev" ];
+          }
+        ];
+        features = {
+          "asm" = [ "md5-asm" ];
+          "default" = [ "std" ];
+          "std" = [ "digest/std" ];
+        };
+        resolvedDefaultFeatures = [ "default" "std" ];
       };
       "memchr" = rec {
         crateName = "memchr";
@@ -2987,6 +3126,80 @@ rec {
         ];
 
       };
+      "parking_lot" = rec {
+        crateName = "parking_lot";
+        version = "0.11.1";
+        edition = "2018";
+        sha256 = "1sqmgaia8zfd5fbnqw2w13ijh7crk3lf9vw4cb52vwlx0an48xvd";
+        authors = [
+          "Amanieu d'Antras <amanieu@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "instant";
+            packageId = "instant";
+          }
+          {
+            name = "lock_api";
+            packageId = "lock_api";
+          }
+          {
+            name = "parking_lot_core";
+            packageId = "parking_lot_core";
+          }
+        ];
+        features = {
+          "deadlock_detection" = [ "parking_lot_core/deadlock_detection" ];
+          "nightly" = [ "parking_lot_core/nightly" "lock_api/nightly" ];
+          "owning_ref" = [ "lock_api/owning_ref" ];
+          "serde" = [ "lock_api/serde" ];
+          "stdweb" = [ "instant/stdweb" ];
+          "wasm-bindgen" = [ "instant/wasm-bindgen" ];
+        };
+        resolvedDefaultFeatures = [ "default" ];
+      };
+      "parking_lot_core" = rec {
+        crateName = "parking_lot_core";
+        version = "0.8.3";
+        edition = "2018";
+        sha256 = "065hkylji0g0fkh1vqp7kzs74vclhsxcczwhwqzpcig770lphyps";
+        authors = [
+          "Amanieu d'Antras <amanieu@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "cfg-if";
+            packageId = "cfg-if 1.0.0";
+          }
+          {
+            name = "instant";
+            packageId = "instant";
+          }
+          {
+            name = "libc";
+            packageId = "libc";
+            target = { target, features }: (target."unix" or false);
+          }
+          {
+            name = "redox_syscall";
+            packageId = "redox_syscall";
+            target = { target, features }: (target."os" == "redox");
+          }
+          {
+            name = "smallvec";
+            packageId = "smallvec";
+          }
+          {
+            name = "winapi";
+            packageId = "winapi";
+            target = { target, features }: (target."windows" or false);
+            features = [ "winnt" "ntstatus" "minwindef" "winerror" "winbase" "errhandlingapi" "handleapi" ];
+          }
+        ];
+        features = {
+          "deadlock_detection" = [ "petgraph" "thread-id" "backtrace" ];
+        };
+      };
       "percent-encoding" = rec {
         crateName = "percent-encoding";
         version = "2.1.0";
@@ -2997,6 +3210,47 @@ rec {
           "The rust-url developers"
         ];
 
+      };
+      "phf" = rec {
+        crateName = "phf";
+        version = "0.8.0";
+        edition = "2018";
+        sha256 = "04pyv8bzqvw69rd5dynd5nb85py1hf7wa4ixyhrvdz1l5qin3yrx";
+        authors = [
+          "Steven Fackler <sfackler@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "phf_shared";
+            packageId = "phf_shared";
+          }
+        ];
+        features = {
+          "default" = [ "std" ];
+          "macros" = [ "phf_macros" "proc-macro-hack" ];
+          "std" = [ "phf_shared/std" ];
+          "unicase" = [ "phf_shared/unicase" ];
+        };
+        resolvedDefaultFeatures = [ "default" "std" ];
+      };
+      "phf_shared" = rec {
+        crateName = "phf_shared";
+        version = "0.8.0";
+        edition = "2018";
+        sha256 = "1xssnqrrcn0nr9ayqrnm8xm37ac4xvwcx8pax7jxss7yxawzh360";
+        authors = [
+          "Steven Fackler <sfackler@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "siphasher";
+            packageId = "siphasher";
+          }
+        ];
+        features = {
+          "default" = [ "std" ];
+        };
+        resolvedDefaultFeatures = [ "default" "std" ];
       };
       "pin-project" = rec {
         crateName = "pin-project";
@@ -3060,6 +3314,92 @@ rec {
           "Josef Brandl <mail@josefbrandl.de>"
         ];
 
+      };
+      "postgres-protocol" = rec {
+        crateName = "postgres-protocol";
+        version = "0.6.1";
+        edition = "2018";
+        sha256 = "1wxzs78zvz00bh3bhbbp9hnq9hg77f8h5pzjmcy9481fsdq0ygpz";
+        authors = [
+          "Steven Fackler <sfackler@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "base64";
+            packageId = "base64";
+          }
+          {
+            name = "byteorder";
+            packageId = "byteorder";
+          }
+          {
+            name = "bytes";
+            packageId = "bytes";
+          }
+          {
+            name = "fallible-iterator";
+            packageId = "fallible-iterator";
+          }
+          {
+            name = "hmac";
+            packageId = "hmac";
+          }
+          {
+            name = "md-5";
+            packageId = "md-5";
+          }
+          {
+            name = "memchr";
+            packageId = "memchr";
+          }
+          {
+            name = "rand";
+            packageId = "rand 0.8.4";
+          }
+          {
+            name = "sha2";
+            packageId = "sha2";
+          }
+          {
+            name = "stringprep";
+            packageId = "stringprep";
+          }
+        ];
+
+      };
+      "postgres-types" = rec {
+        crateName = "postgres-types";
+        version = "0.2.1";
+        edition = "2018";
+        sha256 = "0brsqkydz0grfy60nc1d0hxa9jbpim0c7c52v467nrdpw4ql23s3";
+        authors = [
+          "Steven Fackler <sfackler@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "bytes";
+            packageId = "bytes";
+          }
+          {
+            name = "fallible-iterator";
+            packageId = "fallible-iterator";
+          }
+          {
+            name = "postgres-protocol";
+            packageId = "postgres-protocol";
+          }
+        ];
+        features = {
+          "derive" = [ "postgres-derive" ];
+          "with-bit-vec-0_6" = [ "bit-vec-06" ];
+          "with-chrono-0_4" = [ "chrono-04" ];
+          "with-eui48-0_4" = [ "eui48-04" ];
+          "with-geo-types-0_6" = [ "geo-types-06" ];
+          "with-geo-types-0_7" = [ "geo-types-0_7" ];
+          "with-serde_json-1" = [ "serde-1" "serde_json-1" ];
+          "with-time-0_2" = [ "time-02" ];
+          "with-uuid-0_8" = [ "uuid-08" ];
+        };
       };
       "ppv-lite86" = rec {
         crateName = "ppv-lite86";
@@ -3850,6 +4190,18 @@ rec {
         ];
 
       };
+      "scopeguard" = rec {
+        crateName = "scopeguard";
+        version = "1.1.0";
+        edition = "2015";
+        sha256 = "1kbqm85v43rq92vx7hfiay6pmcga03vrjbbfwqpyj3pwsg3b16nj";
+        authors = [
+          "bluss"
+        ];
+        features = {
+          "default" = [ "use_std" ];
+        };
+      };
       "sct" = rec {
         crateName = "sct";
         version = "0.6.1";
@@ -4252,6 +4604,21 @@ rec {
         ];
 
       };
+      "siphasher" = rec {
+        crateName = "siphasher";
+        version = "0.3.6";
+        edition = "2018";
+        sha256 = "18bivn9rpmpxcdb04znpwz9x52m8zm25v5a7rdl6rc3jgp0jb6kj";
+        authors = [
+          "Frank Denis <github@pureftpd.org>"
+        ];
+        features = {
+          "default" = [ "std" ];
+          "serde_no_std" = [ "serde/alloc" ];
+          "serde_std" = [ "std" "serde/std" ];
+        };
+        resolvedDefaultFeatures = [ "default" "std" ];
+      };
       "sized-chunks" = rec {
         crateName = "sized-chunks";
         version = "0.6.5";
@@ -4520,6 +4887,26 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" ];
       };
+      "stringprep" = rec {
+        crateName = "stringprep";
+        version = "0.1.2";
+        edition = "2015";
+        sha256 = "1hd1x7s8fnzqwz5fm2pq0jh10n024zvwnldmykzm8x5qfk5liqwf";
+        authors = [
+          "Steven Fackler <sfackler@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "unicode-bidi";
+            packageId = "unicode-bidi";
+          }
+          {
+            name = "unicode-normalization";
+            packageId = "unicode-normalization";
+          }
+        ];
+
+      };
       "strsim" = rec {
         crateName = "strsim";
         version = "0.10.0";
@@ -4585,6 +4972,19 @@ rec {
           }
         ];
 
+      };
+      "subtle" = rec {
+        crateName = "subtle";
+        version = "2.4.1";
+        edition = "2015";
+        sha256 = "00b6jzh9gzb0h9n25g06nqr90z3xzqppfhhb260s1hjhh4pg7pkb";
+        authors = [
+          "Isis Lovecruft <isis@patternsinthevoid.net>"
+          "Henry de Valence <hdevalence@hdevalence.ca>"
+        ];
+        features = {
+          "default" = [ "std" "i128" ];
+        };
       };
       "syn" = rec {
         crateName = "syn";
@@ -4766,6 +5166,10 @@ rec {
             name = "tokio";
             packageId = "tokio";
             features = [ "macros" "rt-multi-thread" ];
+          }
+          {
+            name = "tokio-postgres";
+            packageId = "tokio-postgres";
           }
           {
             name = "tracing";
@@ -5265,6 +5669,99 @@ rec {
           }
         ];
 
+      };
+      "tokio-postgres" = rec {
+        crateName = "tokio-postgres";
+        version = "0.7.2";
+        edition = "2018";
+        sha256 = "12rb390i3af7zb0z2idhaf6l2m6snypwdiwjw84rmyz4qy1i6ard";
+        authors = [
+          "Steven Fackler <sfackler@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "async-trait";
+            packageId = "async-trait";
+          }
+          {
+            name = "byteorder";
+            packageId = "byteorder";
+          }
+          {
+            name = "bytes";
+            packageId = "bytes";
+          }
+          {
+            name = "fallible-iterator";
+            packageId = "fallible-iterator";
+          }
+          {
+            name = "futures";
+            packageId = "futures";
+          }
+          {
+            name = "log";
+            packageId = "log";
+          }
+          {
+            name = "parking_lot";
+            packageId = "parking_lot";
+          }
+          {
+            name = "percent-encoding";
+            packageId = "percent-encoding";
+          }
+          {
+            name = "phf";
+            packageId = "phf";
+          }
+          {
+            name = "pin-project-lite";
+            packageId = "pin-project-lite";
+          }
+          {
+            name = "postgres-protocol";
+            packageId = "postgres-protocol";
+          }
+          {
+            name = "postgres-types";
+            packageId = "postgres-types";
+          }
+          {
+            name = "socket2";
+            packageId = "socket2";
+          }
+          {
+            name = "tokio";
+            packageId = "tokio";
+            features = [ "io-util" ];
+          }
+          {
+            name = "tokio-util";
+            packageId = "tokio-util";
+            features = [ "codec" ];
+          }
+        ];
+        devDependencies = [
+          {
+            name = "tokio";
+            packageId = "tokio";
+            features = [ "full" ];
+          }
+        ];
+        features = {
+          "default" = [ "runtime" ];
+          "runtime" = [ "tokio/net" "tokio/time" ];
+          "with-bit-vec-0_6" = [ "postgres-types/with-bit-vec-0_6" ];
+          "with-chrono-0_4" = [ "postgres-types/with-chrono-0_4" ];
+          "with-eui48-0_4" = [ "postgres-types/with-eui48-0_4" ];
+          "with-geo-types-0_6" = [ "postgres-types/with-geo-types-0_6" ];
+          "with-geo-types-0_7" = [ "postgres-types/with-geo-types-0_7" ];
+          "with-serde_json-1" = [ "postgres-types/with-serde_json-1" ];
+          "with-time-0_2" = [ "postgres-types/with-time-0_2" ];
+          "with-uuid-0_8" = [ "postgres-types/with-uuid-0_8" ];
+        };
+        resolvedDefaultFeatures = [ "default" "runtime" ];
       };
       "tokio-rustls" = rec {
         crateName = "tokio-rustls";
@@ -6975,7 +7472,7 @@ rec {
         features = {
           "debug" = [ "impl-debug" ];
         };
-        resolvedDefaultFeatures = [ "cfg" "consoleapi" "errhandlingapi" "evntrace" "fileapi" "handleapi" "in6addr" "inaddr" "ioapiset" "minwinbase" "minwindef" "mstcpip" "mswsock" "namedpipeapi" "ntdef" "ntsecapi" "processenv" "profileapi" "std" "synchapi" "sysinfoapi" "timezoneapi" "winbase" "wincon" "windef" "winerror" "winioctl" "winnt" "winsock2" "winuser" "ws2def" "ws2ipdef" "ws2tcpip" "wtypesbase" ];
+        resolvedDefaultFeatures = [ "cfg" "consoleapi" "errhandlingapi" "evntrace" "fileapi" "handleapi" "in6addr" "inaddr" "ioapiset" "minwinbase" "minwindef" "mstcpip" "mswsock" "namedpipeapi" "ntdef" "ntsecapi" "ntstatus" "processenv" "profileapi" "std" "synchapi" "sysinfoapi" "timezoneapi" "winbase" "wincon" "windef" "winerror" "winioctl" "winnt" "winsock2" "winuser" "ws2def" "ws2ipdef" "ws2tcpip" "wtypesbase" ];
       };
       "winapi-i686-pc-windows-gnu" = rec {
         crateName = "winapi-i686-pc-windows-gnu";

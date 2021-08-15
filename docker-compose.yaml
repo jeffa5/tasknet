@@ -1,15 +1,15 @@
 version: "3"
 services:
-  # database:
-  #   image: postgres:latest
-  #   ports:
-  #     - 5432:5432
-  #   environment:
-  #     POSTGRES_USER: username # The PostgreSQL user (useful to connect to the database)
-  #     POSTGRES_PASSWORD: password # The PostgreSQL password (useful to connect to the database)
-  #     POSTGRES_DB: default_database # The PostgreSQL default database (automatically created at first launch)
-  #   volumes:
-  #     - ./db-data/:/var/lib/postgresql/data/
+  database:
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: username # The PostgreSQL user (useful to connect to the database)
+      POSTGRES_PASSWORD: password # The PostgreSQL password (useful to connect to the database)
+      POSTGRES_DB: default_database # The PostgreSQL default database (automatically created at first launch)
+    volumes:
+      - ./db-data/:/var/lib/postgresql/data/
 
   server:
     image: jeffas/tasknet-server:0.1.0
@@ -24,6 +24,8 @@ services:
       - 0.0.0.0:8443
       - --static-files-dir
       - /var/lib/tasknet-server/statics
+      - --db-host
+      - database
     ports:
       - 8080:8080
       - 8443:8443
@@ -32,5 +34,5 @@ services:
       - ./tasknet-web/local/:/var/lib/tasknet-server/statics
     environment:
       - RUST_LOG=info
-    # depends_on:
-    #   - database
+    depends_on:
+      - database

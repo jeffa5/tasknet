@@ -18,3 +18,4 @@ tracing = "0.1.26"
 automerge-persistent = { git = "https://github.com/jeffa5/automerge-persistent", branch = "main" }
 tracing-subscriber = "0.2.19"
 clap = "3.0.0-beta.2"
+tokio-postgres = "0.7.2"

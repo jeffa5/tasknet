@@ -5,7 +5,8 @@ use std::{
 };
 
 use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
-use tokio::sync::broadcast;
+use tokio::{sync::broadcast, task::block_in_place};
+use tokio_postgres::NoTls;
 use warp::{
     addr::remote,
     hyper::Uri,
@@ -45,6 +46,15 @@ pub async fn run(options: Options) {
 
     let tasknet_log = warp::log("tasknet::web");
     let sync_log = warp::log("tasknet::sync");
+
+    let mut postgres_config = tokio_postgres::Config::default();
+    postgres_config
+        .port(options.db_port)
+        .host(&options.db_host)
+        .dbname(&options.db_name)
+        .user(&options.db_user)
+        .password(&options.db_password);
+    let postgres_client = postgres_config.connect(NoTls).await.unwrap();
 
     let persistent_backend =
         automerge_persistent::PersistentBackend::<_, automerge::Backend>::load(

@@ -14,4 +14,14 @@ pub struct Options {
     pub cert_file: PathBuf,
     #[clap(long, default_value = "tasknet-web/local")]
     pub static_files_dir: PathBuf,
+    #[clap(long, default_value = "localhost")]
+    pub db_host: String,
+    #[clap(long, default_value = "5432")]
+    pub db_port: u16,
+    #[clap(long, default_value = "username")]
+    pub db_user: String,
+    #[clap(long, default_value = "password", env = "DB_PASSWORD", setting = clap::ArgSettings::HideEnvValues)]
+    pub db_password: String,
+    #[clap(long, default_value = "tasknet")]
+    pub db_name: String,
 }
