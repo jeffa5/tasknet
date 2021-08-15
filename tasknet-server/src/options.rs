@@ -12,4 +12,6 @@ pub struct Options {
     pub key_file: PathBuf,
     #[clap(long, default_value = "certs/server.crt")]
     pub cert_file: PathBuf,
+    #[clap(long, default_value = "tasknet-web/local")]
+    pub static_files_dir: PathBuf,
 }

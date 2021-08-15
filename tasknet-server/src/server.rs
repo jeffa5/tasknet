@@ -122,7 +122,8 @@ pub async fn run(options: Options) {
             })
             .with(sync_log);
 
-    let statics = warp::any().and(warp::fs::dir("tasknet-web/local/tasknet").with(tasknet_log));
+    let static_files_dir = options.static_files_dir.join("tasknet");
+    let statics = warp::any().and(warp::fs::dir(static_files_dir).with(tasknet_log));
 
     let root_redirect = warp::path::end().map(|| {
         warp::redirect({
