@@ -16,7 +16,7 @@
         };
         lib = pkgs.lib;
         rust = pkgs.rust-bin.nightly.latest.rust;
-        cargoNix = pkgs.callPackage ./Cargo.nix {
+        cargoNix = import ./Cargo.nix {
           inherit pkgs;
           release = true;
         };
