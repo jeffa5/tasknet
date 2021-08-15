@@ -14,8 +14,8 @@ $(SERVER_KEYS): $(CA_KEYS) $(CERTS_DIR)/ca-config.json $(CERTS_DIR)/server.json
 	mv $(CERTS_DIR)/server-key.pem $(CERTS_DIR)/server.key
 
 .PHONY: serve
-serve: $(SERVER_KEYS) web
-	RUST_LOG=info cargo run --bin tasknet-server
+serve: $(SERVER_KEYS) web docker-build
+	docker-compose up
 
 .PHONY: web
 web: web-build web-pkg web-statics

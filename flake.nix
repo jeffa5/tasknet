@@ -50,6 +50,7 @@
             openssl
 
             crate2nix
+            docker-compose
 
             cfssl
 
