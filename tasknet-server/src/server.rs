@@ -1,11 +1,7 @@
-use std::{
-    convert::Infallible,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
+use std::{convert::Infallible, net::SocketAddr, sync::Arc};
 
 use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
-use tokio::{sync::broadcast, task::block_in_place};
+use tokio::sync::{broadcast, Mutex};
 use tokio_postgres::NoTls;
 use warp::{
     addr::remote,
@@ -15,20 +11,13 @@ use warp::{
     Filter,
 };
 
-use crate::options::Options;
+use crate::{backend::Backend, options::Options};
 
-type MemoryBackend = Arc<
-    Mutex<
-        automerge_persistent::PersistentBackend<
-            automerge_persistent::MemoryPersister,
-            automerge::Backend,
-        >,
-    >,
->;
+type DBBackend = Arc<Mutex<Backend>>;
 
 fn with_backend(
-    backend: MemoryBackend,
-) -> impl warp::Filter<Extract = (MemoryBackend,), Error = Infallible> + Clone {
+    backend: DBBackend,
+) -> impl warp::Filter<Extract = (DBBackend,), Error = Infallible> + Clone {
     warp::any().map(move || backend.clone())
 }
 
@@ -54,13 +43,9 @@ pub async fn run(options: Options) {
         .dbname(&options.db_name)
         .user(&options.db_user)
         .password(&options.db_password);
-    let postgres_client = postgres_config.connect(NoTls).await.unwrap();
+    let (postgres_client, connection) = postgres_config.connect(NoTls).await.unwrap();
 
-    let persistent_backend =
-        automerge_persistent::PersistentBackend::<_, automerge::Backend>::load(
-            automerge_persistent::MemoryPersister::default(),
-        )
-        .unwrap();
+    let persistent_backend = Backend::load(postgres_client).await;
 
     let backend = Arc::new(Mutex::new(persistent_backend));
 
@@ -73,7 +58,7 @@ pub async fn run(options: Options) {
             .and(remote())
             .map({
                 move |ws: warp::ws::Ws,
-                      mut backend: MemoryBackend,
+                      mut backend: DBBackend,
                       (sender, mut receiver): (broadcast::Sender<()>, broadcast::Receiver<()>),
                       address: Option<SocketAddr>| {
                     ws.on_upgrade(move |websocket| async move {
@@ -99,9 +84,9 @@ pub async fn run(options: Options) {
                                                 tracing::debug!("Received sync message from {:?}", address);
                                                 let patch = backend
                                                     .lock()
-                                                    .unwrap()
-                                                    .receive_sync_message(peer_id.clone(), sync_message)
-                                                    .unwrap();
+                                                    .await
+                                                    .receive_sync_message(peer_id.clone(), sync_message).await
+                                                    ;
 
                                                 if patch.is_some() {
                                                     sender.send(()).unwrap();
@@ -126,7 +111,7 @@ pub async fn run(options: Options) {
                             }
                         }
 
-                        backend.lock().unwrap().reset_sync_state(&peer_id)
+                        backend.lock().await.reset_sync_state(&peer_id).await
                     })
                 }
             })
@@ -179,16 +164,16 @@ pub async fn run(options: Options) {
 }
 
 async fn send_message(
-    backend: &mut MemoryBackend,
+    backend: &mut DBBackend,
     peer_id: Vec<u8>,
     address: SocketAddr,
     tx: &mut SplitSink<WebSocket, Message>,
 ) {
     let message = backend
         .lock()
-        .unwrap()
+        .await
         .generate_sync_message(peer_id.clone())
-        .unwrap();
+        .await;
     if let Some(message) = message {
         tracing::debug!("Sending sync message to {:?}", address);
         let binary = Vec::<u8>::from(tasknet_sync::Message::SyncMessage(message));
