@@ -49,6 +49,9 @@
             pkgconfig
             openssl
 
+            flyway
+            postgresql
+
             crate2nix
             docker-compose
 
