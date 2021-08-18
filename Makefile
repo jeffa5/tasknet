@@ -14,8 +14,11 @@ $(SERVER_KEYS): $(CA_KEYS) $(CERTS_DIR)/ca-config.json $(CERTS_DIR)/server.json
 	mv $(CERTS_DIR)/server-key.pem $(CERTS_DIR)/server.key
 
 .PHONY: serve
-serve: $(SERVER_KEYS) web docker-build
-	docker-compose up
+serve: $(SERVER_KEYS) web docker-build docker-run
+
+.PHONY: migrate
+migrate:
+	flyway migrate
 
 .PHONY: web
 web: web-build web-pkg web-statics
@@ -61,7 +64,7 @@ web-test-firefox:
 	cd tasknet-web && wasm-pack test --headless --firefox
 
 .PHONY: clean
-clean: web-clean
+clean: web-clean db-clean
 	rm -f $(CA_KEYS) $(SERVER_KEYS)
 	cargo clean
 
@@ -69,3 +72,11 @@ clean: web-clean
 docker-build:
 	nix build .#docker-server
 	docker load -i result
+
+.PHONY: docker-run
+docker-run:
+	docker-compose up
+
+.PHONY: db-clean
+db-clean:
+	sudo rm -rf db-data
