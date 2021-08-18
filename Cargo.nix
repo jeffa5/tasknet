@@ -5155,6 +5155,10 @@ rec {
             packageId = "futures-util";
           }
           {
+            name = "rand";
+            packageId = "rand 0.8.4";
+          }
+          {
             name = "serde_json";
             packageId = "serde_json";
           }

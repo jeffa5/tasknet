@@ -1,6 +1,7 @@
 use std::{convert::Infallible, net::SocketAddr, sync::Arc, time::Duration};
 
 use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
+use rand::Rng;
 use tokio::sync::{broadcast, Mutex};
 use tokio_postgres::NoTls;
 use warp::{
@@ -39,12 +40,18 @@ async fn connect_to_db(options: &Options) -> tokio_postgres::Client {
         .user(&options.db_user)
         .password(&options.db_password);
 
+    let mut backoff = 0;
+    let retry_interval = 100;
     let (postgres_client, connection) = loop {
         match postgres_config.connect(NoTls).await {
             Ok(v) => break v,
             Err(e) => {
                 tracing::warn!(error=?e, "Failed to connect to database");
-                tokio::time::sleep(Duration::from_millis(500)).await
+                backoff += 1;
+                backoff = std::cmp::min(backoff, 4);
+                let duration_millis =
+                    retry_interval * rand::thread_rng().gen_range(0..(2_u64.pow(backoff)));
+                tokio::time::sleep(Duration::from_millis(duration_millis)).await
             }
         }
     };
