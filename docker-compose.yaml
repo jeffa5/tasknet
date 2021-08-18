@@ -34,5 +34,3 @@ services:
       - ./tasknet-web/local/:/var/lib/tasknet-server/statics
     environment:
       - RUST_LOG=info
-    depends_on:
-      - database
