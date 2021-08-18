@@ -26,19 +26,20 @@ const SETTINGS: &str = "settings";
 const SERVER_PEER_ID: &[u8] = b"server";
 const SETTINGS_STORAGE_KEY: &str = "tasknet-settings";
 
-fn ws_url() -> String {
+fn ws_url(doc_id: String) -> String {
     let location = window().location();
     format!(
-        "wss://{}{}/sync",
+        "wss://{}{}/sync?doc_id={}",
         location.host().unwrap(),
-        location.pathname().unwrap()
+        location.pathname().unwrap(),
+        doc_id
     )
 }
 
 fn create_websocket(orders: &impl Orders<Msg>) -> WebSocket {
     let msg_sender = orders.msg_sender();
 
-    WebSocket::builder(ws_url(), orders)
+    WebSocket::builder(ws_url("hello world".to_string()), orders)
         .on_open(|| Msg::WebSocketOpened)
         .on_message(|message| {
             spawn_local(async move {

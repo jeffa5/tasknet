@@ -1847,6 +1847,7 @@ dependencies = [
  "clap",
  "futures-util",
  "rand 0.8.4",
+ "serde",
  "serde_json",
  "tasknet-sync",
  "tokio",

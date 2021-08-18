@@ -1,7 +1,8 @@
-use std::{convert::Infallible, net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Arc, time::Duration};
 
 use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, Mutex};
 use tokio_postgres::NoTls;
 use warp::{
@@ -14,12 +15,18 @@ use warp::{
 
 use crate::{backend::Backend, options::Options};
 
-type DBBackend = Arc<Mutex<Backend>>;
+type DBBackends = Arc<Mutex<HashMap<Vec<u8>, Arc<Mutex<Backend>>>>>;
 
-fn with_backend(
-    backend: DBBackend,
-) -> impl warp::Filter<Extract = (DBBackend,), Error = Infallible> + Clone {
+fn with_backends(
+    backend: DBBackends,
+) -> impl warp::Filter<Extract = (DBBackends,), Error = Infallible> + Clone {
     warp::any().map(move || backend.clone())
+}
+
+fn with_db_client(
+    client: Arc<tokio_postgres::Client>,
+) -> impl warp::Filter<Extract = (Arc<tokio_postgres::Client>,), Error = Infallible> + Clone {
+    warp::any().map(move || client.clone())
 }
 
 fn with_watch_channel(
@@ -65,41 +72,50 @@ async fn connect_to_db(options: &Options) -> tokio_postgres::Client {
     postgres_client
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct SyncQueryOptions {
+    doc_id: String,
+}
+
 pub async fn run(options: Options) {
     tracing_subscriber::fmt::init();
 
     let tasknet_log = warp::log("tasknet::web");
     let sync_log = warp::log("tasknet::sync");
 
-    let postgres_client = connect_to_db(&options).await;
+    let postgres_client = Arc::new(connect_to_db(&options).await);
 
-    let persistent_backend = Backend::load(postgres_client, vec![b'h']).await;
-
-    let backend = Arc::new(Mutex::new(persistent_backend));
+    let backends = Arc::new(Mutex::new(HashMap::new()));
 
     let (sender, _) = broadcast::channel(1);
 
     let sync = warp::path("sync")
+            .and(warp::query())
             .and(warp::ws())
-            .and(with_backend(backend))
+            .and(with_backends(backends))
+            .and(with_db_client(postgres_client))
             .and(with_watch_channel(sender))
             .and(remote())
             .map({
-                move |ws: warp::ws::Ws,
-                      mut backend: DBBackend,
+                move | query_params:SyncQueryOptions,
+                    ws: warp::ws::Ws,
+                      backends: DBBackends,
+                      db_client : Arc<tokio_postgres::Client>,
                       (sender, mut receiver): (broadcast::Sender<()>, broadcast::Receiver<()>),
                       address: Option<SocketAddr>| {
                     ws.on_upgrade(move |websocket| async move {
                         let (mut tx, mut rx) = websocket.split();
 
                         let address = address.unwrap();
-                        tracing::debug!("connection from {:?}", address);
+                        tracing::info!(?address, "new connection" );
                         let peer_id = format!("{:?}", address).into_bytes();
+
+                        let mut backend = backends.lock().await.entry(query_params.doc_id.as_bytes().to_vec()).or_insert(Arc::new(Mutex::new(Backend::load(db_client, query_params.doc_id.as_bytes().to_vec()).await))).clone();
 
                         // Send a message to the client first. If they don't have any changes
                         // then their generate_sync_message will be None so they won't have
                         // anything to send.
-                        send_message(&mut backend, peer_id.clone(), address, &mut tx).await;
+                        send_message(&mut backend,  peer_id.clone(), address, &mut tx).await;
 
                         loop {
                             tokio::select! {
@@ -139,7 +155,7 @@ pub async fn run(options: Options) {
                             }
                         }
 
-                        backend.lock().await.reset_sync_state(&peer_id).await
+                        backend.lock().await.reset_sync_state(&peer_id).await;
                     })
                 }
             })
@@ -192,7 +208,7 @@ pub async fn run(options: Options) {
 }
 
 async fn send_message(
-    backend: &mut DBBackend,
+    backend: &mut Arc<Mutex<Backend>>,
     peer_id: Vec<u8>,
     address: SocketAddr,
     tx: &mut SplitSink<WebSocket, Message>,

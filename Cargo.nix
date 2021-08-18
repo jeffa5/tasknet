@@ -5159,6 +5159,10 @@ rec {
             packageId = "rand 0.8.4";
           }
           {
+            name = "serde";
+            packageId = "serde";
+          }
+          {
             name = "serde_json";
             packageId = "serde_json";
           }

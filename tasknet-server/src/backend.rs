@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use automerge::Change;
 use automerge_backend::{SyncMessage, SyncState};
@@ -9,11 +9,11 @@ pub struct Backend {
     doc_id: Vec<u8>,
     inner: automerge::Backend,
     sync_states: HashMap<Vec<u8>, SyncState>,
-    db_client: tokio_postgres::Client,
+    db_client: Arc<tokio_postgres::Client>,
 }
 
 impl Backend {
-    pub async fn load(postgres_client: tokio_postgres::Client, doc_id: Vec<u8>) -> Self {
+    pub async fn load(postgres_client: Arc<tokio_postgres::Client>, doc_id: Vec<u8>) -> Self {
         // get changes
         let change_rows = postgres_client
             .query("SELECT data FROM changes WHERE doc_id = $1", &[&doc_id])
