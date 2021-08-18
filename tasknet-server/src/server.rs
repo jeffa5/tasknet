@@ -1,4 +1,4 @@
-use std::{convert::Infallible, net::SocketAddr, sync::Arc};
+use std::{convert::Infallible, net::SocketAddr, sync::Arc, time::Duration};
 
 use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
 use tokio::sync::{broadcast, Mutex};
@@ -30,12 +30,7 @@ fn with_watch_channel(
     warp::any().map(move || (sender.clone(), sender.subscribe()))
 }
 
-pub async fn run(options: Options) {
-    tracing_subscriber::fmt::init();
-
-    let tasknet_log = warp::log("tasknet::web");
-    let sync_log = warp::log("tasknet::sync");
-
+async fn connect_to_db(options: &Options) -> tokio_postgres::Client {
     let mut postgres_config = tokio_postgres::Config::default();
     postgres_config
         .port(options.db_port)
@@ -43,9 +38,35 @@ pub async fn run(options: Options) {
         .dbname(&options.db_name)
         .user(&options.db_user)
         .password(&options.db_password);
-    let (postgres_client, connection) = postgres_config.connect(NoTls).await.unwrap();
 
-    let persistent_backend = Backend::load(postgres_client).await;
+    let (postgres_client, connection) = loop {
+        match postgres_config.connect(NoTls).await {
+            Ok(v) => break v,
+            Err(e) => {
+                tracing::warn!(error=?e, "Failed to connect to database");
+                tokio::time::sleep(Duration::from_millis(500)).await
+            }
+        }
+    };
+
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            tracing::error!(error=?e, "connection closed");
+        }
+    });
+
+    postgres_client
+}
+
+pub async fn run(options: Options) {
+    tracing_subscriber::fmt::init();
+
+    let tasknet_log = warp::log("tasknet::web");
+    let sync_log = warp::log("tasknet::sync");
+
+    let postgres_client = connect_to_db(&options).await;
+
+    let persistent_backend = Backend::load(postgres_client, vec![b'h']).await;
 
     let backend = Arc::new(Mutex::new(persistent_backend));
 
