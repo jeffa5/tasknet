@@ -1,19 +1,19 @@
-CREATE TABLE changes (
-  doc_id bytea NOT NULL,
-  hash bytea NOT NULL,
-  data bytea NOT NULL,
-  PRIMARY KEY(doc_id, hash)
+create table changes (
+  doc_id bytea not null,
+  hash bytea not null,
+  data bytea not null,
+  primary key(doc_id, hash)
 )
 
-CREATE TABLE documents (
-  doc_id bytea NOT NULL PRIMARY KEY,
-  heads bytea NOT NULL,
-  data bytea NOT NULL
+create table documents (
+  doc_id bytea not null primary key,
+  heads bytea not null,
+  data bytea not null
 )
 
-CREATE TABLE sync_states (
-  doc_id bytea NOT NULL,
-  peer_id bytea NOT NULL,
-  data bytea NOT NULL,
-  PRIMARY KEY(doc_id, peer_id)
+create table sync_states (
+  doc_id bytea not null,
+  peer_id bytea not null,
+  data bytea not null,
+  primary key(doc_id, peer_id)
 )
