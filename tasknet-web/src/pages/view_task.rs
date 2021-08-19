@@ -21,6 +21,7 @@ pub fn init(uuid: uuid::Uuid, task: Task, orders: &mut impl Orders<GMsg>) -> Mod
         }
     }));
     Model {
+        task_copy: task.clone(),
         task_id: uuid,
         task,
     }
@@ -28,6 +29,7 @@ pub fn init(uuid: uuid::Uuid, task: Task, orders: &mut impl Orders<GMsg>) -> Mod
 
 #[derive(Debug)]
 pub struct Model {
+    task_copy: Task,
     pub task_id: uuid::Uuid,
     pub task: Task,
 }
@@ -421,7 +423,7 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
         view_text_input(
             "Description",
             model.task.description(),
-            "",
+            model.task_copy.description(),
             true,
             BTreeSet::new(),
             |s| GMsg::ViewTask(Msg::SelectedTaskDescriptionChanged(s))
@@ -429,7 +431,7 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
         view_text_input(
             "Project",
             &model.task.project().join("."),
-            "",
+            &model.task_copy.project().join("."),
             false,
             project_suggestions,
             |s| GMsg::ViewTask(Msg::SelectedTaskProjectChanged(s))
