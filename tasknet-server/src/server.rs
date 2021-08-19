@@ -53,7 +53,7 @@ async fn connect_to_db(options: &Options) -> tokio_postgres::Client {
         match postgres_config.connect(NoTls).await {
             Ok(v) => break v,
             Err(e) => {
-                tracing::warn!(error=?e, "Failed to connect to database");
+                tracing::warn!(error=e, "Failed to connect to database");
                 backoff += 1;
                 backoff = std::cmp::min(backoff, 4);
                 let duration_millis =
