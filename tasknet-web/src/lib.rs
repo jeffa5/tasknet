@@ -91,7 +91,6 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .stream(streams::interval(60000, || Msg::BackendPeriodicSyncTick))
         .subscribe(Msg::UrlChanged);
     let document = Document::new();
-    let page = Page::init(url.clone(), &document, orders);
     let settings = match LocalStorage::get(SETTINGS_STORAGE_KEY) {
         Ok(settings) => settings,
         Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
@@ -104,14 +103,16 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         }
     };
     let web_socket = create_websocket(orders, settings.document_id);
+    let global_model = GlobalModel {
+        document,
+        base_url: url.to_hash_base_url(),
+        settings,
+        web_socket,
+        web_socket_reconnector: None,
+    };
+    let page = Page::init(url.clone(), &global_model, orders);
     Model {
-        global: GlobalModel {
-            document,
-            base_url: url.to_hash_base_url(),
-            settings,
-            web_socket,
-            web_socket_reconnector: None,
-        },
+        global: global_model,
         page,
     }
 }
@@ -174,12 +175,12 @@ enum Page {
 }
 
 impl Page {
-    fn init(mut url: Url, document: &Document, orders: &mut impl Orders<Msg>) -> Self {
+    fn init(mut url: Url, global_model: &GlobalModel, orders: &mut impl Orders<Msg>) -> Self {
         match url.next_hash_path_part() {
             Some(VIEW_TASK) => match url.next_hash_path_part() {
                 Some(uuid) => {
                     if let Ok(uuid) = uuid::Uuid::parse_str(uuid) {
-                        if let Some(task) = document.task(&uuid) {
+                        if let Some(task) = global_model.document.task(&uuid) {
                             Self::ViewTask(pages::view_task::init(uuid, task.clone(), orders))
                         } else {
                             Self::ViewTask(pages::view_task::init(uuid, Task::new(), orders))
@@ -190,7 +191,7 @@ impl Page {
                 }
                 None => Self::Home(pages::home::init()),
             },
-            Some(SETTINGS) => Self::Settings(pages::settings::init()),
+            Some(SETTINGS) => Self::Settings(pages::settings::init(global_model)),
             None | Some(_) => Self::Home(pages::home::init()),
         }
     }
@@ -363,7 +364,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.global.web_socket.send_bytes(&bytes).unwrap();
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
-            model.page = Page::init(url, &model.global.document, orders)
+            model.page = Page::init(url, &model.global, orders)
         }
         Msg::ApplyChange(change) => {
             let patch = model

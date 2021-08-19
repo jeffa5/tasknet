@@ -57,6 +57,7 @@ pub fn view_checkbox(name: &str, title: &str, checked: bool, msg: Msg) -> Node<M
 pub fn view_text_input(
     name: &str,
     value: &str,
+    default: &str,
     autofocus: bool,
     suggestions: BTreeSet<String>,
     f: impl FnOnce(String) -> Msg + Clone + 'static,
@@ -76,11 +77,12 @@ pub fn view_text_input(
                 },
                 input_ev(Ev::Input, f)
             ],
-            if value.is_empty() {
+            if value == default {
                 pre![" "]
             } else {
+                let string_default = default.to_owned();
                 button![
-                    mouse_ev(Ev::Click, |_| also_f(String::new())),
+                    mouse_ev(Ev::Click, |_| also_f(string_default)),
                     div![C!["text-red-600"], "X"]
                 ]
             }

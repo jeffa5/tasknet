@@ -4,22 +4,27 @@ use std::collections::HashMap;
 use seed::{prelude::*, *};
 
 use crate::{
-    components::{view_button, view_number_input_tr},
+    components::{view_button, view_number_input_tr, view_text_input},
     task::Task,
     GlobalModel, Msg as GMsg, SETTINGS_STORAGE_KEY,
 };
 
-pub fn init() -> Model {
-    Model {}
+pub fn init(global_model: &GlobalModel) -> Model {
+    Model {
+        document_id: global_model.settings.document_id.to_string(),
+    }
 }
 
 #[derive(Debug)]
-pub struct Model {}
+pub struct Model {
+    document_id: String,
+}
 
 #[derive(Debug, Clone)]
 pub enum Msg {
     ImportTasks,
     ExportTasks,
+    SetDocumentId(String),
     SetUrgencyNext(i64),
     SetUrgencyDue(i64),
     SetUrgencyHighPriority(i64),
@@ -38,7 +43,7 @@ pub enum Msg {
 pub fn update(
     msg: Msg,
     global_model: &mut GlobalModel,
-    _model: &mut Model,
+    model: &mut Model,
     orders: &mut impl Orders<GMsg>,
 ) {
     match msg {
@@ -64,6 +69,16 @@ pub fn update(
                     &serde_json::to_string(&tasks).unwrap(),
                 )
                 .unwrap();
+        }
+        Msg::SetDocumentId(new_id) => {
+            model.document_id = new_id;
+
+            match uuid::Uuid::parse_str(&model.document_id) {
+                Ok(uuid) => global_model.settings.document_id = uuid,
+                Err(e) => {
+                    log!("Error in document id:", e);
+                }
+            }
         }
         Msg::SetUrgencyNext(v) => global_model.settings.urgency.next = v as f64,
         Msg::SetUrgencyDue(v) => global_model.settings.urgency.due = v as f64,
@@ -97,6 +112,14 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             "Export Tasks",
             GMsg::Settings(Msg::ExportTasks),
             false
+        ),],
+        div![view_text_input(
+            "Document ID",
+            &model.document_id,
+            &global_model.settings.document_id.to_string(),
+            false,
+            Default::default(),
+            |s| GMsg::Settings(Msg::SetDocumentId(s))
         ),],
         view_urgency_coefficients(global_model, model),
     ]

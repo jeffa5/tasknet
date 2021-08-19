@@ -421,6 +421,7 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
         view_text_input(
             "Description",
             model.task.description(),
+            "",
             true,
             BTreeSet::new(),
             |s| GMsg::ViewTask(Msg::SelectedTaskDescriptionChanged(s))
@@ -428,6 +429,7 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
         view_text_input(
             "Project",
             &model.task.project().join("."),
+            "",
             false,
             project_suggestions,
             |s| GMsg::ViewTask(Msg::SelectedTaskProjectChanged(s))
