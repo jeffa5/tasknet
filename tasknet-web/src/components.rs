@@ -61,6 +61,7 @@ pub fn view_text_input(
     autofocus: bool,
     suggestions: BTreeSet<String>,
     f: impl FnOnce(String) -> Msg + Clone + 'static,
+    valid: bool,
 ) -> Node<Msg> {
     let also_f = f.clone();
     let also_also_f = f.clone();
@@ -70,7 +71,12 @@ pub fn view_text_input(
         div![
             C!["flex", "flex-row"],
             input![
-                C!["flex-grow", "border", "mr-2"],
+                C![
+                    "flex-grow",
+                    "border",
+                    if valid { "" } else { "border-red-600" },
+                    "mr-2"
+                ],
                 attrs! {
                     At::Value => value,
                     At::AutoFocus => if autofocus { AtValue::None } else { AtValue::Ignored }

@@ -122,7 +122,8 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             &global_model.settings.document_id.to_string(),
             false,
             Default::default(),
-            |s| GMsg::Settings(Msg::SetDocumentId(s))
+            |s| GMsg::Settings(Msg::SetDocumentId(s)),
+            uuid::Uuid::parse_str(&model.document_id).is_ok()
         ),],
         view_urgency_coefficients(global_model, model),
     ]

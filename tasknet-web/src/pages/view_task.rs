@@ -426,7 +426,8 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             model.task_copy.description(),
             true,
             BTreeSet::new(),
-            |s| GMsg::ViewTask(Msg::SelectedTaskDescriptionChanged(s))
+            |s| GMsg::ViewTask(Msg::SelectedTaskDescriptionChanged(s)),
+            true,
         ),
         view_text_input(
             "Project",
@@ -434,7 +435,8 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             &model.task_copy.project().join("."),
             false,
             project_suggestions,
-            |s| GMsg::ViewTask(Msg::SelectedTaskProjectChanged(s))
+            |s| GMsg::ViewTask(Msg::SelectedTaskProjectChanged(s)),
+            true
         ),
         div![
             C!["flex", "flex-col", "px-2", "mb-2"],

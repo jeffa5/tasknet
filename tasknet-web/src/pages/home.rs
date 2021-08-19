@@ -555,7 +555,8 @@ fn view_filters(model: &Model, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
             "",
             false,
             BTreeSet::new(),
-            |s| GMsg::Home(Msg::FiltersDescriptionChanged(s))
+            |s| GMsg::Home(Msg::FiltersDescriptionChanged(s)),
+            true
         ),
         view_text_input(
             "Project",
@@ -563,7 +564,8 @@ fn view_filters(model: &Model, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
             "",
             false,
             BTreeSet::new(),
-            |s| GMsg::Home(Msg::FiltersProjectChanged(s))
+            |s| GMsg::Home(Msg::FiltersProjectChanged(s)),
+            true
         ),
         view_text_input(
             "Tags",
@@ -571,7 +573,8 @@ fn view_filters(model: &Model, tasks: &HashMap<Id, Task>) -> Node<GMsg> {
             "",
             false,
             BTreeSet::new(),
-            |s| GMsg::Home(Msg::FiltersTagsChanged(s))
+            |s| GMsg::Home(Msg::FiltersTagsChanged(s)),
+            true
         ),
         div![
             C!["mr-2"],
