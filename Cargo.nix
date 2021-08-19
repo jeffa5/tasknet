@@ -5188,6 +5188,11 @@ rec {
             packageId = "tracing-subscriber";
           }
           {
+            name = "uuid";
+            packageId = "uuid";
+            features = [ "v4" "serde" ];
+          }
+          {
             name = "warp";
             packageId = "warp";
             features = [ "tls" ];

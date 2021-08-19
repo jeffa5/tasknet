@@ -25,8 +25,9 @@ const VIEW_TASK: &str = "view";
 const SETTINGS: &str = "settings";
 const SERVER_PEER_ID: &[u8] = b"server";
 const SETTINGS_STORAGE_KEY: &str = "tasknet-settings";
+const DOCUMENT_ID_KEY: &str = "tasknet-document-id";
 
-fn ws_url(doc_id: String) -> String {
+fn ws_url(doc_id: uuid::Uuid) -> String {
     let location = window().location();
     format!(
         "wss://{}{}/sync?doc_id={}",
@@ -36,10 +37,10 @@ fn ws_url(doc_id: String) -> String {
     )
 }
 
-fn create_websocket(orders: &impl Orders<Msg>) -> WebSocket {
+fn create_websocket(orders: &impl Orders<Msg>, doc_id: uuid::Uuid) -> WebSocket {
     let msg_sender = orders.msg_sender();
 
-    WebSocket::builder(ws_url("hello world".to_string()), orders)
+    WebSocket::builder(ws_url(doc_id), orders)
         .on_open(|| Msg::WebSocketOpened)
         .on_message(|message| {
             spawn_local(async move {
@@ -90,6 +91,15 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .stream(streams::interval(60000, || Msg::BackendCompactTick))
         .stream(streams::interval(60000, || Msg::BackendPeriodicSyncTick))
         .subscribe(Msg::UrlChanged);
+    let document_id = match LocalStorage::get(DOCUMENT_ID_KEY) {
+        Ok(id) => id,
+        Err(e) => {
+            log!("error loading document id:", e);
+            let id = uuid::Uuid::new_v4();
+            LocalStorage::insert(DOCUMENT_ID_KEY, &id).unwrap();
+            id
+        }
+    };
     let document = Document::new();
     let page = Page::init(url.clone(), &document, orders);
     let settings = match LocalStorage::get(SETTINGS_STORAGE_KEY) {
@@ -101,10 +111,11 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     };
     Model {
         global: GlobalModel {
+            document_id,
             document,
             base_url: url.to_hash_base_url(),
             settings,
-            web_socket: create_websocket(orders),
+            web_socket: create_websocket(orders, document_id),
             web_socket_reconnector: None,
         },
         page,
@@ -118,6 +129,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 #[derive(Derivative)]
 #[derivative(Debug)]
 pub struct GlobalModel {
+    document_id: uuid::Uuid,
     #[derivative(Debug = "ignore")]
     document: Document,
     base_url: Url,
@@ -351,7 +363,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::ReconnectWebSocket(retries) => {
             log!("Reconnect attempt:", retries);
-            model.global.web_socket = create_websocket(orders);
+            model.global.web_socket = create_websocket(orders, model.global.document_id);
         }
         Msg::SendWebSocketMessage(message) => {
             let bytes = Vec::<u8>::from(message);

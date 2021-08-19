@@ -74,7 +74,7 @@ async fn connect_to_db(options: &Options) -> tokio_postgres::Client {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SyncQueryOptions {
-    doc_id: String,
+    doc_id: uuid::Uuid,
 }
 
 pub async fn run(options: Options) {
@@ -107,7 +107,7 @@ pub async fn run(options: Options) {
                         let (mut tx, mut rx) = websocket.split();
 
                         let address = address.unwrap();
-                        tracing::info!(?address, "new connection" );
+                        tracing::info!(?address, doc_id=?query_params.doc_id, "New sync connection");
                         let peer_id = format!("{:?}", address).into_bytes();
 
                         let mut backend = backends.lock().await.entry(query_params.doc_id.as_bytes().to_vec()).or_insert(Arc::new(Mutex::new(Backend::load(db_client, query_params.doc_id.as_bytes().to_vec()).await))).clone();
@@ -129,8 +129,7 @@ pub async fn run(options: Options) {
                                                 let patch = backend
                                                     .lock()
                                                     .await
-                                                    .receive_sync_message(peer_id.clone(), sync_message).await
-                                                    ;
+                                                    .receive_sync_message(peer_id.clone(), sync_message).await;
 
                                                 if patch.is_some() {
                                                     sender.send(()).unwrap();
