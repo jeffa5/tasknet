@@ -110,7 +110,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         web_socket,
         web_socket_reconnector: None,
     };
-    let page = Page::init(url.clone(), &global_model, orders);
+    let page = Page::init(url, &global_model, orders);
     Model {
         global: global_model,
         page,
@@ -220,6 +220,7 @@ pub enum Msg {
     UrlChanged(subs::UrlChanged),
     ApplyChange(automerge_protocol::Change),
     ApplyPatch(automerge_protocol::Patch),
+    ChangeDocument,
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
     Settings(pages::settings::Msg),
@@ -380,6 +381,12 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             log!("apply patch");
             model.global.document.inner.apply_patch(patch).unwrap();
             log!("applied patch")
+        }
+        Msg::ChangeDocument => {
+            // given a new document id we now need to load the automerge document into memory and
+            // reestablish the sync session
+            model.global.document = Document::new();
+            model.global.web_socket = create_websocket(orders, model.global.settings.document_id);
         }
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {

@@ -74,7 +74,10 @@ pub fn update(
             model.document_id = new_id;
 
             match uuid::Uuid::parse_str(&model.document_id) {
-                Ok(uuid) => global_model.settings.document_id = uuid,
+                Ok(uuid) => {
+                    global_model.settings.document_id = uuid;
+                    orders.send_msg(GMsg::ChangeDocument);
+                }
                 Err(e) => {
                     log!("Error in document id:", e);
                 }
