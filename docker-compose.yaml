@@ -9,7 +9,22 @@ services:
       POSTGRES_PASSWORD: password # The PostgreSQL password (useful to connect to the database)
       POSTGRES_DB: tasknet # The PostgreSQL default database (automatically created at first launch)
     volumes:
-      - ./db-data/:/var/lib/postgresql/data/
+      - tasknet_db:/var/lib/postgresql/data/
+
+  database-migrator:
+    image: ghcr.io/rust-db/refinery:main
+    command:
+      - migrate
+      - -e
+      - DB_URI
+      - -p
+      - /migrations
+    environment:
+      DB_URI: postgres://username:password@database:5432/tasknet
+    volumes:
+      - ./tasknet-server/db:/migrations:ro
+    depends_on:
+      - database
 
   server:
     image: jeffas/tasknet-server:0.1.0
@@ -34,3 +49,8 @@ services:
       - ./tasknet-web/local/:/var/lib/tasknet-server/statics
     environment:
       - RUST_LOG=info
+    depends_on:
+      - database
+
+volumes:
+  tasknet_db:
