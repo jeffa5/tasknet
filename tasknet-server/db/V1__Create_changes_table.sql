@@ -1,6 +1,6 @@
-create table changes (
-  doc_id bytea not null,
-  hash bytea not null,
-  data bytea not null,
-  primary key(doc_id, hash)
+CREATE TABLE changes (
+  doc_id BYTEA NOT NULL,
+  hash BYTEA NOT NULL,
+  data BYTEA NOT NULL,
+  PRIMARY KEY(doc_id, hash)
 )
