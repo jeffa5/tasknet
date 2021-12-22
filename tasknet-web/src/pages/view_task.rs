@@ -29,6 +29,7 @@ pub fn init(uuid: uuid::Uuid, task: Task, orders: &mut impl Orders<GMsg>) -> Mod
 
 #[derive(Debug)]
 pub struct Model {
+    /// Copy of the original task for resetting defaults and detecting changes.
     task_copy: Task,
     pub task_id: uuid::Uuid,
     pub task: Task,
@@ -307,13 +308,7 @@ fn view_selected_task(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
         Status::Waiting => "Waiting",
         Status::Recurring => "Recurring",
     };
-    let changes_text = if model.task
-        == global_model
-            .document
-            .task(&model.task_id)
-            .cloned()
-            .unwrap_or_default()
-    {
+    let changes_text = if model.task == model.task_copy {
         span![C!["font-bold", "text-green-500"], "\u{2713} All saved"]
     } else {
         span![
