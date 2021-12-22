@@ -25,6 +25,7 @@ services:
       - ./tasknet-server/db:/migrations:ro
     depends_on:
       - database
+    restart: on-failure:5
 
   server:
     image: jeffas/tasknet-server:0.1.0
