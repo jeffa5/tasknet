@@ -106,16 +106,19 @@ pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
         C!["flex", "flex-col"],
         h1![C!["text-lg", "font-bold"], "Settings"],
-        div![view_button(
-            "Import Tasks",
-            GMsg::Settings(Msg::ImportTasks),
-            false
-        ),],
-        div![view_button(
-            "Export Tasks",
-            GMsg::Settings(Msg::ExportTasks),
-            false
-        ),],
+        div![
+            C!["flex", "flex-row"],
+            div![view_button(
+                "Import Tasks",
+                GMsg::Settings(Msg::ImportTasks),
+                false
+            ),],
+            div![view_button(
+                "Export Tasks",
+                GMsg::Settings(Msg::ExportTasks),
+                false
+            ),],
+        ],
         div![view_text_input(
             "Document ID",
             &model.document_id,
