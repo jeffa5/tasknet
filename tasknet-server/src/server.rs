@@ -3,8 +3,13 @@ use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Arc,
 use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{broadcast, Mutex};
+use tokio::{
+    select,
+    signal::unix::SignalKind,
+    sync::{broadcast, watch, Mutex},
+};
 use tokio_postgres::NoTls;
+use tracing::{info, warn};
 use warp::{
     addr::remote,
     hyper::Uri,
@@ -180,30 +185,59 @@ pub async fn run(options: Options) {
     let http_listen_address = options.http_listen_address;
     let https_listen_address_2 = options.https_listen_address;
 
-    let tls_server = tokio::spawn(async move {
-        warp::serve(routes)
-            .tls()
-            .cert_path(options.cert_file)
-            .key_path(options.key_file)
-            .run(https_listen_address)
-            .await;
+    let (shutdown_tx, mut shutdown_rx) = watch::channel(());
+
+    let mut shutdown_rx_1 = shutdown_rx.clone();
+    let (_, https_server) = warp::serve(routes)
+        .tls()
+        .cert_path(options.cert_file)
+        .key_path(options.key_file)
+        .bind_with_graceful_shutdown(https_listen_address, async move {
+            let _ = shutdown_rx_1.changed().await;
+            info!("Shutting down https server");
+        });
+    let https_server = tokio::spawn(async move {
+        https_server.await;
     });
+    info!(address = %https_listen_address, "Started https server");
 
     // redirect to https
-    let http_server = tokio::spawn(async move {
-        warp::serve(warp::path::full().map(move |path: FullPath| {
-            warp::redirect({
-                let address = format!("https://{}{}", https_listen_address_2, path.as_str());
-                tracing::warn!("redirecting to {:?}", address);
-                // path always starts with '/', even if it was empty
-                Uri::from_maybe_shared(address).unwrap()
-            })
-        }))
-        .run(http_listen_address)
-        .await;
+    let (_, http_server) = warp::serve(warp::path::full().map(move |path: FullPath| {
+        warp::redirect({
+            let address = format!("https://{}{}", https_listen_address_2, path.as_str());
+            tracing::warn!("redirecting to {:?}", address);
+            // path always starts with '/', even if it was empty
+            Uri::from_maybe_shared(address).unwrap()
+        })
+    }))
+    .bind_with_graceful_shutdown(http_listen_address, async move {
+        let _ = shutdown_rx.changed().await;
+        info!("Shutting down http server");
     });
+    let http_server = tokio::spawn(async move {
+        http_server.await;
+    });
+    info!(address = %http_listen_address, "Started http server");
 
-    join_all(vec![tls_server, http_server]).await;
+    let mut sig_term = tokio::signal::unix::signal(SignalKind::terminate()).unwrap();
+    select! {
+        s = sig_term.recv() => match s {
+            Some(()) => {}
+            None => {
+                warn!("Failed to listen for shutdown terminate signal");
+            }
+        },
+        c = tokio::signal::ctrl_c() => match c {
+            Ok(()) => {}
+            Err(err) => {
+                warn!(%err,"Failed to listen for shutdown interrupt signal");
+            }
+        }
+    };
+    info!("Shutting down");
+    let _ = shutdown_tx.send(());
+
+    join_all(vec![https_server, http_server]).await;
 }
 
 async fn send_message(
