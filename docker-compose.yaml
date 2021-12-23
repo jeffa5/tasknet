@@ -1,7 +1,8 @@
 version: "3"
 services:
-  database:
-    image: postgres:latest
+
+  tasknet-db:
+    image: postgres:9.6
     ports:
       - 5432:5432
     environment:
@@ -20,11 +21,11 @@ services:
       - -p
       - /migrations
     environment:
-      DB_URI: postgres://username:password@database:5432/tasknet
+      DB_URI: postgres://username:password@tasknet-db:5432/tasknet
     volumes:
       - ./tasknet-server/db:/migrations:ro
     depends_on:
-      - database
+      - tasknet-db
     restart: on-failure:5
 
   server:
@@ -41,7 +42,7 @@ services:
       - --static-files-dir
       - /var/lib/tasknet-server/statics
       - --db-host
-      - database
+      - tasknet-db
     ports:
       - 8080:8080
       - 8443:8443
@@ -51,7 +52,54 @@ services:
     environment:
       - RUST_LOG=info
     depends_on:
-      - database
+      - tasknet-db
+
+  kratos-migrate:
+    image: oryd/kratos:v0.8.0-alpha.3
+    environment:
+      - DSN=postgres://kratos:secret@kratos-db:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+    volumes:
+      - type: bind
+        source: ./email-password
+        target: /etc/config/kratos
+    command: -c /etc/config/kratos/kratos.yaml migrate sql -e --yes
+    restart: on-failure
+
+  kratos:
+    depends_on:
+      - kratos-migrate
+    image: oryd/kratos:v0.8.0-alpha.3
+    ports:
+      - '4433:4433' # public
+      - '4434:4434' # admin
+    restart: unless-stopped
+    environment:
+      - DSN=postgres://kratos:secret@kratos-db:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+      - LOG_LEVEL=trace
+    command: serve -c /etc/config/kratos/kratos.yaml --dev --watch-courier
+    volumes:
+      - type: bind
+        source: ./email-password
+        target: /etc/config/kratos
+
+  kratos-db:
+    image: postgres:9.6
+    ports:
+      - "8432:5432"
+    environment:
+      - POSTGRES_USER=kratos
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=kratos
+    volumes:
+      - kratos_db:/var/lib/postgresql/data/
+
+  mailslurper:
+    image: oryd/mailslurper:latest-smtps
+    ports:
+      - '4436:4436'
+      - '4437:4437'
+
 
 volumes:
   tasknet_db:
+  kratos_db:
