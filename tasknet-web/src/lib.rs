@@ -23,6 +23,7 @@ use tasknet_sync::Message;
 
 const VIEW_TASK: &str = "view";
 const SETTINGS: &str = "settings";
+const ACCOUNT: &str = "account";
 const SERVER_PEER_ID: &[u8] = b"server";
 const SETTINGS_STORAGE_KEY: &str = "tasknet-settings";
 
@@ -161,6 +162,11 @@ impl<'a> Urls<'a> {
     pub fn settings(self) -> Url {
         self.base_url().add_hash_path_part(SETTINGS)
     }
+
+    #[must_use]
+    pub fn account(self) -> Url {
+        self.base_url().add_hash_path_part(ACCOUNT)
+    }
 }
 
 // ------ ------
@@ -172,6 +178,7 @@ enum Page {
     Home(pages::home::Model),
     ViewTask(pages::view_task::Model),
     Settings(pages::settings::Model),
+    Account(pages::account::Model),
 }
 
 impl Page {
@@ -192,6 +199,7 @@ impl Page {
                 None => Self::Home(pages::home::init()),
             },
             Some(SETTINGS) => Self::Settings(pages::settings::init(global_model)),
+            Some(ACCOUNT) => Self::Account(pages::account::init(global_model, orders)),
             None | Some(_) => Self::Home(pages::home::init()),
         }
     }
@@ -206,6 +214,7 @@ pub enum Msg {
     SelectTask(Option<uuid::Uuid>),
     CreateTask,
     ViewSettings,
+    ViewAccount,
     OnRenderTick,
     OnRecurTick,
     BackendCompactTick,
@@ -224,6 +233,7 @@ pub enum Msg {
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
     Settings(pages::settings::Msg),
+    Account(pages::account::Msg),
 }
 
 #[allow(clippy::too_many_lines)]
@@ -242,6 +252,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::ViewSettings => {
             orders.request_url(Urls::new(&model.global.base_url).settings());
+        }
+        Msg::ViewAccount => {
+            orders.request_url(Urls::new(&model.global.base_url).account());
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
@@ -403,6 +416,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 pages::settings::update(msg, &mut model.global, lm, orders)
             }
         }
+        Msg::Account(msg) => {
+            if let Page::Account(lm) = &mut model.page {
+                pages::account::update(msg, &mut model.global, lm, orders)
+            }
+        }
     }
 }
 
@@ -418,6 +436,7 @@ fn view(model: &Model) -> Node<Msg> {
             Page::Home(lm) => pages::home::view(&model.global, lm),
             Page::ViewTask(lm) => pages::view_task::view(&model.global, lm),
             Page::Settings(lm) => pages::settings::view(&model.global, lm),
+            Page::Account(lm) => pages::account::view(&model.global, lm),
         },
     ]
 }
@@ -430,6 +449,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
         div![
             C!["flex", "flex-row", "justify-start"],
             view_button("Tasknet", Msg::SelectTask(None), false),
+            view_button("Account", Msg::ViewAccount, false),
         ],
         div![
             C!["my-auto"],

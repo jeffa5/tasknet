@@ -17,6 +17,7 @@ use warp::{
     ws::{Message, WebSocket},
     Filter,
 };
+use warp_reverse_proxy::reverse_proxy_filter;
 
 use crate::{backend::Backend, options::Options};
 
@@ -168,6 +169,11 @@ pub async fn run(options: Options) {
     let static_files_dir = options.static_files_dir.join("tasknet");
     let statics = warp::any().and(warp::fs::dir(static_files_dir).with(tasknet_log));
 
+    let kratos_proxy = warp::path::path("kratos").and(reverse_proxy_filter(
+        "kratos".to_string(),
+        "http://kratos:4433/".to_string(),
+    ));
+
     let root_redirect = warp::path::end().map(|| {
         warp::redirect({
             tracing::info!("redirecting root to path /tasknet");
@@ -178,6 +184,7 @@ pub async fn run(options: Options) {
     let routes = warp::get()
         .and(warp::path("tasknet"))
         .and(sync.or(statics))
+        .or(kratos_proxy)
         .or(root_redirect);
 
     let https_listen_address = options.https_listen_address;
@@ -202,14 +209,21 @@ pub async fn run(options: Options) {
     info!(address = %https_listen_address, "Started https server");
 
     // redirect to https
-    let (_, http_server) = warp::serve(warp::path::full().map(move |path: FullPath| {
-        warp::redirect({
-            let address = format!("https://{}{}", https_listen_address_2, path.as_str());
-            tracing::warn!("redirecting to {:?}", address);
-            // path always starts with '/', even if it was empty
-            Uri::from_maybe_shared(address).unwrap()
-        })
-    }))
+    let (_, http_server) = warp::serve(warp::path::full().and(warp::query::raw()).map(
+        move |path: FullPath, query: String| {
+            warp::redirect({
+                let address = format!(
+                    "https://{}{}?{}",
+                    https_listen_address_2,
+                    path.as_str(),
+                    query
+                );
+                tracing::warn!("redirecting to {:?}", address);
+                // path always starts with '/', even if it was empty
+                Uri::from_maybe_shared(address).unwrap()
+            })
+        },
+    ))
     .bind_with_graceful_shutdown(http_listen_address, async move {
         let _ = shutdown_rx.changed().await;
         info!("Shutting down http server");

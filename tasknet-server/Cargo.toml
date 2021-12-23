@@ -22,3 +22,4 @@ clap = "3.0.0-beta.2"
 tokio-postgres = "0.7.2"
 rand = "0.8.4"
 uuid = { version = "0.8.2", features = ["v4", "serde"] }
+warp-reverse-proxy = "0.4.0"

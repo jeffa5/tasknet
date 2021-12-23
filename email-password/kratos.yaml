@@ -1,58 +1,81 @@
-version: v0.7.1-alpha.1
+version: v0.8.0-alpha.3
 
 dsn: memory
 
 serve:
   public:
-    base_url: http://127.0.0.1:4433/
+    base_url: https://127.0.0.1:8443/kratos
     cors:
       enabled: true
   admin:
     base_url: http://kratos:4434/
 
 selfservice:
-  default_browser_return_url: http://127.0.0.1:4455/
+  default_browser_return_url: https://127.0.0.1:8443/
   whitelisted_return_urls:
-    - http://127.0.0.1:4455
+    - https://127.0.0.1:8443
 
   methods:
-    password:
+    oidc:
       enabled: true
+      config:
+        providers:
+          - id: google
+            provider: google
+            mapper_url: file:///etc/config/kratos/oidc.google.jsonnet
+            client_id: 458090480462-a1fb4u15d2htk8057d364cmv7fu96dbd.apps.googleusercontent.com
+            client_secret: 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
+            scope:
+              - email
+              - profile
+            requested_claims:
+              id_token:
+                email:
+                  essential: true
+                email_verified:
+                  essential: true
+                given_name:
+                  essential: true
+                family_name: null
+    password:
+      enabled: false
 
   flows:
     error:
-      ui_url: http://127.0.0.1:4455/error
+      ui_url: https://127.0.0.1:8443/tasknet#/error
 
     settings:
-      ui_url: http://127.0.0.1:4455/settings
+      ui_url: https://127.0.0.1:8443/tasknet#/settings
       privileged_session_max_age: 15m
 
     recovery:
       enabled: true
-      ui_url: http://127.0.0.1:4455/recovery
+      ui_url: https://127.0.0.1:8443/tasknet#/recovery
 
     verification:
       enabled: true
-      ui_url: http://127.0.0.1:4455/verification
+      ui_url: https://127.0.0.1:8443/tasknet#/verification
       after:
-        default_browser_return_url: http://127.0.0.1:4455/
+        default_browser_return_url: https://127.0.0.1:8443/tasknet#/
 
     logout:
       after:
-        default_browser_return_url: http://127.0.0.1:4455/login
+        default_browser_return_url: https://127.0.0.1:8443/tasknet#/login
 
     login:
-      ui_url: http://127.0.0.1:4455/login
+      ui_url: https://127.0.0.1:8443/tasknet#/login
       lifespan: 10m
 
     registration:
       lifespan: 10m
-      ui_url: http://127.0.0.1:4455/registration
+      ui_url: https://127.0.0.1:8443/tasknet#/registration
       after:
         password:
           hooks:
-            -
-              hook: session
+            - hook: session
+        oidc:
+          hooks:
+            - hook: session
 
 log:
   level: debug

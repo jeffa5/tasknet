@@ -55,7 +55,7 @@ services:
       - tasknet-db
 
   kratos-migrate:
-    image: oryd/kratos:v0.8.0-alpha.3
+    image: oryd/kratos:v0.8.2-alpha.1
     environment:
       - DSN=postgres://kratos:secret@kratos-db:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
     volumes:
@@ -68,7 +68,7 @@ services:
   kratos:
     depends_on:
       - kratos-migrate
-    image: oryd/kratos:v0.8.0-alpha.3
+    image: oryd/kratos:v0.8.2-alpha.1
     ports:
       - '4433:4433' # public
       - '4434:4434' # admin

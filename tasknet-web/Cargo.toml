@@ -30,6 +30,7 @@ derivative = "2.2.0"
 tasknet-sync = { path = "../tasknet-sync" }
 getrandom = { version = "0.2.2", features=["js"] }
 uuid = { version = "0.8.1", features = ["wasm-bindgen", "v4", "serde"] }
+kratos-api = { path = "../kratos-api" }
 
 [dependencies.web-sys]
 version = "0.3.46"
