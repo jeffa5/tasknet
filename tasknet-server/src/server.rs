@@ -15,6 +15,7 @@ use warp::{
     addr::remote,
     hyper::Uri,
     path::FullPath,
+    reject::MissingCookie,
     reply,
     ws::{Message, WebSocket},
     Filter, Rejection, Reply,
@@ -31,20 +32,25 @@ pub(crate) enum ApiError {
 async fn handle_rejection(err: Rejection) -> Result<impl Reply, std::convert::Infallible> {
     if err.is_not_found() {
         Ok(reply::with_status(
-            "NOT_FOUND",
+            "NOT_FOUND".to_owned(),
             warp::http::StatusCode::NOT_FOUND,
         ))
     } else if let Some(e) = err.find::<ApiError>() {
         match e {
             ApiError::Unauthorized => Ok(reply::with_status(
-                "BAD_REQUEST",
+                "BAD_REQUEST".to_owned(),
                 warp::http::StatusCode::BAD_REQUEST,
             )),
         }
+    } else if let Some(e) = err.find::<MissingCookie>() {
+        Ok(reply::with_status(
+            format!("BAD_REQUEST, missing cookie {}", e.name()),
+            warp::http::StatusCode::BAD_REQUEST,
+        ))
     } else {
         eprintln!("unhandled rejection: {:?}", err);
         Ok(reply::with_status(
-            "INTERNAL_SERVER_ERROR",
+            "INTERNAL_SERVER_ERROR".to_owned(),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         ))
     }
