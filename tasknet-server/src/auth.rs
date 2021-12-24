@@ -9,7 +9,6 @@ pub fn auth(kratos_url: String) -> impl Filter<Extract = (String,), Error = Reje
     warp::cookie::cookie("ory_kratos_session")
         .and(warp::any().map(move || kratos_url.clone()))
         .and_then(|session_token: String, kratos_url: String| async move {
-            // TODO: use ID for lookup in the database to load the document.
             info!(?session_token, "Found session token in cookie");
 
             let response = Client::new()
