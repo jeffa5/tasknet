@@ -38,7 +38,7 @@ fn ws_url(doc_id: uuid::Uuid) -> String {
         "wss://{}{}/sync?doc_id={}",
         location.host().unwrap(),
         location.pathname().unwrap(),
-        doc_id
+        doc_id,
     )
 }
 
@@ -119,7 +119,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         document,
         base_url: url.to_hash_base_url(),
         settings,
-        is_logged_in: false,
+        session: None,
         logout_url: String::new(),
         web_socket,
         web_socket_reconnector: None,
@@ -142,7 +142,7 @@ pub struct GlobalModel {
     document: Document,
     base_url: Url,
     settings: Settings,
-    is_logged_in: bool,
+    session: Option<Session>,
     logout_url: String,
     // TODO: move to SyncModel,
     web_socket: WebSocket,
@@ -248,7 +248,7 @@ pub enum Msg {
     GetLogoutUrl,
     SetLogoutUrl(String),
     WhoAmI,
-    SetLoggedIn(bool),
+    SetSession(Option<Session>),
     OnRenderTick,
     OnRecurTick,
     BackendCompactTick,
@@ -317,25 +317,29 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     Ok(response) => match response.json::<Session>().await {
                         Ok(value) => {
                             log!(value);
-                            Msg::SetLoggedIn(value.active.unwrap_or_default())
+                            Msg::SetSession(Some(value))
                         }
                         Err(err) => {
                             log!(err);
-                            Msg::SetLoggedIn(false)
+                            Msg::SetSession(None)
                         }
                     },
                     Err(err) => {
                         log!(err);
-                        Msg::SetLoggedIn(false)
+                        Msg::SetSession(None)
                     }
                 }
             });
         }
-        Msg::SetLoggedIn(logged_in) => {
-            if logged_in {
-                orders.send_msg(Msg::GetLogoutUrl);
+        Msg::SetSession(session) => {
+            if let Some(session) = &session {
+                let logged_in = session.active.unwrap_or_default();
+                if logged_in {
+                    orders.send_msg(Msg::GetLogoutUrl);
+                }
             }
-            model.global.is_logged_in = logged_in;
+            model.global.session = session;
+            model.global.web_socket = create_websocket(orders, model.global.settings.document_id);
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
@@ -537,12 +541,18 @@ fn view(model: &Model) -> Node<Msg> {
 fn view_titlebar(model: &Model) -> Node<Msg> {
     let is_home = matches!(model.page, Page::Home(_));
     let is_settings = matches!(model.page, Page::Settings(_));
+    let logged_in = model
+        .global
+        .session
+        .as_ref()
+        .map(|session| session.active.unwrap_or_default())
+        .unwrap_or_default();
     div![
         C!["flex", "flex-row", "justify-between"],
         div![
             C!["flex", "flex-row", "justify-start"],
             view_button("Tasknet", Msg::SelectTask(None), false),
-            if model.global.is_logged_in {
+            if logged_in {
                 vec![
                     view_link("Account", "/kratos/self-service/settings/browser", false),
                     view_link(
