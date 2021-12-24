@@ -143,6 +143,7 @@ pub async fn run(options: Options) {
             .and(remote())
             .map({
                 move |
+                      user_id : String,
                       query_params: SyncQueryOptions,
                       ws: warp::ws::Ws,
                       backends: DBBackends,
@@ -150,7 +151,6 @@ pub async fn run(options: Options) {
                       (sender, mut receiver): (broadcast::Sender<()>, broadcast::Receiver<()>),
                       address: Option<SocketAddr>| {
                     ws.on_upgrade(move |websocket| async move {
-
                         let (mut tx, mut rx) = websocket.split();
 
                         let address = address.unwrap();

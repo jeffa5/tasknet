@@ -5,7 +5,7 @@ use warp::{Filter, Rejection};
 
 use crate::server::ApiError;
 
-pub fn auth(kratos_url: String) -> impl Filter<Extract = (), Error = Rejection> + Clone {
+pub fn auth(kratos_url: String) -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
     warp::cookie::cookie("ory_kratos_session")
         .and(warp::any().map(move || kratos_url.clone()))
         .and_then(|session_token: String, kratos_url: String| async move {
@@ -21,6 +21,7 @@ pub fn auth(kratos_url: String) -> impl Filter<Extract = (), Error = Rejection> 
             if response.status() != reqwest::StatusCode::OK {
                 let text = response.text().await.unwrap();
                 warn!(response=%text, "Failed to get whoami");
+                Err(warp::reject::custom(ApiError::Unauthorized))
             } else {
                 let session = response.json::<Session>().await.unwrap();
                 assert!(session.active.unwrap_or_default());
@@ -29,8 +30,7 @@ pub fn auth(kratos_url: String) -> impl Filter<Extract = (), Error = Rejection> 
                 }
                 let id = session.identity.id;
                 info!(%id, "Found session id from whoami");
+                Ok(id)
             }
-            Ok(())
         })
-        .untuple_one()
 }
