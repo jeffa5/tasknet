@@ -1,5 +1,6 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
+use kratos_api::models::{UiContainer, UiNodeAttributes};
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
@@ -26,6 +27,34 @@ pub fn view_button(text: &str, msg: Msg, disabled: bool) -> Node<Msg> {
         button![
             C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300",],
             mouse_ev(Ev::Click, |_| msg),
+            text
+        ]
+    }
+}
+
+pub fn view_link(text: &str, url: &str, disabled: bool) -> Node<Msg> {
+    if disabled {
+        a![
+            attrs! {
+                At::Disabled => AtValue::None,
+                At::Href => AtValue::Some(url.to_owned()),
+            },
+            C![
+                "bg-gray-200",
+                "py-2",
+                "px-4",
+                "m-2",
+                "hover:bg-gray-300",
+                "opacity-60",
+            ],
+            text
+        ]
+    } else {
+        a![
+            attrs! {
+                At::Href => AtValue::Some(url.to_owned()),
+            },
+            C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300",],
             text
         ]
     }
@@ -163,4 +192,111 @@ pub fn duration_string(duration: chrono::Duration) -> String {
     } else {
         format!("{}w", duration.num_weeks())
     }
+}
+
+pub fn view_ui(ui: &UiContainer) -> Node<Msg> {
+    let mut nodes: BTreeMap<_, Vec<_>> = BTreeMap::new();
+    for node in ui.nodes.iter() {
+        nodes.entry(node.group.clone()).or_default().push(node);
+    }
+    div![
+        C!["flex", "flex-col"],
+        form![
+            attrs! {
+                At::Action =>ui.action,
+                At::Method => ui.method,
+            },
+            nodes.iter().map(|(group, nodes)| {
+                let all_hidden = nodes.iter().all(|node| match &*node.attributes {
+                    UiNodeAttributes::UiNodeInputAttributes {
+                        _type, ..} => {
+                            _type == "hidden"
+                        }
+                    _ => false
+                });
+                let inner = div![
+                    if group != "default" {
+                        legend![C!["font-bold"], group]
+                    } else {
+                        empty!()
+                    },
+                    nodes
+                    .iter()
+                    .map(|node| match &*node.attributes {
+                        UiNodeAttributes::UiNodeInputAttributes {
+                            disabled,
+                            label: _,
+                            name,
+                            onclick: _,
+                            pattern,
+                            required,
+                            _type,
+                            value,
+                        } => {
+                            if _type  == "submit" {
+                                button![
+                                    C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300",],
+                                    attrs! {
+                                        At::Name => name,
+                                        At::Type => _type,
+                                        At::Value => if let Some(value) = value.as_ref() {
+                                            AtValue::Some(value.to_string().replace("\"",""))
+                                        } else { AtValue::Ignored },
+                                        At::Disabled => if *disabled {AtValue::None} else {AtValue::Ignored},
+                                    },
+                                    if let Some(label) = &node.meta.label {
+                                        span![&label.text]
+                                    } else {
+                                        empty!()
+                                    },
+                                ]
+                            } else {
+                                label![
+                                    if let Some(label) = &node.meta.label {
+                                        span![C!["mr-2"], &label.text, ":"]
+                                    } else {
+                                        empty!()
+                                    },
+                                    br![],
+                                    input![
+                                        C![
+                                            "flex-grow",
+                                            "border",
+                                            "mr-2",
+                                        ],
+                                        attrs! {
+                                            At::Name => name,
+                                            At::Type => _type,
+                                            At::Value => if let Some(value) = value.as_ref() {
+                                                AtValue::Some(value.to_string().replace("\"",""))
+                                            } else { AtValue::Ignored },
+                                            At::Disabled => if *disabled {AtValue::None} else {AtValue::Ignored},
+                                        }
+                                    ],
+                                    br![],
+                                ]
+                            }
+                        }
+                        _ => {
+                            div!["non input"]
+                        }
+                    })
+                ];
+                if all_hidden {
+                    inner
+                } else {
+                    fieldset![inner]
+                }
+            })
+        ],
+        if let Some(messages) = &ui.messages {
+            messages.iter().map(|text| {
+                div![
+                    &text.text
+                ]
+            }).collect::<Vec<_>>()
+        } else {
+            vec![]
+        }
+    ]
 }

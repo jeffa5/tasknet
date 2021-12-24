@@ -39,6 +39,16 @@ rec {
   # You can override the features with
   # workspaceMembers."${crateName}".build.override { features = [ "default" "feature1" ... ]; }.
   workspaceMembers = {
+    "kratos-api" = rec {
+      packageId = "kratos-api";
+      build = internal.buildRustCrateWithFeatures {
+        packageId = "kratos-api";
+      };
+
+      # Debug support which might change between releases.
+      # File a bug if you depend on any for non-debug work!
+      debug = internal.debugCrate { inherit packageId; };
+    };
     "tasknet" = rec {
       packageId = "tasknet";
       build = internal.buildRustCrateWithFeatures {
@@ -2753,6 +2763,37 @@ rec {
         ];
 
       };
+      "kratos-api" = rec {
+        crateName = "kratos-api";
+        version = "0.8.2-alpha.1";
+        edition = "2018";
+        crateBin = [
+          { name = "kratos-api"; path = "src/main.rs"; }
+        ];
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./kratos-api; };
+        authors = [
+          "OpenAPI Generator team and contributors"
+        ];
+        dependencies = [
+          {
+            name = "serde";
+            packageId = "serde";
+          }
+          {
+            name = "serde_derive";
+            packageId = "serde_derive";
+          }
+          {
+            name = "serde_json";
+            packageId = "serde_json";
+          }
+          {
+            name = "url";
+            packageId = "url";
+          }
+        ];
+
+      };
       "lazy_static" = rec {
         crateName = "lazy_static";
         version = "1.4.0";
@@ -3397,40 +3438,6 @@ rec {
         features = {
           "vendored" = [ "openssl-src" ];
         };
-      };
-      "ory-kratos-client" = rec {
-        crateName = "ory-kratos-client";
-        version = "0.8.2-alpha.1";
-        edition = "2018";
-        sha256 = "0fixwlvs0kx4fhr5xwrh2w9md7dwcblm3m8b9nsx4z6hfkma8p18";
-        authors = [
-          "OpenAPI Generator team and contributors"
-        ];
-        dependencies = [
-          {
-            name = "reqwest";
-            packageId = "reqwest";
-            usesDefaultFeatures = false;
-            features = [ "json" "multipart" ];
-          }
-          {
-            name = "serde";
-            packageId = "serde";
-          }
-          {
-            name = "serde_derive";
-            packageId = "serde_derive";
-          }
-          {
-            name = "serde_json";
-            packageId = "serde_json";
-          }
-          {
-            name = "url";
-            packageId = "url";
-          }
-        ];
-
       };
       "os_str_bytes" = rec {
         crateName = "os_str_bytes";
@@ -4448,12 +4455,6 @@ rec {
             target = { target, features }: (!(target."arch" == "wasm32"));
           }
           {
-            name = "mime_guess";
-            packageId = "mime_guess";
-            optional = true;
-            usesDefaultFeatures = false;
-          }
-          {
             name = "native-tls";
             packageId = "native-tls";
             rename = "native-tls-crate";
@@ -4577,7 +4578,7 @@ rec {
           "stream" = [ "tokio/fs" "tokio-util" ];
           "trust-dns" = [ "trust-dns-resolver" ];
         };
-        resolvedDefaultFeatures = [ "__tls" "default-tls" "hyper-tls" "json" "mime_guess" "multipart" "native-tls-crate" "serde_json" "tokio-native-tls" ];
+        resolvedDefaultFeatures = [ "__tls" "default" "default-tls" "hyper-tls" "native-tls-crate" "tokio-native-tls" ];
       };
       "ring" = rec {
         crateName = "ring";
@@ -5742,8 +5743,8 @@ rec {
             features = [ "js" ];
           }
           {
-            name = "ory-kratos-client";
-            packageId = "ory-kratos-client";
+            name = "kratos-api";
+            packageId = "kratos-api";
           }
           {
             name = "seed";
@@ -5831,6 +5832,10 @@ rec {
           {
             name = "rand";
             packageId = "rand 0.8.4";
+          }
+          {
+            name = "reqwest";
+            packageId = "reqwest";
           }
           {
             name = "serde";

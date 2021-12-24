@@ -2,6 +2,7 @@ use apply::Apply;
 use automerge_backend::SyncMessage;
 use chrono::Utc;
 use derivative::Derivative;
+use kratos_api::models::{SelfServiceLogoutUrl, Session};
 use seed::browser::web_socket::State;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
@@ -21,9 +22,13 @@ use settings::Settings;
 use task::{Recur, Status, Task};
 use tasknet_sync::Message;
 
+use crate::components::view_link;
+
 const VIEW_TASK: &str = "view";
 const SETTINGS: &str = "settings";
 const ACCOUNT: &str = "account";
+const LOGIN: &str = "login";
+const REGISTRATION: &str = "registration";
 const SERVER_PEER_ID: &[u8] = b"server";
 const SETTINGS_STORAGE_KEY: &str = "tasknet-settings";
 
@@ -69,6 +74,11 @@ fn create_websocket(orders: &impl Orders<Msg>, doc_id: uuid::Uuid) -> WebSocket 
 
 #[allow(clippy::needless_pass_by_value)]
 fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
+    orders.subscribe(|subs::UrlRequested(url, url_request)| {
+        if url.path().contains(&"kratos".to_string()) {
+            url_request.handled()
+        }
+    });
     let url_clone = url.clone();
     orders.perform_cmd(async move {
         let res = window()
@@ -104,10 +114,13 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         }
     };
     let web_socket = create_websocket(orders, settings.document_id);
+    orders.send_msg(Msg::WhoAmI);
     let global_model = GlobalModel {
         document,
         base_url: url.to_hash_base_url(),
         settings,
+        is_logged_in: false,
+        logout_url: String::new(),
         web_socket,
         web_socket_reconnector: None,
     };
@@ -129,6 +142,8 @@ pub struct GlobalModel {
     document: Document,
     base_url: Url,
     settings: Settings,
+    is_logged_in: bool,
+    logout_url: String,
     // TODO: move to SyncModel,
     web_socket: WebSocket,
     web_socket_reconnector: Option<StreamHandle>,
@@ -167,6 +182,16 @@ impl<'a> Urls<'a> {
     pub fn account(self) -> Url {
         self.base_url().add_hash_path_part(ACCOUNT)
     }
+
+    #[must_use]
+    pub fn login(self) -> Url {
+        self.base_url().add_hash_path_part(LOGIN)
+    }
+
+    #[must_use]
+    pub fn registration(self) -> Url {
+        self.base_url().add_hash_path_part(REGISTRATION)
+    }
 }
 
 // ------ ------
@@ -179,6 +204,8 @@ enum Page {
     ViewTask(pages::view_task::Model),
     Settings(pages::settings::Model),
     Account(pages::account::Model),
+    Login(pages::login::Model),
+    Registration(pages::registration::Model),
 }
 
 impl Page {
@@ -200,6 +227,10 @@ impl Page {
             },
             Some(SETTINGS) => Self::Settings(pages::settings::init(global_model)),
             Some(ACCOUNT) => Self::Account(pages::account::init(global_model, orders)),
+            Some(LOGIN) => Self::Login(pages::login::init(global_model, orders)),
+            Some(REGISTRATION) => {
+                Self::Registration(pages::registration::init(global_model, orders))
+            }
             None | Some(_) => Self::Home(pages::home::init()),
         }
     }
@@ -214,7 +245,10 @@ pub enum Msg {
     SelectTask(Option<uuid::Uuid>),
     CreateTask,
     ViewSettings,
-    ViewAccount,
+    GetLogoutUrl,
+    SetLogoutUrl(String),
+    WhoAmI,
+    SetLoggedIn(bool),
     OnRenderTick,
     OnRecurTick,
     BackendCompactTick,
@@ -234,6 +268,8 @@ pub enum Msg {
     ViewTask(pages::view_task::Msg),
     Settings(pages::settings::Msg),
     Account(pages::account::Msg),
+    Login(pages::login::Msg),
+    Registration(pages::registration::Msg),
 }
 
 #[allow(clippy::too_many_lines)]
@@ -253,8 +289,53 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::ViewSettings => {
             orders.request_url(Urls::new(&model.global.base_url).settings());
         }
-        Msg::ViewAccount => {
-            orders.request_url(Urls::new(&model.global.base_url).account());
+        Msg::GetLogoutUrl => {
+            orders.perform_cmd(async move {
+                let response = fetch(
+                    Request::new("/kratos/self-service/logout/browser")
+                        .header(Header::custom("Accept", "application/json")),
+                )
+                .await
+                .expect("HTTP request failed");
+                let value = response.json::<SelfServiceLogoutUrl>().await.unwrap();
+                log!(value);
+                Msg::SetLogoutUrl(value.logout_url)
+            });
+        }
+        Msg::SetLogoutUrl(url) => {
+            model.global.logout_url = url;
+        }
+        Msg::WhoAmI => {
+            orders.perform_cmd(async move {
+                let response = fetch(
+                    Request::new("/kratos/sessions/whoami")
+                        .header(Header::custom("Accept", "application/json")),
+                )
+                .await
+                .expect("HTTP request failed");
+                match response.check_status() {
+                    Ok(response) => match response.json::<Session>().await {
+                        Ok(value) => {
+                            log!(value);
+                            Msg::SetLoggedIn(value.active.unwrap_or_default())
+                        }
+                        Err(err) => {
+                            log!(err);
+                            Msg::SetLoggedIn(false)
+                        }
+                    },
+                    Err(err) => {
+                        log!(err);
+                        Msg::SetLoggedIn(false)
+                    }
+                }
+            });
+        }
+        Msg::SetLoggedIn(logged_in) => {
+            if logged_in {
+                orders.send_msg(Msg::GetLogoutUrl);
+            }
+            model.global.is_logged_in = logged_in;
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
@@ -421,6 +502,16 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 pages::account::update(msg, &mut model.global, lm, orders)
             }
         }
+        Msg::Login(msg) => {
+            if let Page::Login(lm) = &mut model.page {
+                pages::login::update(msg, &mut model.global, lm, orders)
+            }
+        }
+        Msg::Registration(msg) => {
+            if let Page::Registration(lm) = &mut model.page {
+                pages::registration::update(msg, &mut model.global, lm, orders)
+            }
+        }
     }
 }
 
@@ -437,6 +528,8 @@ fn view(model: &Model) -> Node<Msg> {
             Page::ViewTask(lm) => pages::view_task::view(&model.global, lm),
             Page::Settings(lm) => pages::settings::view(&model.global, lm),
             Page::Account(lm) => pages::account::view(&model.global, lm),
+            Page::Login(lm) => pages::login::view(&model.global, lm),
+            Page::Registration(lm) => pages::registration::view(&model.global, lm),
         },
     ]
 }
@@ -449,7 +542,25 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
         div![
             C!["flex", "flex-row", "justify-start"],
             view_button("Tasknet", Msg::SelectTask(None), false),
-            view_button("Account", Msg::ViewAccount, false),
+            if model.global.is_logged_in {
+                vec![
+                    view_link("Account", "/kratos/self-service/settings/browser", false),
+                    view_link(
+                        "Logout",
+                        &model.global.logout_url,
+                        model.global.logout_url.is_empty(),
+                    ),
+                ]
+            } else {
+                vec![
+                    view_link("Login", "/kratos/self-service/login/browser", false),
+                    view_link(
+                        "Register",
+                        "/kratos/self-service/registration/browser",
+                        false,
+                    ),
+                ]
+            },
         ],
         div![
             C!["my-auto"],

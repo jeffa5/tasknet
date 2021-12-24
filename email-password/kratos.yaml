@@ -23,11 +23,12 @@ selfservice:
           - id: google
             provider: google
             mapper_url: file:///etc/config/kratos/oidc.google.jsonnet
-            client_id: 458090480462-a1fb4u15d2htk8057d364cmv7fu96dbd.apps.googleusercontent.com
-            client_secret: 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
+            client_id: 73251365314-erccqgf1v8vadigfjj4u8jikfo6n812i.apps.googleusercontent.com
+            client_secret: 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
             scope:
               - email
               - profile
+              - openid
             requested_claims:
               id_token:
                 email:
@@ -39,36 +40,38 @@ selfservice:
                 family_name: null
     password:
       enabled: false
+    profile:
+      enabled: true
 
   flows:
     error:
-      ui_url: https://127.0.0.1:8443/tasknet#/error
+      ui_url: https://127.0.0.1:8443/tasknet#error
 
     settings:
-      ui_url: https://127.0.0.1:8443/tasknet#/settings
+      ui_url: https://127.0.0.1:8443/tasknet#account
       privileged_session_max_age: 15m
 
     recovery:
       enabled: true
-      ui_url: https://127.0.0.1:8443/tasknet#/recovery
+      ui_url: https://127.0.0.1:8443/tasknet#recovery
 
     verification:
       enabled: true
-      ui_url: https://127.0.0.1:8443/tasknet#/verification
+      ui_url: https://127.0.0.1:8443/tasknet#verification
       after:
-        default_browser_return_url: https://127.0.0.1:8443/tasknet#/
+        default_browser_return_url: https://127.0.0.1:8443/tasknet
 
     logout:
       after:
-        default_browser_return_url: https://127.0.0.1:8443/tasknet#/login
+        default_browser_return_url: https://127.0.0.1:8443/tasknet
 
     login:
-      ui_url: https://127.0.0.1:8443/tasknet#/login
+      ui_url: https://127.0.0.1:8443/tasknet#login
       lifespan: 10m
 
     registration:
       lifespan: 10m
-      ui_url: https://127.0.0.1:8443/tasknet#/registration
+      ui_url: https://127.0.0.1:8443/tasknet#registration
       after:
         password:
           hooks:

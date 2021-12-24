@@ -2,6 +2,7 @@ use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Arc,
 
 use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
 use rand::Rng;
+use reqwest::redirect::Policy;
 use serde::{Deserialize, Serialize};
 use tokio::{
     select,
@@ -17,7 +18,7 @@ use warp::{
     ws::{Message, WebSocket},
     Filter,
 };
-use warp_reverse_proxy::reverse_proxy_filter;
+use warp_reverse_proxy::{reverse_proxy_filter, CLIENT as PROXY_CLIENT};
 
 use crate::{backend::Backend, options::Options};
 
@@ -88,6 +89,7 @@ pub async fn run(options: Options) {
 
     let tasknet_log = warp::log("tasknet::web");
     let sync_log = warp::log("tasknet::sync");
+    let proxy_log = warp::log("tasknet::proxy");
 
     let postgres_client = Arc::new(connect_to_db(&options).await);
 
@@ -169,10 +171,18 @@ pub async fn run(options: Options) {
     let static_files_dir = options.static_files_dir.join("tasknet");
     let statics = warp::any().and(warp::fs::dir(static_files_dir).with(tasknet_log));
 
-    let kratos_proxy = warp::path::path("kratos").and(reverse_proxy_filter(
-        "kratos".to_string(),
-        "http://kratos:4433/".to_string(),
-    ));
+    let client = reqwest::Client::builder()
+        .redirect(Policy::none())
+        .build()
+        .expect("client couldn't be built");
+    PROXY_CLIENT.set(client).expect("client couldn't be set");
+
+    let kratos_proxy = warp::path::path("kratos")
+        .and(reverse_proxy_filter(
+            "kratos".to_string(),
+            "http://kratos:4433/".to_string(),
+        ))
+        .with(proxy_log);
 
     let root_redirect = warp::path::end().map(|| {
         warp::redirect({
