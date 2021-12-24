@@ -38,8 +38,8 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, std::convert::In
     } else if let Some(e) = err.find::<ApiError>() {
         match e {
             ApiError::Unauthorized => Ok(reply::with_status(
-                "BAD_REQUEST".to_owned(),
-                warp::http::StatusCode::BAD_REQUEST,
+                "UNAUTHORIZED".to_owned(),
+                warp::http::StatusCode::UNAUTHORIZED,
             )),
         }
     } else if let Some(e) = err.find::<MissingCookie>() {
