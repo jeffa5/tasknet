@@ -157,7 +157,7 @@ pub async fn run(options: Options) {
                         tracing::info!(?address, doc_id=?query_params.doc_id, "New sync connection");
                         let peer_id = format!("{:?}", address).into_bytes();
 
-                        let mut backend = backends.lock().await.entry(query_params.doc_id.as_bytes().to_vec()).or_insert(Arc::new(Mutex::new(Backend::load(db_client, query_params.doc_id.as_bytes().to_vec()).await))).clone();
+                        let mut backend = backends.lock().await.entry(user_id.as_bytes().to_vec()).or_insert(Arc::new(Mutex::new(Backend::load(db_client, user_id.as_bytes().to_vec()).await))).clone();
 
                         // Send a message to the client first. If they don't have any changes
                         // then their generate_sync_message will be None so they won't have
