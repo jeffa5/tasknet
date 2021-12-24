@@ -1148,7 +1148,7 @@ rec {
         ];
 
       };
-      "cookie" = rec {
+      "cookie 0.14.4" = rec {
         crateName = "cookie";
         version = "0.14.4";
         edition = "2018";
@@ -1184,6 +1184,92 @@ rec {
           "signed" = [ "hmac" "sha2" "base64" "rand" ];
         };
         resolvedDefaultFeatures = [ "percent-encode" "percent-encoding" ];
+      };
+      "cookie 0.15.1" = rec {
+        crateName = "cookie";
+        version = "0.15.1";
+        edition = "2018";
+        sha256 = "03gql9c2l0wg3hpfp67wg2ns21wysk0xsjxwdbjrf0s6grrcgwfm";
+        authors = [
+          "Sergio Benitez <sb@sergio.bz>"
+          "Alex Crichton <alex@alexcrichton.com>"
+        ];
+        dependencies = [
+          {
+            name = "percent-encoding";
+            packageId = "percent-encoding";
+            optional = true;
+          }
+          {
+            name = "time";
+            packageId = "time 0.2.27";
+            usesDefaultFeatures = false;
+            features = [ "std" ];
+          }
+        ];
+        buildDependencies = [
+          {
+            name = "version_check";
+            packageId = "version_check 0.9.3";
+          }
+        ];
+        features = {
+          "key-expansion" = [ "sha2" "hkdf" ];
+          "percent-encode" = [ "percent-encoding" ];
+          "private" = [ "aes-gcm" "base64" "rand" "subtle" ];
+          "secure" = [ "private" "signed" "key-expansion" ];
+          "signed" = [ "hmac" "sha2" "base64" "rand" "subtle" ];
+        };
+        resolvedDefaultFeatures = [ "percent-encode" "percent-encoding" ];
+      };
+      "cookie_store" = rec {
+        crateName = "cookie_store";
+        version = "0.15.1";
+        edition = "2018";
+        sha256 = "0z0navy9k0ivrdvz492q8c4nhd3iv5l77hwfppskdp1j15607xxk";
+        authors = [
+          "Patrick Fernie <patrick.fernie@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "cookie";
+            packageId = "cookie 0.15.1";
+            features = [ "percent-encode" ];
+          }
+          {
+            name = "idna";
+            packageId = "idna";
+          }
+          {
+            name = "log";
+            packageId = "log";
+          }
+          {
+            name = "publicsuffix";
+            packageId = "publicsuffix";
+          }
+          {
+            name = "serde";
+            packageId = "serde";
+            features = [ "derive" ];
+          }
+          {
+            name = "serde_json";
+            packageId = "serde_json";
+          }
+          {
+            name = "time";
+            packageId = "time 0.2.27";
+          }
+          {
+            name = "url";
+            packageId = "url";
+          }
+        ];
+        features = {
+          "preserve_order" = [ "indexmap" ];
+        };
+        resolvedDefaultFeatures = [ "default" ];
       };
       "core-foundation" = rec {
         crateName = "core-foundation";
@@ -2208,7 +2294,7 @@ rec {
           "default" = [ "ahash" "inline-more" ];
           "rustc-dep-of-std" = [ "nightly" "core" "compiler_builtins" "alloc" "rustc-internal-api" ];
         };
-        resolvedDefaultFeatures = [ "raw" ];
+        resolvedDefaultFeatures = [ "inline-more" "raw" ];
       };
       "headers" = rec {
         crateName = "headers";
@@ -3905,6 +3991,53 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "proc-macro" ];
       };
+      "psl-types" = rec {
+        crateName = "psl-types";
+        version = "2.0.10";
+        edition = "2018";
+        sha256 = "0w74li516dsalxmsk5mfcqbgdbg0dl04qdv2iggszjly5p3agvg8";
+        authors = [
+          "rushmorem <rushmore@webenchanter.com>"
+        ];
+
+      };
+      "publicsuffix" = rec {
+        crateName = "publicsuffix";
+        version = "2.1.1";
+        edition = "2018";
+        sha256 = "1q9kbcqh9pa06p3kq7d3ksbnqjhs88v5wk5qg89wrgkbmpnp4a99";
+        authors = [
+          "rushmorem <rushmore@webenchanter.com>"
+        ];
+        dependencies = [
+          {
+            name = "byteorder";
+            packageId = "byteorder";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "hashbrown";
+            packageId = "hashbrown";
+            usesDefaultFeatures = false;
+            features = [ "inline-more" ];
+          }
+          {
+            name = "idna";
+            packageId = "idna";
+            optional = true;
+          }
+          {
+            name = "psl-types";
+            packageId = "psl-types";
+          }
+        ];
+        features = {
+          "anycase" = [ "unicase" ];
+          "default" = [ "punycode" ];
+          "punycode" = [ "idna" ];
+        };
+        resolvedDefaultFeatures = [ "default" "idna" "punycode" ];
+      };
       "pulldown-cmark" = rec {
         crateName = "pulldown-cmark";
         version = "0.8.0";
@@ -4391,6 +4524,19 @@ rec {
             packageId = "bytes";
           }
           {
+            name = "cookie";
+            packageId = "cookie 0.15.1";
+            rename = "cookie_crate";
+            optional = true;
+            target = { target, features }: (!(target."arch" == "wasm32"));
+          }
+          {
+            name = "cookie_store";
+            packageId = "cookie_store";
+            optional = true;
+            target = { target, features }: (!(target."arch" == "wasm32"));
+          }
+          {
             name = "encoding_rs";
             packageId = "encoding_rs";
             target = { target, features }: (!(target."arch" == "wasm32"));
@@ -4469,6 +4615,12 @@ rec {
           {
             name = "pin-project-lite";
             packageId = "pin-project-lite";
+            target = { target, features }: (!(target."arch" == "wasm32"));
+          }
+          {
+            name = "proc-macro-hack";
+            packageId = "proc-macro-hack";
+            optional = true;
             target = { target, features }: (!(target."arch" == "wasm32"));
           }
           {
@@ -4578,7 +4730,7 @@ rec {
           "stream" = [ "tokio/fs" "tokio-util" ];
           "trust-dns" = [ "trust-dns-resolver" ];
         };
-        resolvedDefaultFeatures = [ "__tls" "default" "default-tls" "hyper-tls" "native-tls-crate" "tokio-native-tls" ];
+        resolvedDefaultFeatures = [ "__tls" "cookie_crate" "cookie_store" "cookies" "default" "default-tls" "hyper-tls" "json" "native-tls-crate" "proc-macro-hack" "serde_json" "tokio-native-tls" ];
       };
       "ring" = rec {
         crateName = "ring";
@@ -4892,7 +5044,7 @@ rec {
           }
           {
             name = "cookie";
-            packageId = "cookie";
+            packageId = "cookie 0.14.4";
             features = [ "percent-encode" ];
           }
           {
@@ -5830,12 +5982,17 @@ rec {
             packageId = "futures-util";
           }
           {
+            name = "kratos-api";
+            packageId = "kratos-api";
+          }
+          {
             name = "rand";
             packageId = "rand 0.8.4";
           }
           {
             name = "reqwest";
             packageId = "reqwest";
+            features = [ "json" "cookies" ];
           }
           {
             name = "serde";
@@ -6151,7 +6308,7 @@ rec {
           "default" = [ "deprecated" "std" ];
           "std" = [ "libc" "winapi" "stdweb" "standback/std" ];
         };
-        resolvedDefaultFeatures = [ "libc" "std" "stdweb" "winapi" ];
+        resolvedDefaultFeatures = [ "default" "deprecated" "libc" "std" "stdweb" "winapi" ];
       };
       "time-macros" = rec {
         crateName = "time-macros";

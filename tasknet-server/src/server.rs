@@ -15,12 +15,42 @@ use warp::{
     addr::remote,
     hyper::Uri,
     path::FullPath,
+    reply,
     ws::{Message, WebSocket},
-    Filter,
+    Filter, Rejection, Reply,
 };
 use warp_reverse_proxy::{reverse_proxy_filter, CLIENT as PROXY_CLIENT};
 
-use crate::{backend::Backend, options::Options};
+use crate::{auth::auth, backend::Backend, options::Options};
+
+#[derive(Debug)]
+pub(crate) enum ApiError {
+    Unauthorized,
+}
+
+async fn handle_rejection(err: Rejection) -> Result<impl Reply, std::convert::Infallible> {
+    if err.is_not_found() {
+        Ok(reply::with_status(
+            "NOT_FOUND",
+            warp::http::StatusCode::NOT_FOUND,
+        ))
+    } else if let Some(e) = err.find::<ApiError>() {
+        match e {
+            ApiError::Unauthorized => Ok(reply::with_status(
+                "BAD_REQUEST",
+                warp::http::StatusCode::BAD_REQUEST,
+            )),
+        }
+    } else {
+        eprintln!("unhandled rejection: {:?}", err);
+        Ok(reply::with_status(
+            "INTERNAL_SERVER_ERROR",
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        ))
+    }
+}
+
+impl warp::reject::Reject for ApiError {}
 
 type DBBackends = Arc<Mutex<HashMap<Vec<u8>, Arc<Mutex<Backend>>>>>;
 
@@ -98,6 +128,7 @@ pub async fn run(options: Options) {
     let (sender, _) = broadcast::channel(1);
 
     let sync = warp::path("sync")
+            .and(auth(options.kratos_url.clone()))
             .and(warp::query())
             .and(warp::ws())
             .and(with_backends(backends))
@@ -105,13 +136,15 @@ pub async fn run(options: Options) {
             .and(with_watch_channel(sender))
             .and(remote())
             .map({
-                move | query_params:SyncQueryOptions,
-                    ws: warp::ws::Ws,
+                move |
+                      query_params: SyncQueryOptions,
+                      ws: warp::ws::Ws,
                       backends: DBBackends,
                       db_client : Arc<tokio_postgres::Client>,
                       (sender, mut receiver): (broadcast::Sender<()>, broadcast::Receiver<()>),
                       address: Option<SocketAddr>| {
                     ws.on_upgrade(move |websocket| async move {
+
                         let (mut tx, mut rx) = websocket.split();
 
                         let address = address.unwrap();
@@ -180,7 +213,7 @@ pub async fn run(options: Options) {
     let kratos_proxy = warp::path::path("kratos")
         .and(reverse_proxy_filter(
             "kratos".to_string(),
-            "http://kratos:4433/".to_string(),
+            options.kratos_url,
         ))
         .with(proxy_log);
 
@@ -195,7 +228,8 @@ pub async fn run(options: Options) {
         .and(warp::path("tasknet"))
         .and(sync.or(statics))
         .or(kratos_proxy)
-        .or(root_redirect);
+        .or(root_redirect)
+        .recover(handle_rejection);
 
     let https_listen_address = options.https_listen_address;
 

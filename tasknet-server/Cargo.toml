@@ -23,4 +23,5 @@ tokio-postgres = "0.7.2"
 rand = "0.8.4"
 uuid = { version = "0.8.2", features = ["v4", "serde"] }
 warp-reverse-proxy = "0.4.0"
-reqwest = "0.11.8"
+reqwest = { version = "0.11.8", features = ["json", "cookies"] }
+kratos-api = { path = "../kratos-api" }

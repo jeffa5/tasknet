@@ -24,4 +24,6 @@ pub struct Options {
     pub db_password: String,
     #[clap(long, default_value = "tasknet")]
     pub db_name: String,
+    #[clap(long, default_value = "http://kratos:4433/")]
+    pub kratos_url: String,
 }

@@ -1,6 +1,7 @@
 use clap::Clap;
 use options::Options;
 
+mod auth;
 mod backend;
 mod options;
 mod server;
