@@ -1,4 +1,4 @@
-use kratos_api::models::{SelfServiceRegistrationFlow, UiContainer, UiNodeAttributes};
+use kratos_api::models::{SelfServiceRegistrationFlow, UiContainer};
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 use web_sys::UrlSearchParams;

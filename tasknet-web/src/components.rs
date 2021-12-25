@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 
 use kratos_api::models::{UiContainer, UiNodeAttributes};
 #[allow(clippy::wildcard_imports)]
