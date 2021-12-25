@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Settings {
-    pub document_id: uuid::Uuid,
     pub urgency: UrgencySettings,
 }
 
@@ -25,7 +24,6 @@ pub struct UrgencySettings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            document_id: uuid::Uuid::new_v4(),
             urgency: UrgencySettings::default(),
         }
     }

@@ -3,7 +3,6 @@ use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Arc,
 use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
 use rand::Rng;
 use reqwest::redirect::Policy;
-use serde::{Deserialize, Serialize};
 use tokio::{
     select,
     signal::unix::SignalKind,
@@ -115,11 +114,6 @@ async fn connect_to_db(options: &Options) -> tokio_postgres::Client {
     postgres_client
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct SyncQueryOptions {
-    doc_id: uuid::Uuid,
-}
-
 pub async fn run(options: Options) {
     tracing_subscriber::fmt::init();
 
@@ -135,7 +129,6 @@ pub async fn run(options: Options) {
 
     let sync = warp::path("sync")
             .and(auth(options.kratos_url.clone()))
-            .and(warp::query())
             .and(warp::ws())
             .and(with_backends(backends))
             .and(with_db_client(postgres_client))
@@ -144,7 +137,6 @@ pub async fn run(options: Options) {
             .map({
                 move |
                       user_id : String,
-                      query_params: SyncQueryOptions,
                       ws: warp::ws::Ws,
                       backends: DBBackends,
                       db_client : Arc<tokio_postgres::Client>,
@@ -154,7 +146,7 @@ pub async fn run(options: Options) {
                         let (mut tx, mut rx) = websocket.split();
 
                         let address = address.unwrap();
-                        tracing::info!(?address, doc_id=?query_params.doc_id, "New sync connection");
+                        tracing::info!(?address, ?user_id, "New sync connection");
                         let peer_id = format!("{:?}", address).into_bytes();
 
                         let mut backend = backends.lock().await.entry(user_id.as_bytes().to_vec()).or_insert(Arc::new(Mutex::new(Backend::load(db_client, user_id.as_bytes().to_vec()).await))).clone();

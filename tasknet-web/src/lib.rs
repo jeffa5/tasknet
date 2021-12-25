@@ -32,20 +32,19 @@ const REGISTRATION: &str = "registration";
 const SERVER_PEER_ID: &[u8] = b"server";
 const SETTINGS_STORAGE_KEY: &str = "tasknet-settings";
 
-fn ws_url(doc_id: uuid::Uuid) -> String {
+fn ws_url() -> String {
     let location = window().location();
     format!(
-        "wss://{}{}/sync?doc_id={}",
+        "wss://{}{}/sync",
         location.host().unwrap(),
         location.pathname().unwrap(),
-        doc_id,
     )
 }
 
-fn create_websocket(orders: &impl Orders<Msg>, doc_id: uuid::Uuid) -> WebSocket {
+fn create_websocket(orders: &impl Orders<Msg>) -> WebSocket {
     let msg_sender = orders.msg_sender();
 
-    WebSocket::builder(ws_url(doc_id), orders)
+    WebSocket::builder(ws_url(), orders)
         .on_open(|| Msg::WebSocketOpened)
         .on_message(|message| {
             spawn_local(async move {
@@ -113,7 +112,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
             settings
         }
     };
-    let web_socket = create_websocket(orders, settings.document_id);
+    let web_socket = create_websocket(orders);
     orders.send_msg(Msg::WhoAmI);
     let global_model = GlobalModel {
         document,
@@ -339,7 +338,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
             }
             model.global.session = session;
-            model.global.web_socket = create_websocket(orders, model.global.settings.document_id);
+            model.global.web_socket = create_websocket(orders);
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
@@ -456,7 +455,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::ReconnectWebSocket(retries) => {
             log!("Reconnect attempt:", retries);
-            model.global.web_socket = create_websocket(orders, model.global.settings.document_id);
+            model.global.web_socket = create_websocket(orders);
         }
         Msg::SendWebSocketMessage(message) => {
             let bytes = Vec::<u8>::from(message);
@@ -484,7 +483,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             // given a new document id we now need to load the automerge document into memory and
             // reestablish the sync session
             model.global.document = Document::new();
-            model.global.web_socket = create_websocket(orders, model.global.settings.document_id);
+            model.global.web_socket = create_websocket(orders);
         }
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {
