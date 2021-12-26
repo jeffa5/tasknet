@@ -1,0 +1,6 @@
+apiVersion : v2
+version: 0.1.0
+name: infrastructure
+dependencies:
+  - name: pgo
+    repository: file://postgres-operator-examples/helm/install

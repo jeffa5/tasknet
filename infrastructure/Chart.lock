@@ -1,0 +1,6 @@
+dependencies:
+- name: pgo
+  repository: file://postgres-operator-examples/helm/install
+  version: 0.2.3
+digest: sha256:853527d21187eb059178fa97c07ede147d74fff1b540714448319a0f1cc20824
+generated: "2021-12-26T19:07:57.307610294Z"
