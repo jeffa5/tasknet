@@ -50,7 +50,6 @@ pub fn update(
                         .json::<SelfServiceRegistrationFlow>()
                         .await
                         .unwrap();
-                    log!(value);
 
                     Some(GMsg::Registration(Msg::SetUi(*value.ui)))
                 } else {

@@ -44,7 +44,6 @@ pub fn update(
                     .await
                     .expect("HTTP request failed");
                     let value = response.json::<SelfServiceLoginFlow>().await.unwrap();
-                    log!(value);
 
                     Some(GMsg::Login(Msg::SetUi(*value.ui)))
                 } else {
