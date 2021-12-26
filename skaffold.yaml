@@ -1,0 +1,17 @@
+apiVersion: skaffold/v2beta12
+kind: Config
+build:
+  artifacts:
+    - image: jeffas/tasknet
+  local:
+    useBuildkit: true
+    push: true
+deploy:
+  helm:
+    releases:
+    - name: tasknet
+      chartPath: deploy/chart
+      artifactOverrides:
+        image: jeffas/tasknet
+      imageStrategy:
+        helm: {}

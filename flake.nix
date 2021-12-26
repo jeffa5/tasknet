@@ -57,11 +57,18 @@
 
             cfssl
 
+            kind
+            kubectl
+            k9s
+            kubernetes-helm
+            skaffold
+
             nodejs
 
             rnix-lsp
             nixpkgs-fmt
           ];
+          DOCKER_BUILDKIT = 1;
         };
       });
 }

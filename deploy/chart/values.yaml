@@ -1,0 +1,16 @@
+image:
+  repository: jeffas/tasknet
+  tag: 0.1.0
+  pullPolicy: IfNotPresent
+
+kratos:
+  kratos:
+    config:
+      dsn: postgres://foo:bar@pg:5432/db
+      secrets:
+        default:
+          - something 1
+          - something 2
+      courier:
+        smtp:
+          connection_uri: test
