@@ -180,6 +180,8 @@ pub async fn run(options: Options) {
                                     } else if msg.is_close() {
                                         tracing::debug!("close");
                                         break
+                                    } else if msg.is_ping() {
+                                        // nothing to do as handled by underlying implementation
                                     } else {
                                         tracing::warn!("unhandled message {:?}", msg);
                                     }
