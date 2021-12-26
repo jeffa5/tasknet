@@ -297,7 +297,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .await
                 .expect("HTTP request failed");
                 let value = response.json::<SelfServiceLogoutUrl>().await.unwrap();
-                log!(value);
                 Msg::SetLogoutUrl(value.logout_url)
             });
         }
@@ -314,10 +313,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .expect("HTTP request failed");
                 match response.check_status() {
                     Ok(response) => match response.json::<Session>().await {
-                        Ok(value) => {
-                            log!(value);
-                            Msg::SetSession(Some(value))
-                        }
+                        Ok(value) => Msg::SetSession(Some(value)),
                         Err(err) => {
                             log!(err);
                             Msg::SetSession(None)
