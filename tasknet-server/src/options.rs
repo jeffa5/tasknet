@@ -1,8 +1,8 @@
 use std::{net::SocketAddr, path::PathBuf};
 
-use clap::Clap;
+use clap::Parser;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct Options {
     #[clap(long, default_value = "127.0.0.1:8080")]
     pub http_listen_address: SocketAddr,

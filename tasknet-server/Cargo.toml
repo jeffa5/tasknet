@@ -18,7 +18,7 @@ tasknet-sync = { path = "../tasknet-sync" }
 tracing = "0.1.26"
 automerge-persistent = { git = "https://github.com/jeffa5/automerge-persistent", branch = "main" }
 tracing-subscriber = "0.2.19"
-clap = "3.0.0-beta.2"
+clap = { version = "3.0.0-rc.8", features = ["derive", "env"] }
 tokio-postgres = "0.7.2"
 rand = "0.8.4"
 uuid = { version = "0.8.2", features = ["v4", "serde"] }
