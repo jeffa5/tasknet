@@ -541,13 +541,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
     let is_home = matches!(model.page, Page::Home(_));
     let is_settings = matches!(model.page, Page::Settings(_));
     let logged_in = if let Some(session) = model.global.session.as_ref() {
-        log!("found a session");
         session.active.unwrap_or_default()
-    } else if let Some(cookie_jar) = cookies() {
-        log!("no session, checking cookie");
-        // if no session then see if there is a cookie for one which may be valid until we get a
-        // reply from kratos with the session
-        cookie_jar.get("ory_kratos_session").is_some()
     } else {
         false
     };
