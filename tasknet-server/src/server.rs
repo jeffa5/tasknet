@@ -114,6 +114,78 @@ async fn connect_to_db(options: &Options) -> tokio_postgres::Client {
     postgres_client
 }
 
+fn handle_sync_connection(
+    user_id: String,
+    ws: warp::ws::Ws,
+    backends: DBBackends,
+    db_client: Arc<tokio_postgres::Client>,
+    (sender, mut receiver): (broadcast::Sender<()>, broadcast::Receiver<()>),
+    address: Option<SocketAddr>,
+) -> impl Reply {
+    ws.on_upgrade(move |websocket| async move {
+        let (mut tx, mut rx) = websocket.split();
+
+        let address = address.unwrap();
+        tracing::info!(?address, ?user_id, "New sync connection");
+        let peer_id = format!("{:?}", address).into_bytes();
+
+        let mut backend = backends
+            .lock()
+            .await
+            .entry(user_id.as_bytes().to_vec())
+            .or_insert(Arc::new(Mutex::new(
+                Backend::load(db_client, user_id.as_bytes().to_vec()).await,
+            )))
+            .clone();
+
+        // Send a message to the client first. If they don't have any changes
+        // then their generate_sync_message will be None so they won't have
+        // anything to send.
+        send_message(&mut backend, peer_id.clone(), address, &mut tx).await;
+
+        loop {
+            tokio::select! {
+                Some(Ok(msg)) = rx.next() => {
+                    if msg.is_binary() {
+                        let bytes = msg.into_bytes();
+                        let message = tasknet_sync::Message::from(bytes);
+                        match message {
+                            tasknet_sync::Message::SyncMessage(sync_message) => {
+                                tracing::debug!("Received sync message from {:?}", address);
+                                let patch = backend
+                                    .lock()
+                                    .await
+                                    .receive_sync_message(peer_id.clone(), sync_message).await;
+
+                                if patch.is_some() {
+                                    sender.send(()).unwrap();
+                                }
+
+                                send_message(&mut backend, peer_id.clone(), address, &mut tx).await
+                            }
+                        }
+                    } else if msg.is_close() {
+                        tracing::debug!("close");
+                        break
+                    } else if msg.is_ping() {
+                        // nothing to do as handled by underlying implementation
+                    } else {
+                        tracing::warn!("unhandled message {:?}", msg);
+                    }
+                },
+
+                Ok(()) = receiver.recv() => {
+                    send_message(&mut backend, peer_id.clone(), address, &mut tx).await
+                },
+
+                else => break,
+            }
+        }
+
+        backend.lock().await.reset_sync_state(&peer_id).await;
+    })
+}
+
 pub async fn run(options: Options) {
     tracing_subscriber::fmt::init();
 
@@ -128,78 +200,14 @@ pub async fn run(options: Options) {
     let (sender, _) = broadcast::channel(1);
 
     let sync = warp::path("sync")
-            .and(auth(options.kratos_url.clone()))
-            .and(warp::ws())
-            .and(with_backends(backends))
-            .and(with_db_client(postgres_client))
-            .and(with_watch_channel(sender))
-            .and(remote())
-            .map({
-                move |
-                      user_id : String,
-                      ws: warp::ws::Ws,
-                      backends: DBBackends,
-                      db_client : Arc<tokio_postgres::Client>,
-                      (sender, mut receiver): (broadcast::Sender<()>, broadcast::Receiver<()>),
-                      address: Option<SocketAddr>| {
-                    ws.on_upgrade(move |websocket| async move {
-                        let (mut tx, mut rx) = websocket.split();
-
-                        let address = address.unwrap();
-                        tracing::info!(?address, ?user_id, "New sync connection");
-                        let peer_id = format!("{:?}", address).into_bytes();
-
-                        let mut backend = backends.lock().await.entry(user_id.as_bytes().to_vec()).or_insert(Arc::new(Mutex::new(Backend::load(db_client, user_id.as_bytes().to_vec()).await))).clone();
-
-                        // Send a message to the client first. If they don't have any changes
-                        // then their generate_sync_message will be None so they won't have
-                        // anything to send.
-                        send_message(&mut backend,  peer_id.clone(), address, &mut tx).await;
-
-                        loop {
-                            tokio::select! {
-                                Some(Ok(msg)) = rx.next() => {
-                                    if msg.is_binary() {
-                                        let bytes = msg.into_bytes();
-                                        let message = tasknet_sync::Message::from(bytes);
-                                        match message {
-                                            tasknet_sync::Message::SyncMessage(sync_message) => {
-                                                tracing::debug!("Received sync message from {:?}", address);
-                                                let patch = backend
-                                                    .lock()
-                                                    .await
-                                                    .receive_sync_message(peer_id.clone(), sync_message).await;
-
-                                                if patch.is_some() {
-                                                    sender.send(()).unwrap();
-                                                }
-
-                                                send_message(&mut backend, peer_id.clone(), address, &mut tx).await
-                                            }
-                                        }
-                                    } else if msg.is_close() {
-                                        tracing::debug!("close");
-                                        break
-                                    } else if msg.is_ping() {
-                                        // nothing to do as handled by underlying implementation
-                                    } else {
-                                        tracing::warn!("unhandled message {:?}", msg);
-                                    }
-                                },
-
-                                Ok(()) = receiver.recv() => {
-                                    send_message(&mut backend, peer_id.clone(), address, &mut tx).await
-                                },
-
-                                else => break,
-                            }
-                        }
-
-                        backend.lock().await.reset_sync_state(&peer_id).await;
-                    })
-                }
-            })
-            .with(sync_log);
+        .and(auth(options.kratos_url.clone()))
+        .and(warp::ws())
+        .and(with_backends(backends))
+        .and(with_db_client(postgres_client))
+        .and(with_watch_channel(sender))
+        .and(remote())
+        .map(handle_sync_connection)
+        .with(sync_log);
 
     let static_files_dir = options.static_files_dir.join("tasknet");
     let statics = warp::any().and(warp::fs::dir(static_files_dir).with(tasknet_log));
