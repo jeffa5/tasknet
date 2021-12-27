@@ -25,3 +25,5 @@ uuid = { version = "0.8.2", features = ["v4", "serde"] }
 warp-reverse-proxy = "0.4.0"
 reqwest = { version = "0.11.8", features = ["json", "cookies"] }
 kratos-api = { path = "../kratos-api" }
+postgres-native-tls = "0.5.0"
+native-tls = "0.2.8"

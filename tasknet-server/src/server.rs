@@ -1,6 +1,10 @@
-use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap, convert::Infallible, fs, net::SocketAddr, sync::Arc, time::Duration,
+};
 
 use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
+use native_tls::{Certificate, TlsConnector};
+use postgres_native_tls::MakeTlsConnector;
 use rand::Rng;
 use reqwest::redirect::Policy;
 use tokio::{
@@ -8,7 +12,6 @@ use tokio::{
     signal::unix::SignalKind,
     sync::{broadcast, watch, Mutex},
 };
-use tokio_postgres::NoTls;
 use tracing::{info, warn};
 use warp::{
     addr::remote,
@@ -87,15 +90,25 @@ async fn connect_to_db(options: &Options) -> tokio_postgres::Client {
         .host(&options.db_host)
         .dbname(&options.db_name)
         .user(&options.db_user)
-        .password(&options.db_password);
+        .password(&options.db_password)
+        .ssl_mode(tokio_postgres::config::SslMode::Require);
 
     let mut backoff = 0;
     let retry_interval = 100;
+    let tls = {
+        let cert = fs::read(&options.db_ca_path).expect("Failed to read certificate");
+        let cert = Certificate::from_pem(&cert).expect("Failed to parse certificate as pem");
+        let connector = TlsConnector::builder()
+            .add_root_certificate(cert)
+            .build()
+            .expect("Failed to build tlsconnector");
+        MakeTlsConnector::new(connector)
+    };
     let (postgres_client, connection) = loop {
-        match postgres_config.connect(NoTls).await {
+        match postgres_config.connect(tls.clone()).await {
             Ok(v) => break v,
             Err(e) => {
-                tracing::warn!(error=%e, "Failed to connect to database");
+                tracing::error!(error=%e, "Failed to connect to database");
                 backoff += 1;
                 backoff = std::cmp::min(backoff, 4);
                 let duration_millis =

@@ -2,23 +2,59 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: tasknet
-  name: tasknet
+    app.kubernetes.io/name: {{ .Chart.Name }}
+  name: {{ .Chart.Name }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: tasknet
+      app.kubernetes.io/name: {{ .Chart.Name }}
   strategy: {}
   template:
     metadata:
       creationTimestamp: null
       labels:
-        app: tasknet
+        app.kubernetes.io/name: {{ .Chart.Name }}
     spec:
       containers:
       - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        args:
+        - --db-ca-path
+        - /dbcerts/ca.crt
         name: {{ .Chart.Name }}
         env:
         - name: RUST_LOG
           value: info
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Chart.Name }}-pguser-{{ .Chart.Name }}
+              key: host
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Chart.Name }}-pguser-{{ .Chart.Name }}
+              key: port
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Chart.Name }}-pguser-{{ .Chart.Name }}
+              key: user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Chart.Name }}-pguser-{{ .Chart.Name }}
+              key: password
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Chart.Name }}-pguser-{{ .Chart.Name }}
+              key: dbname
+        volumeMounts:
+        - name: dbcerts
+          mountPath: "/dbcerts"
+          readOnly: true
+      volumes:
+      - name: dbcerts
+        secret:
+          secretName: {{ .Chart.Name }}-cluster-cert

@@ -14,16 +14,18 @@ pub struct Options {
     pub cert_file: PathBuf,
     #[clap(long, default_value = "tasknet-web/local")]
     pub static_files_dir: PathBuf,
-    #[clap(long, default_value = "localhost")]
+    #[clap(long, default_value = "localhost", env)]
     pub db_host: String,
-    #[clap(long, default_value = "5432")]
+    #[clap(long, default_value = "5432", env)]
     pub db_port: u16,
-    #[clap(long, default_value = "username")]
+    #[clap(long, default_value = "username", env)]
     pub db_user: String,
-    #[clap(long, default_value = "password", env = "DB_PASSWORD", setting = clap::ArgSettings::HideEnvValues)]
+    #[clap(long, default_value = "password", env)]
     pub db_password: String,
-    #[clap(long, default_value = "tasknet")]
+    #[clap(long, default_value = "tasknet", env)]
     pub db_name: String,
+    #[clap(long, env)]
+    pub db_ca_path: PathBuf,
     #[clap(long, default_value = "http://kratos:4433/")]
     pub kratos_url: String,
 }
