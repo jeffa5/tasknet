@@ -16,7 +16,6 @@ use tracing::{info, warn};
 use warp::{
     addr::remote,
     hyper::Uri,
-    path::FullPath,
     reject::MissingCookie,
     reply,
     ws::{Message, WebSocket},
@@ -106,7 +105,15 @@ async fn connect_to_db(options: &Options) -> tokio_postgres::Client {
     };
     let (postgres_client, connection) = loop {
         match postgres_config.connect(tls.clone()).await {
-            Ok(v) => break v,
+            Ok(v) => {
+                info!(
+                    host = %options.db_host,
+                    port = %options.db_port,
+                    name = %options.db_name,
+                    "Connected to DB"
+                );
+                break v;
+            }
             Err(e) => {
                 tracing::error!(error=%e, "Failed to connect to database");
                 backoff += 1;
