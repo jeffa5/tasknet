@@ -1,11 +1,6 @@
-use std::{
-    collections::HashMap, convert::Infallible, fs, net::SocketAddr, sync::Arc, time::Duration,
-};
+use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Arc};
 
 use futures_util::{stream::SplitSink, SinkExt, StreamExt};
-use native_tls::{Certificate, TlsConnector};
-use postgres_native_tls::MakeTlsConnector;
-use rand::Rng;
 use reqwest::redirect::Policy;
 use tokio::{
     select,
@@ -23,7 +18,7 @@ use warp::{
 };
 use warp_reverse_proxy::{reverse_proxy_filter, CLIENT as PROXY_CLIENT};
 
-use crate::{auth::auth, backend::Backend, options::Options};
+use crate::{auth::auth, backend::Backend, db::connect_to_db, options::Options};
 
 #[derive(Debug)]
 pub(crate) enum ApiError {
@@ -80,58 +75,6 @@ fn with_watch_channel(
     Error = Infallible,
 > + Clone {
     warp::any().map(move || (sender.clone(), sender.subscribe()))
-}
-
-async fn connect_to_db(options: &Options) -> tokio_postgres::Client {
-    let mut postgres_config = tokio_postgres::Config::default();
-    postgres_config
-        .port(options.db_port)
-        .host(&options.db_host)
-        .dbname(&options.db_name)
-        .user(&options.db_user)
-        .password(&options.db_password)
-        .ssl_mode(tokio_postgres::config::SslMode::Require);
-
-    let mut backoff = 0;
-    let retry_interval = 100;
-    let tls = {
-        let cert = fs::read(&options.db_ca_path).expect("Failed to read certificate");
-        let cert = Certificate::from_pem(&cert).expect("Failed to parse certificate as pem");
-        let connector = TlsConnector::builder()
-            .add_root_certificate(cert)
-            .build()
-            .expect("Failed to build tlsconnector");
-        MakeTlsConnector::new(connector)
-    };
-    let (postgres_client, connection) = loop {
-        match postgres_config.connect(tls.clone()).await {
-            Ok(v) => {
-                info!(
-                    host = %options.db_host,
-                    port = %options.db_port,
-                    name = %options.db_name,
-                    "Connected to DB"
-                );
-                break v;
-            }
-            Err(e) => {
-                tracing::error!(error=%e, "Failed to connect to database");
-                backoff += 1;
-                backoff = std::cmp::min(backoff, 4);
-                let duration_millis =
-                    retry_interval * rand::thread_rng().gen_range(0..(2_u64.pow(backoff)));
-                tokio::time::sleep(Duration::from_millis(duration_millis)).await
-            }
-        }
-    };
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            tracing::error!(error=?e, "connection closed");
-        }
-    });
-
-    postgres_client
 }
 
 fn handle_sync_connection(

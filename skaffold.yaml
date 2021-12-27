@@ -2,7 +2,12 @@ apiVersion: skaffold/v2beta12
 kind: Config
 build:
   artifacts:
-    - image: jeffas/tasknet
+    - image: jeffas/tasknet-server
+      docker:
+        dockerfile: Dockerfile
+    - image: jeffas/tasknet-server-migrator
+      docker:
+        dockerfile: Dockerfile.migrator
   local:
     useBuildkit: true
     push: true
@@ -12,6 +17,7 @@ deploy:
     - name: tasknet
       chartPath: deploy/chart
       artifactOverrides:
-        image: jeffas/tasknet
+        image: jeffas/tasknet-server
+        migratorImage: jeffas/tasknet-server-migrator
       imageStrategy:
         helm: {}

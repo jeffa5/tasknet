@@ -13,6 +13,11 @@ spec:
         resources:
           requests:
             storage: 1Gi
+  patroni:
+    dynamicConfiguration:
+      postgresql:
+        pg_hba:
+        - "hostnossl all all all md5" # look into disabling this once refinery can handle tls
   backups:
     pgbackrest:
       image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbackrest:centos8-2.36-0

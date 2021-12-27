@@ -16,11 +16,21 @@ spec:
       labels:
         app.kubernetes.io/name: {{ .Chart.Name }}
     spec:
+      initContainers:
+      - image: {{ .Values.migratorImage.repository }}:{{ .Values.migratorImage.tag }}
+        name: migrator
+        env:
+        - name: DB_URI
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Chart.Name }}-pguser-{{ .Chart.Name }}
+              key: uri
+
       containers:
       - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
-        args:
-        - --db-ca-path
-        - /dbcerts/ca.crt
+        #args:
+        #- --db-ca-path
+        #- /dbcerts/ca.crt
         name: {{ .Chart.Name }}
         ports:
         - containerPort: 8080

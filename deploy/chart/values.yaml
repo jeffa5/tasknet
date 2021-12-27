@@ -3,6 +3,11 @@ image:
   tag: 0.1.0
   pullPolicy: IfNotPresent
 
+migratorImage:
+  repository: jeffas/tasknet
+  tag: 0.1.0
+  pullPolicy: IfNotPresent
+
 kratos:
   kratos:
     config:

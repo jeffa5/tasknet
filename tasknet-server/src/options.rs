@@ -19,7 +19,7 @@ pub struct Options {
     #[clap(long, default_value = "tasknet", env)]
     pub db_name: String,
     #[clap(long, env)]
-    pub db_ca_path: PathBuf,
+    pub db_ca_path: Option<PathBuf>,
     #[clap(long, default_value = "http://kratos:4433/")]
     pub kratos_url: String,
 }

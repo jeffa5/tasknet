@@ -3,6 +3,7 @@ use options::Options;
 
 mod auth;
 mod backend;
+mod db;
 mod options;
 mod server;
 

@@ -1,0 +1,5 @@
+FROM ghcr.io/rust-db/refinery:main
+
+COPY ./tasknet-server/db /migrations
+
+CMD ["migrate", "-e", "DB_URI", "-p", "/migrations"]
