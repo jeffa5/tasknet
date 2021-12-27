@@ -2,7 +2,7 @@ use std::{
     collections::HashMap, convert::Infallible, fs, net::SocketAddr, sync::Arc, time::Duration,
 };
 
-use futures_util::{future::join_all, stream::SplitSink, SinkExt, StreamExt};
+use futures_util::{stream::SplitSink, SinkExt, StreamExt};
 use native_tls::{Certificate, TlsConnector};
 use postgres_native_tls::MakeTlsConnector;
 use rand::Rng;
@@ -259,47 +259,16 @@ pub async fn run(options: Options) {
         .or(root_redirect)
         .recover(handle_rejection);
 
-    let https_listen_address = options.https_listen_address;
-
     let http_listen_address = options.http_listen_address;
-    let https_listen_address_2 = options.https_listen_address;
 
-    let (shutdown_tx, mut shutdown_rx) = watch::channel(());
+    let (shutdown_tx, shutdown_rx) = watch::channel(());
 
     let mut shutdown_rx_1 = shutdown_rx.clone();
-    let (_, https_server) = warp::serve(routes)
-        .tls()
-        .cert_path(options.cert_file)
-        .key_path(options.key_file)
-        .bind_with_graceful_shutdown(https_listen_address, async move {
+    let (_, http_server) =
+        warp::serve(routes).bind_with_graceful_shutdown(http_listen_address, async move {
             let _ = shutdown_rx_1.changed().await;
-            info!("Shutting down https server");
+            info!("Shutting down http server");
         });
-    let https_server = tokio::spawn(async move {
-        https_server.await;
-    });
-    info!(address = %https_listen_address, "Started https server");
-
-    // redirect to https
-    let (_, http_server) = warp::serve(warp::path::full().and(warp::query::raw()).map(
-        move |path: FullPath, query: String| {
-            warp::redirect({
-                let address = format!(
-                    "https://{}{}?{}",
-                    https_listen_address_2,
-                    path.as_str(),
-                    query
-                );
-                tracing::warn!("redirecting to {:?}", address);
-                // path always starts with '/', even if it was empty
-                Uri::from_maybe_shared(address).unwrap()
-            })
-        },
-    ))
-    .bind_with_graceful_shutdown(http_listen_address, async move {
-        let _ = shutdown_rx.changed().await;
-        info!("Shutting down http server");
-    });
     let http_server = tokio::spawn(async move {
         http_server.await;
     });
@@ -323,7 +292,7 @@ pub async fn run(options: Options) {
     info!("Shutting down");
     let _ = shutdown_tx.send(());
 
-    join_all(vec![https_server, http_server]).await;
+    http_server.await.unwrap()
 }
 
 async fn send_message(
