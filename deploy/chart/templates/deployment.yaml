@@ -22,6 +22,8 @@ spec:
         - --db-ca-path
         - /dbcerts/ca.crt
         name: {{ .Chart.Name }}
+        ports:
+        - containerPort: 8080
         env:
         - name: RUST_LOG
           value: info
