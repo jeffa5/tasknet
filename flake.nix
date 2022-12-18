@@ -6,14 +6,24 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
-  outputs = { self, nixpkgs, rust-overlay }:
-    with import nixpkgs { overlays = [ rust-overlay.overlay ]; system = "x86_64-linux"; };
+  outputs = {
+    self,
+    nixpkgs,
+    rust-overlay,
+  }: let
+    system = "x86_64-linux";
+  in
+    with import nixpkgs
     {
-      devShell.x86_64-linux = mkShell {
+      inherit system;
+      overlays = [rust-overlay.overlays.default];
+    }; {
+      formatter.${system} = pkgs.alejandra;
+      devShells.${system}.default = mkShell {
         buildInputs = [
-          (rust-bin.nightly.latest.rust.override {
-            extensions = [ "rust-src" ];
-            targets = [ "wasm32-unknown-unknown" ];
+          (rust-bin.nightly.latest.default.override {
+            extensions = ["rust-src"];
+            targets = ["wasm32-unknown-unknown"];
           })
           cargo-edit
           cargo-fuzz
@@ -22,9 +32,6 @@
           wasm-pack
           pkgconfig
           openssl
-
-          rnix-lsp
-          nixpkgs-fmt
         ];
       };
     };
