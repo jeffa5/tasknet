@@ -69,7 +69,7 @@ jobs:
     - name: Install trunk
       run: wget -qO- https://github.com/thedodd/trunk/releases/download/v0.16.0/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
     - name: Build package
-      run: ./trunk build
+      run: ./trunk build --release --public-url "/tasknet"
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
       with:
