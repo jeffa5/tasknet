@@ -21,13 +21,14 @@
       formatter.${system} = pkgs.alejandra;
       devShells.${system}.default = mkShell {
         buildInputs = [
-          (rust-bin.nightly.latest.default.override {
+          (rust-bin.stable.latest.default.override {
             extensions = ["rust-src"];
             targets = ["wasm32-unknown-unknown"];
           })
           cargo-edit
           cargo-fuzz
           cargo-make
+          trunk
           cargo-watch
           wasm-pack
           pkgconfig
