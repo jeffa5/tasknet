@@ -330,7 +330,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                                 .iter()
                                 .any(|input_tag| saved_tag.contains(input_tag)))
                     {
-                        Some(saved_tag.to_owned())
+                        Some(saved_tag.clone())
                     } else {
                         None
                     }
@@ -375,7 +375,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
             div![
                 C!["pl-2"],
                 span![C!["font-bold"], "Urgency: "],
-                plain![format!("{:.2}", urgency)]
+                plain![format!("{urgency:.2}")]
             ]
         } else {
             empty![]
@@ -451,20 +451,18 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                             mouse_ev(Ev::Click, move |_| {
                                 if tags.ends_with(' ') || tags.is_empty() {
                                     GMsg::ViewTask(Msg::SelectedTaskTagsChanged(format!(
-                                        "{} {}",
-                                        tags, sug_clone
+                                        "{tags} {sug_clone}"
                                     )))
                                 } else {
                                     let split_tags = tags.split_whitespace().collect::<Vec<_>>();
                                     let tags = split_tags
                                         .iter()
                                         .take(split_tags.len() - 1)
-                                        .map(|s| s.to_owned())
+                                        .map(std::borrow::ToOwned::to_owned)
                                         .collect::<Vec<_>>()
                                         .join(" ");
                                     GMsg::ViewTask(Msg::SelectedTaskTagsChanged(format!(
-                                        "{} {}",
-                                        tags, sug_clone
+                                        "{tags} {sug_clone}"
                                     )))
                                 }
                             }),
@@ -495,7 +493,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                     option![
                         attrs! {
                             At::Value => "L",
-                            At::Selected => if let Some(Priority::Low) = task.priority() {
+                            At::Selected => if matches!(task.priority(), Some(Priority::Low)) {
                                 AtValue::None
                             } else {
                                 AtValue::Ignored
@@ -506,7 +504,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                     option![
                         attrs! {
                             At::Value => "M",
-                            At::Selected => if let Some(Priority::Medium)  = task.priority() {
+                            At::Selected => if matches!(task.priority(), Some(Priority::Medium)) {
                                 AtValue::None
                             } else {
                                 AtValue::Ignored
@@ -517,7 +515,7 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                     option![
                         attrs! {
                             At::Value => "H",
-                            At::Selected => if let Some(Priority::High) = task.priority() {
+                            At::Selected => if matches!(task.priority(), Some(Priority::High)) {
                                 AtValue::None
                             } else {
                                 AtValue::Ignored

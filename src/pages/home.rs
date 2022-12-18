@@ -53,7 +53,7 @@ enum SortDirection {
     Descending,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Field {
     Age,
     Due,
@@ -172,8 +172,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                         if name.to_lowercase() == "custom" {
                             window()
                                 .alert_with_message(&format!(
-                                    "Cannot use name '{}' for context",
-                                    name
+                                    "Cannot use name '{name}' for context"
                                 ))
                                 .unwrap_or_else(|e| log!(e))
                         } else {
@@ -254,10 +253,10 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
             urgency: urgency::calculate(t),
             uuid: t.uuid(),
             tags: t.tags().to_owned(),
-            priority: t.priority().to_owned(),
+            priority: t.priority().clone(),
             active: t.start().is_some(),
-            due: t.due().to_owned(),
-            scheduled: t.scheduled().to_owned(),
+            due: *t.due(),
+            scheduled: *t.scheduled(),
         })
         .collect::<Vec<_>>();
 
@@ -348,7 +347,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
                     td![
                         C!["border-l-2", "text-center", "px-2"],
                         if let Some(urgency) = t.urgency {
-                            plain![format!("{:.2}", urgency)]
+                            plain![format!("{urgency:.2}")]
                         } else {
                             empty![]
                         }

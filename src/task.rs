@@ -234,7 +234,7 @@ impl Task {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Recur {
     pub amount: u16,
     pub unit: RecurUnit,
@@ -246,7 +246,7 @@ impl Recur {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RecurUnit {
     Year,
     Month,
