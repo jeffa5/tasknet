@@ -78,7 +78,7 @@ pub fn update(
                         .split('.')
                         .map(std::borrow::ToOwned::to_owned)
                         .collect()
-                })
+                });
             }
         }
         Msg::SelectedTaskTagsChanged(new_tags) => {
@@ -92,10 +92,10 @@ pub fn update(
                         .map(|s| s.trim().to_owned())
                         .collect();
                     if new_end {
-                        tags.push(String::new())
+                        tags.push(String::new());
                     }
                     tags
-                })
+                });
             }
         }
         Msg::SelectedTaskPriorityChanged(new_priority) => {
@@ -108,7 +108,7 @@ pub fn update(
         }
         Msg::SelectedTaskNotesChanged(new_notes) => {
             if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
-                task.set_notes(new_notes)
+                task.set_notes(new_notes);
             }
         }
         Msg::SelectedTaskDueDateChanged(new_date) => {
@@ -128,7 +128,7 @@ pub fn update(
                                     .with_year(new_date.year())
                                     .and_then(|due| due.with_month(new_date.month()))
                                     .and_then(|due| due.with_day(new_date.day()));
-                                task.set_due(due)
+                                task.set_due(due);
                             }
                         }
                     }
@@ -148,13 +148,13 @@ pub fn update(
                                 let now = now
                                     .with_hour(new_time.hour())
                                     .and_then(|now| now.with_minute(new_time.minute()));
-                                task.set_due(now)
+                                task.set_due(now);
                             }
                             Some(due) => {
                                 let due = due
                                     .with_hour(new_time.hour())
                                     .and_then(|due| due.with_minute(new_time.minute()));
-                                task.set_due(due)
+                                task.set_due(due);
                             }
                         }
                     }
@@ -179,7 +179,7 @@ pub fn update(
                                     .with_year(new_date.year())
                                     .and_then(|scheduled| scheduled.with_month(new_date.month()))
                                     .and_then(|scheduled| scheduled.with_day(new_date.day()));
-                                task.set_scheduled(scheduled)
+                                task.set_scheduled(scheduled);
                             }
                         }
                     }
@@ -199,13 +199,13 @@ pub fn update(
                                 let now = now
                                     .with_hour(new_time.hour())
                                     .and_then(|now| now.with_minute(new_time.minute()));
-                                task.set_scheduled(now)
+                                task.set_scheduled(now);
                             }
                             Some(scheduled) => {
                                 let scheduled = scheduled
                                     .with_hour(new_time.hour())
                                     .and_then(|scheduled| scheduled.with_minute(new_time.minute()));
-                                task.set_scheduled(scheduled)
+                                task.set_scheduled(scheduled);
                             }
                         }
                     }
@@ -220,9 +220,9 @@ pub fn update(
                         task.set_recur(Some(Recur {
                             amount: n,
                             unit: task.recur().as_ref().map_or(RecurUnit::Week, |r| r.unit),
-                        }))
+                        }));
                     } else {
-                        task.set_recur(None)
+                        task.set_recur(None);
                     }
                 }
             }
@@ -260,25 +260,25 @@ pub fn update(
         Msg::CompleteSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
-                task.complete()
+                task.complete();
             }
         }
         Msg::StartSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
-                task.activate()
+                task.activate();
             }
         }
         Msg::StopSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
-                task.deactivate()
+                task.deactivate();
             }
         }
         Msg::MoveSelectedTaskToPending => {
             orders.request_url(Urls::new(&global_model.base_url).home());
             if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
-                task.restore()
+                task.restore();
             }
         }
         Msg::EscapeKey => {
@@ -371,34 +371,35 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                 Status::Recurring => "Recurring",
             }
         ],
-        if let Some(urgency) = urgency {
-            div![
-                C!["pl-2"],
-                span![C!["font-bold"], "Urgency: "],
-                plain![format!("{urgency:.2}")]
-            ]
-        } else {
-            empty![]
-        },
+        urgency.map_or_else(
+            || empty![],
+            |urgency| {
+                div![
+                    C!["pl-2"],
+                    span![C!["font-bold"], "Urgency: "],
+                    plain![format!("{urgency:.2}")]
+                ]
+            }
+        ),
         div![
             C!["pl-2"],
             span![C!["font-bold"], "Entry: "],
             task.entry().to_string()
         ],
-        if let Some(start) = start {
-            div![
-                C!["pl-2"],
-                span![C!["font-bold"], "Start: "],
-                start.to_string()
-            ]
-        } else {
-            empty![]
-        },
-        if let Some(end) = end {
-            div![C!["pl-2"], span![C!["font-bold"], "End: "], end.to_string()]
-        } else {
-            empty![]
-        },
+        start.map_or_else(
+            || empty![],
+            |start| {
+                div![
+                    C!["pl-2"],
+                    span![C!["font-bold"], "Start: "],
+                    start.to_string()
+                ]
+            }
+        ),
+        end.map_or_else(
+            || empty![],
+            |end| { div![C!["pl-2"], span![C!["font-bold"], "End: "], end.to_string()] }
+        ),
         view_text_input(
             "Description",
             task.description(),
@@ -553,14 +554,15 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                         Msg::SelectedTaskDueTimeChanged(s)
                     ))
                 ],
-                if let Some(due) = task.due() {
-                    span![
-                        C!["ml-2"],
-                        duration_string(due.signed_duration_since(chrono::offset::Utc::now()))
-                    ]
-                } else {
-                    empty![]
-                }
+                task.due().map_or_else(
+                    || empty![],
+                    |due| {
+                        span![
+                            C!["ml-2"],
+                            duration_string(due.signed_duration_since(chrono::offset::Utc::now()))
+                        ]
+                    }
+                )
             ]
         ],
         div![
@@ -587,16 +589,17 @@ fn view_selected_task(task: &Task, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GM
                         Msg::SelectedTaskScheduledTimeChanged(s)
                     ))
                 ],
-                if let Some(scheduled) = task.scheduled() {
-                    span![
-                        C!["ml-2"],
-                        duration_string(
-                            scheduled.signed_duration_since(chrono::offset::Utc::now())
-                        )
-                    ]
-                } else {
-                    empty![]
-                }
+                task.scheduled().map_or_else(
+                    || empty![],
+                    |scheduled| {
+                        span![
+                            C!["ml-2"],
+                            duration_string(
+                                scheduled.signed_duration_since(chrono::offset::Utc::now())
+                            )
+                        ]
+                    }
+                )
             ]
         ],
         div![

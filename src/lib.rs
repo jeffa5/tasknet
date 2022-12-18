@@ -116,20 +116,21 @@ impl Page {
         orders: &mut impl Orders<Msg>,
     ) -> Self {
         match url.next_hash_path_part() {
-            Some(VIEW_TASK) => match url.next_hash_path_part() {
-                Some(uuid) => {
-                    if let Ok(uuid) = uuid::Uuid::parse_str(uuid) {
-                        if tasks.get(&uuid).is_some() {
-                            Self::ViewTask(pages::view_task::init(uuid, orders))
-                        } else {
-                            Self::Home(pages::home::init())
-                        }
-                    } else {
-                        Self::Home(pages::home::init())
-                    }
-                }
-                None => Self::Home(pages::home::init()),
-            },
+            Some(VIEW_TASK) => url.next_hash_path_part().map_or_else(
+                || Self::Home(pages::home::init()),
+                |uuid| {
+                    uuid::Uuid::parse_str(uuid).map_or_else(
+                        |_| Self::Home(pages::home::init()),
+                        |uuid| {
+                            if tasks.get(&uuid).is_some() {
+                                Self::ViewTask(pages::view_task::init(uuid, orders))
+                            } else {
+                                Self::Home(pages::home::init())
+                            }
+                        },
+                    )
+                },
+            ),
             None | Some(_) => Self::Home(pages::home::init()),
         }
     }
@@ -205,7 +206,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
-            model.page = Page::init(url, &model.global.tasks, orders)
+            model.page = Page::init(url, &model.global.tasks, orders);
         }
         Msg::ImportTasks => match window().prompt_with_message("Paste the tasks json here") {
             Ok(Some(content)) => {
@@ -247,12 +248,12 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {
-                pages::view_task::update(msg, &mut model.global, lm, orders)
+                pages::view_task::update(msg, &mut model.global, lm, orders);
             }
         }
         Msg::Home(msg) => {
             if let Page::Home(lm) = &mut model.page {
-                pages::home::update(msg, lm, orders)
+                pages::home::update(msg, lm, orders);
             }
         }
     }

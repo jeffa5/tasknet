@@ -48,7 +48,7 @@ pub struct Task {
     depends: HashSet<uuid::Uuid>,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     #[serde(default)]
-    udas: HashMap<String, UDA>,
+    udas: HashMap<String, Uda>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -129,7 +129,7 @@ impl Task {
     }
 
     pub fn set_description(&mut self, description: String) {
-        self.description = description
+        self.description = description;
     }
 
     pub fn project(&self) -> &[String] {
@@ -137,7 +137,7 @@ impl Task {
     }
 
     pub fn set_project(&mut self, project: Vec<String>) {
-        self.project = project
+        self.project = project;
     }
 
     pub const fn due(&self) -> &Option<DateTime> {
@@ -145,7 +145,7 @@ impl Task {
     }
 
     pub fn set_due(&mut self, due: Option<DateTime>) {
-        self.due = due
+        self.due = due;
     }
 
     pub const fn scheduled(&self) -> &Option<DateTime> {
@@ -153,7 +153,7 @@ impl Task {
     }
 
     pub fn set_scheduled(&mut self, scheduled: Option<DateTime>) {
-        self.scheduled = scheduled
+        self.scheduled = scheduled;
     }
 
     pub const fn recur(&self) -> &Option<Recur> {
@@ -164,22 +164,22 @@ impl Task {
         match recur {
             None => {
                 if self.status == Status::Recurring {
-                    self.status = Status::Pending
+                    self.status = Status::Pending;
                 }
             }
             Some(_) => self.status = Status::Recurring,
         }
-        self.recur = recur
+        self.recur = recur;
     }
 
     pub fn complete(&mut self) {
         self.end = Some(now());
-        self.status = Status::Completed
+        self.status = Status::Completed;
     }
 
     pub fn delete(&mut self) {
         self.end = Some(now());
-        self.status = Status::Deleted
+        self.status = Status::Deleted;
     }
 
     pub fn restore(&mut self) {
@@ -194,7 +194,7 @@ impl Task {
     }
 
     pub fn set_tags(&mut self, tags: Vec<String>) {
-        self.tags = tags
+        self.tags = tags;
     }
 
     pub const fn priority(&self) -> &Option<Priority> {
@@ -202,11 +202,11 @@ impl Task {
     }
 
     pub fn set_priority(&mut self, priority: Option<Priority>) {
-        self.priority = priority
+        self.priority = priority;
     }
 
     pub fn set_notes(&mut self, notes: String) {
-        self.notes = notes
+        self.notes = notes;
     }
 
     pub fn notes(&self) -> &str {
@@ -226,11 +226,11 @@ impl Task {
 
     pub fn activate(&mut self) {
         self.tags.retain(|t| *t != "next");
-        self.start = Some(now())
+        self.start = Some(now());
     }
 
     pub fn deactivate(&mut self) {
-        self.start = None
+        self.start = None;
     }
 }
 
@@ -313,7 +313,7 @@ impl std::convert::TryFrom<String> for Priority {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum UDA {
+pub enum Uda {
     Duration(String), // TODO: use custom newtype struct
     String(String),
     Number(f64),
@@ -333,14 +333,14 @@ mod tests {
         task.set_priority(Some(Priority::Medium));
         let s = serde_json::to_string(&task).unwrap();
         let t = serde_json::from_str(&s).unwrap();
-        assert_eq!(task, t)
+        assert_eq!(task, t);
     }
 
     #[test]
     fn test_parse_json_format_string() {
         let json = r#"{"status":"completed","uuid":"2aa2717d-715f-4a74-9014-1ad4175bbbdc","entry":"2020-12-30T20:05:27.108Z","description":"Add uncomplete for completed tasks","end":"2020-12-31T11:10:42.123Z","project":["tasknet","ui"],"modified":"2020-12-31T11:10:42.123Z"}"#;
         let parsed = serde_json::from_str::<Task>(json);
-        assert!(parsed.is_ok(), "{:?}", parsed)
+        assert!(parsed.is_ok(), "{:?}", parsed);
     }
 
     #[test]
@@ -349,6 +349,6 @@ mod tests {
         let rendered = serde_json::to_string(&task).unwrap();
         let re = Regex::new(r#"\{"status":"pending","uuid":".*","entry":".*","description":""}"#)
             .unwrap();
-        assert!(re.is_match(&rendered), "{}", rendered)
+        assert!(re.is_match(&rendered), "{}", rendered);
     }
 }

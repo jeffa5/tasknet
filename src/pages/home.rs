@@ -111,29 +111,29 @@ pub enum Msg {
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
     match msg {
         Msg::FiltersStatusTogglePending => {
-            model.filters.status_pending = !model.filters.status_pending
+            model.filters.status_pending = !model.filters.status_pending;
         }
         Msg::FiltersStatusToggleDeleted => {
-            model.filters.status_deleted = !model.filters.status_deleted
+            model.filters.status_deleted = !model.filters.status_deleted;
         }
         Msg::FiltersStatusToggleCompleted => {
-            model.filters.status_completed = !model.filters.status_completed
+            model.filters.status_completed = !model.filters.status_completed;
         }
         Msg::FiltersStatusToggleWaiting => {
-            model.filters.status_waiting = !model.filters.status_waiting
+            model.filters.status_waiting = !model.filters.status_waiting;
         }
         Msg::FiltersStatusToggleRecurring => {
-            model.filters.status_recurring = !model.filters.status_recurring
+            model.filters.status_recurring = !model.filters.status_recurring;
         }
         Msg::FiltersPriorityToggleNone => {
-            model.filters.priority_none = !model.filters.priority_none
+            model.filters.priority_none = !model.filters.priority_none;
         }
         Msg::FiltersPriorityToggleLow => model.filters.priority_low = !model.filters.priority_low,
         Msg::FiltersPriorityToggleMedium => {
-            model.filters.priority_medium = !model.filters.priority_medium
+            model.filters.priority_medium = !model.filters.priority_medium;
         }
         Msg::FiltersPriorityToggleHigh => {
-            model.filters.priority_high = !model.filters.priority_high
+            model.filters.priority_high = !model.filters.priority_high;
         }
         Msg::FiltersProjectChanged(new_project) => {
             let new_project = new_project.trim();
@@ -156,13 +156,13 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                     .map(|s| s.trim().to_owned())
                     .collect();
                 if new_end {
-                    tags.push(String::new())
+                    tags.push(String::new());
                 }
                 tags
             }
         }
         Msg::FiltersDescriptionChanged(new_description) => {
-            model.filters.description_and_notes = new_description
+            model.filters.description_and_notes = new_description;
         }
         Msg::FiltersReset => model.filters = Filters::default(),
         Msg::FiltersSave => {
@@ -174,7 +174,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
                                 .alert_with_message(&format!(
                                     "Cannot use name '{name}' for context"
                                 ))
-                                .unwrap_or_else(|e| log!(e))
+                                .unwrap_or_else(|e| log!(e));
                         } else {
                             let current_filters = model.filters.clone();
                             model
@@ -195,7 +195,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
         }
         Msg::SelectedContextChanged(c) => {
             if let Some(filters) = model.contexts.get(&c) {
-                model.filters = filters.clone()
+                model.filters = filters.clone();
             }
         }
         Msg::ContextsRemove => {
@@ -333,24 +333,21 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
                     ]),
                     IF!(show_priority => td![
                         C!["border-l-2", "text-center", "px-2"],
-                        if let Some(p) = t.priority {
+                        t.priority.map_or_else(||empty![], |p| {
+
                             plain!(match p {
                                 Priority::Low => "L",
                                 Priority::Medium => "M",
                                 Priority::High => "H",
                             })
-                        } else {
-                            empty![]
-                        }
+                    })
                     ]),
                     td![C!["border-l-2", "text-left", "px-2"], &t.description],
                     td![
                         C!["border-l-2", "text-center", "px-2"],
-                        if let Some(urgency) = t.urgency {
+                        t.urgency.map_or_else(||empty![], |urgency| {
                             plain![format!("{urgency:.2}")]
-                        } else {
-                            empty![]
-                        }
+                        })
                     ]
                 ]
             })
