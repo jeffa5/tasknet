@@ -19,14 +19,14 @@ const CONTEXTS_STORAGE_KEY: &str = "tasknet-contexts";
 pub fn init() -> Model {
     let filters = match LocalStorage::get(FILTERS_STORAGE_KEY) {
         Ok(filters) => filters,
-        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
+        Err(seed::browser::web_storage::WebStorageError::JsonError(err)) => {
             panic!("failed to parse filters: {:?}", err)
         }
         Err(_) => Filters::default(),
     };
     let contexts = match LocalStorage::get(CONTEXTS_STORAGE_KEY) {
         Ok(contexts) => contexts,
-        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
+        Err(seed::browser::web_storage::WebStorageError::JsonError(err)) => {
             panic!("failed to parse filters: {:?}", err)
         }
         Err(_) => HashMap::new(),
@@ -87,7 +87,6 @@ impl Display for Field {
 }
 
 #[derive(Clone)]
-#[allow(clippy::pub_enum_variant_names)]
 pub enum Msg {
     FiltersStatusTogglePending,
     FiltersStatusToggleDeleted,

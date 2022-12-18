@@ -118,10 +118,11 @@ pub fn update(
                     Ok(new_date) => {
                         let due = task.due();
                         match due {
-                            None => task.set_due(Some(chrono::DateTime::from_utc(
-                                new_date.and_hms(0, 0, 0),
-                                chrono::Utc,
-                            ))),
+                            None => task.set_due(
+                                new_date
+                                    .and_hms_opt(0, 0, 0)
+                                    .map(|date| chrono::DateTime::from_utc(date, chrono::Utc)),
+                            ),
                             Some(due) => {
                                 let due = due
                                     .with_year(new_date.year())
@@ -168,10 +169,11 @@ pub fn update(
                     Ok(new_date) => {
                         let scheduled = task.scheduled();
                         match scheduled {
-                            None => task.set_scheduled(Some(chrono::DateTime::from_utc(
-                                new_date.and_hms(0, 0, 0),
-                                chrono::Utc,
-                            ))),
+                            None => task.set_scheduled(
+                                new_date
+                                    .and_hms_opt(0, 0, 0)
+                                    .map(|date| chrono::DateTime::from_utc(date, chrono::Utc)),
+                            ),
                             Some(scheduled) => {
                                 let scheduled = scheduled
                                     .with_year(new_date.year())

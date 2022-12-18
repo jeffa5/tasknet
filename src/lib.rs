@@ -39,7 +39,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
             .apply(JsFuture::from)
             .await;
         if let Err(e) = res {
-            log!("Error registering service worker:", e)
+            log!("Error registering service worker:", e);
         }
     });
 
@@ -49,7 +49,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .subscribe(Msg::UrlChanged);
     let tasks = match LocalStorage::get(TASKS_STORAGE_KEY) {
         Ok(tasks) => tasks,
-        Err(seed::browser::web_storage::WebStorageError::SerdeError(err)) => {
+        Err(seed::browser::web_storage::WebStorageError::JsonError(err)) => {
             panic!("failed to parse tasks: {:?}", err)
         }
         Err(_) => HashMap::new(),
@@ -193,11 +193,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     {
                         log!("old enough");
                         let new_child = r.new_child();
-                        new_tasks.push(new_child)
+                        new_tasks.push(new_child);
                     }
                 } else {
                     let new_child = r.new_child();
-                    new_tasks.push(new_child)
+                    new_tasks.push(new_child);
                 }
             }
             for t in new_tasks {
