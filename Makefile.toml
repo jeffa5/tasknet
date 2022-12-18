@@ -1,42 +1,5 @@
-[env]
-PORT = "8000"
-
 [config]
 skip_core_tasks = true
-
-# ---- LOCAL ----
-
-[tasks.local]
-description = "Build the site and move files to local/tasknet folder"
-dependencies = ["local_clean","build","local_pkg", "local_statics"]
-
-[tasks.local_serve]
-description = "Start server from local folder"
-install_crate = { crate_name = "microserver", binary = "microserver", test_arg = "-h" }
-command = "microserver"
-args = ["--port", "${PORT}", "local"]
-dependencies = ["local"]
-watch = true
-
-[tasks.local_clean]
-command = "rm"
-args = ["-rf", "local"]
-
-[tasks.local_pkg]
-script = [
-"mkdir -p local/tasknet/pkg",
-"cp pkg/package_bg.wasm local/tasknet/pkg/.",
-"cp pkg/package.js local/tasknet/pkg/.",
-]
-
-[tasks.local_statics]
-script = [
-"cp -r assets local/tasknet/.",
-"cp -r styles local/tasknet/.",
-"cp index.html local/tasknet/.",
-"cp service-worker.js local/tasknet/.",
-"cp tasknet.webmanifest local/tasknet/.",
-]
 
 # ---- BASIC ----
 
