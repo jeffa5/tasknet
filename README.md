@@ -3,5 +3,5 @@
 ## Run locally
 
 ```shell
-trunk serve
+cd web && trunk serve
 ```
