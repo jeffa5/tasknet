@@ -48,8 +48,8 @@ impl Document {
     }
 
     pub fn load() -> Self {
-        let saved_document: String = LocalStorage::get(AUTODOC_STORAGE_KEY)
-            .map_or_else(|_| String::new(), |bytes| bytes);
+        let saved_document: String =
+            LocalStorage::get(AUTODOC_STORAGE_KEY).map_or_else(|_| String::new(), |bytes| bytes);
         let saved_document = base64::decode(saved_document).unwrap_or_default();
         let autodoc = AutoCommit::load(&saved_document).unwrap_or_else(|_| AutoCommit::new());
         let tasks = hydrate(&autodoc).unwrap();
