@@ -1,24 +1,25 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryFrom};
 
 use apply::Apply;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
 mod components;
+mod document;
 mod filters;
 mod pages;
 mod task;
 mod urgency;
 
 use components::view_button;
+use document::Document;
 use filters::Filters;
-use task::{Recur, Status, Task};
+use task::{Recur, Status, Task, TaskId};
 
 const VIEW_TASK: &str = "view";
-const TASKS_STORAGE_KEY: &str = "tasknet-tasks";
 
 // ------ ------
 //     Init
@@ -47,17 +48,11 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .stream(streams::interval(1000, || Msg::OnRenderTick))
         .stream(streams::interval(60000, || Msg::OnRecurTick))
         .subscribe(Msg::UrlChanged);
-    let tasks = match LocalStorage::get(TASKS_STORAGE_KEY) {
-        Ok(tasks) => tasks,
-        Err(seed::browser::web_storage::WebStorageError::JsonError(err)) => {
-            panic!("failed to parse tasks: {:?}", err)
-        }
-        Err(_) => HashMap::new(),
-    };
-    let page = Page::init(url.clone(), &tasks, orders);
+    let document = Document::load();
+    let page = Page::init(url.clone(), &document, orders);
     Model {
         global: GlobalModel {
-            tasks,
+            document,
             base_url: url.to_hash_base_url(),
         },
         page,
@@ -70,7 +65,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 
 #[derive(Debug)]
 pub struct GlobalModel {
-    tasks: HashMap<uuid::Uuid, Task>,
+    document: Document,
     base_url: Url,
 }
 
@@ -92,10 +87,10 @@ impl<'a> Urls<'a> {
     }
 
     #[must_use]
-    pub fn view_task(self, uuid: &uuid::Uuid) -> Url {
+    pub fn view_task(self, id: &TaskId) -> Url {
         self.base_url()
             .add_hash_path_part(VIEW_TASK)
-            .add_hash_path_part(uuid.to_string())
+            .add_hash_path_part(id.to_string())
     }
 }
 
@@ -110,20 +105,16 @@ enum Page {
 }
 
 impl Page {
-    fn init(
-        mut url: Url,
-        tasks: &HashMap<uuid::Uuid, Task>,
-        orders: &mut impl Orders<Msg>,
-    ) -> Self {
+    fn init(mut url: Url, document: &Document, orders: &mut impl Orders<Msg>) -> Self {
         match url.next_hash_path_part() {
             Some(VIEW_TASK) => url.next_hash_path_part().map_or_else(
                 || Self::Home(pages::home::init()),
-                |uuid| {
-                    uuid::Uuid::parse_str(uuid).map_or_else(
+                |id| {
+                    TaskId::try_from(id).map_or_else(
                         |_| Self::Home(pages::home::init()),
-                        |uuid| {
-                            if tasks.get(&uuid).is_some() {
-                                Self::ViewTask(pages::view_task::init(uuid, orders))
+                        |id| {
+                            if document.get_task(&id).is_some() {
+                                Self::ViewTask(pages::view_task::init(id, orders))
                             } else {
                                 Self::Home(pages::home::init())
                             }
@@ -142,7 +133,7 @@ impl Page {
 
 #[derive(Clone)]
 pub enum Msg {
-    SelectTask(Option<uuid::Uuid>),
+    SelectTask(Option<TaskId>),
     CreateTask,
     OnRenderTick,
     OnRecurTick,
@@ -160,20 +151,19 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::SelectTask(None) => {
             orders.request_url(Urls::new(&model.global.base_url).home());
         }
-        Msg::SelectTask(Some(uuid)) => {
-            orders.request_url(Urls::new(&model.global.base_url).view_task(&uuid));
+        Msg::SelectTask(Some(id)) => {
+            orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
         }
         Msg::CreateTask => {
-            let task = Task::new();
-            let id = task.uuid();
-            model.global.tasks.insert(task.uuid(), task);
+            let id = model.global.document.new_task();
             orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
             let recurring: Vec<_> = model
                 .global
-                .tasks
+                .document
+                .tasks()
                 .values()
                 .filter(|t| t.status() == &Status::Recurring)
                 .collect();
@@ -181,15 +171,16 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             for r in recurring {
                 let mut children: Vec<_> = model
                     .global
-                    .tasks
+                    .document
+                    .tasks()
                     .values()
-                    .filter(|t| t.parent().map_or(false, |p| p == r.uuid()))
+                    .filter(|t| t.parent().as_ref().map_or(false, |p| p == r.id()))
                     .collect();
                 children.sort_by_key(|c| c.entry());
                 let last_child = children.last();
                 if let Some(child) = last_child {
                     // if child's entry is older than the recurring duration, create a new child
-                    if chrono::offset::Utc::now() - *child.entry()
+                    if chrono::offset::Utc::now() - child.entry().0
                         > r.recur().as_ref().unwrap().duration()
                     {
                         log!("old enough");
@@ -202,28 +193,26 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
             }
             for t in new_tasks {
-                model.global.tasks.insert(t.uuid(), t);
+                model.global.document.update_task(t);
             }
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
-            model.page = Page::init(url, &model.global.tasks, orders);
+            model.page = Page::init(url, &model.global.document, orders);
         }
         Msg::ImportTasks => match window().prompt_with_message("Paste the tasks json here") {
-            Ok(Some(content)) => {
-                match serde_json::from_str::<HashMap<uuid::Uuid, Task>>(&content) {
-                    Ok(tasks) => {
-                        for (id, task) in tasks {
-                            model.global.tasks.insert(id, task);
-                        }
-                    }
-                    Err(e) => {
-                        log!(e);
-                        window()
-                            .alert_with_message("Failed to import tasks")
-                            .unwrap_or_else(|e| log!(e));
+            Ok(Some(content)) => match serde_json::from_str::<HashMap<TaskId, Task>>(&content) {
+                Ok(tasks) => {
+                    for task in tasks.into_values() {
+                        model.global.document.update_task(task);
                     }
                 }
-            }
+                Err(e) => {
+                    log!(e);
+                    window()
+                        .alert_with_message("Failed to import tasks")
+                        .unwrap_or_else(|e| log!(e));
+                }
+            },
             Ok(None) => {}
             Err(e) => {
                 log!(e);
@@ -233,7 +222,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         },
         Msg::ExportTasks => {
-            let json = serde_json::to_string(&model.global.tasks);
+            let json = serde_json::to_string(&model.global.document.tasks());
             match json {
                 Ok(json) => {
                     window()
@@ -257,8 +246,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
     }
-    LocalStorage::insert(TASKS_STORAGE_KEY, &model.global.tasks)
-        .expect("save tasks to LocalStorage");
+    model.global.document.save();
 }
 
 // ------ ------

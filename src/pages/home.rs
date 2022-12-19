@@ -9,7 +9,8 @@ use seed::{prelude::*, *};
 
 use crate::{
     components::{duration_string, view_button, view_checkbox, view_text_input},
-    task::{Priority, Status, Task},
+    document::Document,
+    task::{DateTime, Priority, Status, Task, TaskId},
     urgency, Filters, GlobalModel, Msg as GMsg,
 };
 
@@ -220,14 +221,15 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
 
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
-        view_filters(model, &global_model.tasks),
-        view_tasks(&global_model.tasks, model),
+        view_filters(model, &global_model.document),
+        view_tasks(&global_model.document, model),
     ]
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
-    let mut tasks: Vec<_> = tasks
+fn view_tasks(document: &Document, model: &Model) -> Node<GMsg> {
+    let mut tasks: Vec<_> = document
+        .tasks()
         .values()
         .filter(|t| model.filters.filter_task(t))
         .collect();
@@ -240,7 +242,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
     let tasks = tasks
         .iter()
         .map(|t| ViewableTask {
-            age: duration_string((chrono::offset::Utc::now()).signed_duration_since(*t.entry())),
+            age: duration_string((chrono::offset::Utc::now()).signed_duration_since(t.entry().0)),
             status: match t.status() {
                 Status::Pending => "Pending".to_owned(),
                 Status::Completed => "Completed".to_owned(),
@@ -251,12 +253,12 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
             project: t.project().to_owned(),
             description: t.description().to_owned(),
             urgency: urgency::calculate(t),
-            uuid: t.uuid(),
+            id: t.id().clone(),
             tags: t.tags().to_owned(),
             priority: t.priority().clone(),
             active: t.start().is_some(),
-            due: *t.due(),
-            scheduled: *t.scheduled(),
+            due: t.due().clone(),
+            scheduled: t.scheduled().clone(),
         })
         .collect::<Vec<_>>();
 
@@ -290,7 +292,7 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
                 ]
             ],
             tasks.into_iter().enumerate().map(|(i, t)| {
-                let id = t.uuid;
+                let id = t.id;
                 let is_next = t.tags.contains(&"next".to_owned());
                 tr![
                     C![
@@ -312,8 +314,8 @@ fn view_tasks(tasks: &HashMap<uuid::Uuid, Task>, model: &Model) -> Node<GMsg> {
                     ],
                     mouse_ev(Ev::Click, move |_| { GMsg::SelectTask(Some(id)) }),
                     td![C!["text-center", "px-2"], t.age.clone()],
-                    IF!(show_due => td![C!["border-l-2", "text-center", "px-2"], t.due.map(|due|duration_string(due.signed_duration_since(chrono::offset::Utc::now())))]),
-                    IF!(show_scheduled => td![C!["border-l-2", "text-center", "px-2"], t.scheduled.map(|scheduled|duration_string(scheduled.signed_duration_since(chrono::offset::Utc::now())))]),
+                    IF!(show_due => td![C!["border-l-2", "text-center", "px-2"], t.due.map(|due|duration_string(due.0.signed_duration_since(chrono::offset::Utc::now())))]),
+                    IF!(show_scheduled => td![C!["border-l-2", "text-center", "px-2"], t.scheduled.map(|scheduled|duration_string(scheduled.0.signed_duration_since(chrono::offset::Utc::now())))]),
                     IF!(show_status => td![C!["border-l-2","text-center", "px-2"], t.status]),
                     IF!(show_project => td![
                         C!["border-l-2", "text-left", "px-2"],
@@ -414,7 +416,7 @@ fn sort_viewable_task(sort_field: Field, t1: &Task, t2: &Task) -> Ordering {
 }
 
 struct ViewableTask {
-    uuid: uuid::Uuid,
+    id: TaskId,
     active: bool,
     status: String,
     age: String,
@@ -423,12 +425,12 @@ struct ViewableTask {
     tags: Vec<String>,
     priority: Option<Priority>,
     urgency: Option<f64>,
-    due: Option<chrono::DateTime<chrono::Utc>>,
-    scheduled: Option<chrono::DateTime<chrono::Utc>>,
+    due: Option<DateTime>,
+    scheduled: Option<DateTime>,
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> {
+fn view_filters(model: &Model, document: &Document) -> Node<GMsg> {
     let no_context_match = !model
         .contexts
         .values()
@@ -529,12 +531,13 @@ fn view_filters(model: &Model, tasks: &HashMap<uuid::Uuid, Task>) -> Node<GMsg> 
         ),
         div![
             C!["mr-2"],
-            tasks
+            document
+                .tasks()
                 .values()
                 .filter(|t| model.filters.filter_task(t))
                 .count(),
             "/",
-            tasks.len()
+            document.tasks().len()
         ],
         div![
             C!["flex", "flex-col"],
