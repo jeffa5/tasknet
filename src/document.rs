@@ -48,15 +48,17 @@ impl Document {
     }
 
     pub fn load() -> Self {
-        let saved_document: Vec<u8> =
-            LocalStorage::get(AUTODOC_STORAGE_KEY).map_or_else(|_| Vec::new(), |bytes| bytes);
+        let saved_document: String = LocalStorage::get(AUTODOC_STORAGE_KEY)
+            .map_or_else(|_| Default::default(), |bytes| bytes);
+        let saved_document = base64::decode(saved_document).unwrap_or_default();
         let autodoc = AutoCommit::load(&saved_document).unwrap_or_else(|_| AutoCommit::new());
         let tasks = hydrate(&autodoc).unwrap();
         Self { tasks, autodoc }
     }
 
     pub fn save(&mut self) {
-        LocalStorage::insert(AUTODOC_STORAGE_KEY, &self.autodoc.save())
-            .expect("save autodoc to LocalStorage");
+        let bytes = self.autodoc.save();
+        let bytes = base64::encode(bytes);
+        LocalStorage::insert(AUTODOC_STORAGE_KEY, &bytes).expect("save autodoc to LocalStorage");
     }
 }
