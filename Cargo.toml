@@ -22,6 +22,7 @@ uuid = {version = "1.2.2", features = ["serde", "v4"] }
 chrono = {version = "0.4.19", features = ["wasmbind","serde"]}
 apply = "0.3.0"
 automerge = "0.2.0"
+autosurgeon = "0.2.2"
 
 [dependencies.web-sys]
 version = "0.3.46"

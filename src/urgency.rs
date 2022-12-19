@@ -25,21 +25,21 @@ pub fn calculate(task: &Task) -> Option<f64> {
         Status::Deleted | Status::Completed | Status::Recurring => None,
         Status::Waiting => Some(
             WAITING_COEFFICIENT
-                + urgency_age(*task.entry())
+                + urgency_age(task.entry().0)
                 + urgency_project(task.project())
-                + urgency_due(task.due())
-                + urgency_scheduled(task.scheduled())
+                + urgency_due(&task.due().as_ref().map(|d| d.0))
+                + urgency_scheduled(&task.scheduled().as_ref().map(|d| d.0))
                 + urgency_tags(task.tags())
                 + urgency_next(task.tags())
                 + urgency_priority(task.priority())
                 + urgency_notes(task.notes()),
         ),
         Status::Pending => Some(
-            urgency_age(*task.entry())
+            urgency_age(task.entry().0)
                 + urgency_project(task.project())
-                + urgency_active(task.start())
-                + urgency_due(task.due())
-                + urgency_scheduled(task.scheduled())
+                + urgency_active(&task.start().as_ref().map(|d| d.0))
+                + urgency_due(&task.due().as_ref().map(|d| d.0))
+                + urgency_scheduled(&task.scheduled().as_ref().map(|d| d.0))
                 + urgency_tags(task.tags())
                 + urgency_next(task.tags())
                 + urgency_priority(task.priority())

@@ -1,19 +1,66 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryFrom,
+};
 
+use autosurgeon::{
+    reconcile::{MapReconciler, NoKey},
+    Reconcile,
+};
 use serde::{Deserialize, Serialize};
 
 // Based on https://taskwarrior.org/docs/design/task.html
 
 pub fn now() -> DateTime {
-    chrono::offset::Utc::now()
+    DateTime(chrono::offset::Utc::now())
 }
 
-type DateTime = chrono::DateTime<chrono::Utc>;
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
+pub struct DateTime(pub chrono::DateTime<chrono::Utc>);
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+impl Reconcile for DateTime {
+    type Key<'a> = NoKey;
+
+    fn reconcile<R: autosurgeon::Reconciler>(&self, mut reconciler: R) -> Result<(), R::Error> {
+        reconciler.timestamp(self.0.timestamp_millis())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Reconcile)]
+#[repr(transparent)]
+pub struct TaskId(String);
+
+impl TaskId {
+    fn new() -> Self {
+        Self(uuid::Uuid::new_v4().to_string())
+    }
+}
+
+impl AsRef<str> for TaskId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl ToString for TaskId {
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
+}
+
+impl TryFrom<&str> for TaskId {
+    type Error = uuid::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let u = uuid::Uuid::parse_str(value)?;
+        Ok(TaskId(u.to_string()))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Reconcile)]
 pub struct Task {
     status: Status,
-    uuid: uuid::Uuid,
+    id: TaskId,
     entry: DateTime,
     description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -29,7 +76,7 @@ pub struct Task {
     #[serde(skip_serializing_if = "Option::is_none")]
     recur: Option<Recur>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    parent: Option<uuid::Uuid>,
+    parent: Option<TaskId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<DateTime>,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -45,13 +92,27 @@ pub struct Task {
     priority: Option<Priority>,
     #[serde(skip_serializing_if = "HashSet::is_empty")]
     #[serde(default)]
-    depends: HashSet<uuid::Uuid>,
+    #[autosurgeon(reconcile = "reconcile_taskid_set")]
+    depends: HashSet<TaskId>,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     #[serde(default)]
     udas: HashMap<String, Uda>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+fn reconcile_taskid_set<R: autosurgeon::Reconciler>(
+    set: &HashSet<TaskId>,
+    mut reconciler: R,
+) -> Result<(), R::Error> {
+    let mut map = reconciler.map()?;
+    for id in set {
+        if map.entry(id).is_none() {
+            map.put(id, true)?;
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Reconcile)]
 #[serde(rename_all = "lowercase")]
 pub enum Status {
     Pending,
@@ -64,7 +125,7 @@ pub enum Status {
 impl Task {
     pub fn new() -> Self {
         Self {
-            uuid: uuid::Uuid::new_v4(),
+            id: TaskId::new(),
             entry: now(),
             description: String::new(),
             project: Vec::new(),
@@ -85,30 +146,30 @@ impl Task {
         }
     }
 
-    pub const fn parent(&self) -> &Option<uuid::Uuid> {
+    pub const fn parent(&self) -> &Option<TaskId> {
         &self.parent
     }
 
     pub fn new_child(&self) -> Self {
         Self {
-            uuid: uuid::Uuid::new_v4(),
+            id: TaskId::new(),
             entry: now(),
             description: self.description.clone(),
             project: self.project.clone(),
-            start: self.start,
-            scheduled: self.scheduled,
+            start: self.start.clone(),
+            scheduled: self.scheduled.clone(),
             notes: self.notes.clone(),
             tags: self.tags.clone(),
             priority: self.priority.clone(),
             depends: self.depends.clone(),
             udas: self.udas.clone(),
             status: Status::Pending,
-            due: self.due,
-            end: self.end,
-            wait: self.wait,
+            due: self.due.clone(),
+            end: self.end.clone(),
+            wait: self.wait.clone(),
             recur: self.recur.clone(),
-            parent: Some(self.uuid),
-            until: self.until,
+            parent: Some(self.id.clone()),
+            until: self.until.clone(),
         }
     }
 
@@ -120,8 +181,8 @@ impl Task {
         &self.entry
     }
 
-    pub const fn uuid(&self) -> uuid::Uuid {
-        self.uuid
+    pub const fn id(&self) -> &TaskId {
+        &self.id
     }
 
     pub fn description(&self) -> &str {
@@ -234,7 +295,7 @@ impl Task {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reconcile)]
 pub struct Recur {
     pub amount: u16,
     pub unit: RecurUnit,
@@ -246,7 +307,7 @@ impl Recur {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Reconcile)]
 pub enum RecurUnit {
     Year,
     Month,
@@ -288,7 +349,7 @@ impl std::convert::TryFrom<String> for RecurUnit {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Reconcile)]
 pub enum Priority {
     #[serde(rename(serialize = "H", deserialize = "H"))]
     High,
@@ -311,7 +372,7 @@ impl std::convert::TryFrom<String> for Priority {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Reconcile)]
 #[serde(untagged)]
 pub enum Uda {
     Duration(String), // TODO: use custom newtype struct
@@ -338,7 +399,7 @@ mod tests {
 
     #[test]
     fn test_parse_json_format_string() {
-        let json = r#"{"status":"completed","uuid":"2aa2717d-715f-4a74-9014-1ad4175bbbdc","entry":"2020-12-30T20:05:27.108Z","description":"Add uncomplete for completed tasks","end":"2020-12-31T11:10:42.123Z","project":["tasknet","ui"],"modified":"2020-12-31T11:10:42.123Z"}"#;
+        let json = r#"{"status":"completed","id":"2aa2717d-715f-4a74-9014-1ad4175bbbdc","entry":"2020-12-30T20:05:27.108Z","description":"Add uncomplete for completed tasks","end":"2020-12-31T11:10:42.123Z","project":["tasknet","ui"],"modified":"2020-12-31T11:10:42.123Z"}"#;
         let parsed = serde_json::from_str::<Task>(json);
         assert!(parsed.is_ok(), "{:?}", parsed);
     }
@@ -347,8 +408,8 @@ mod tests {
     fn test_render_json_format_string() {
         let task = Task::new();
         let rendered = serde_json::to_string(&task).unwrap();
-        let re = Regex::new(r#"\{"status":"pending","uuid":".*","entry":".*","description":""}"#)
-            .unwrap();
+        let re =
+            Regex::new(r#"\{"status":"pending","id":".*","entry":".*","description":""}"#).unwrap();
         assert!(re.is_match(&rendered), "{}", rendered);
     }
 }

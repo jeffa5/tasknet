@@ -59,6 +59,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "autosurgeon"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7972026c38a654af4a22740583dd20a8b066d6cececc027ded44c138e7195818"
+dependencies = [
+ "automerge",
+ "autosurgeon-derive",
+ "similar",
+ "smol_str",
+ "thiserror",
+]
+
+[[package]]
+name = "autosurgeon-derive"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d18ee0770f3d53eac1ce40e9b0ee27804654d80752d7f8871bd0a2a689098ae8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "smol_str",
+ "syn",
+ "thiserror",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -780,6 +806,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "similar"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "420acb44afdae038210c99e69aae24109f32f15500aa708e81d46c9f29d55fcf"
+
+[[package]]
 name = "slab"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -814,6 +846,7 @@ version = "0.1.0"
 dependencies = [
  "apply",
  "automerge",
+ "autosurgeon",
  "chrono",
  "pretty_assertions",
  "regex",
