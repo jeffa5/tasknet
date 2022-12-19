@@ -220,8 +220,8 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
 
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     div![
-        view_filters(model, &global_model.tasks),
-        view_tasks(&global_model.tasks, model),
+        view_filters(model, &global_model.document.tasks),
+        view_tasks(&global_model.document.tasks, model),
     ]
 }
 

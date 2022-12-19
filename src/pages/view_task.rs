@@ -64,13 +64,13 @@ pub fn update(
 ) {
     match msg {
         Msg::SelectedTaskDescriptionChanged(new_description) => {
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 task.set_description(new_description);
             }
         }
         Msg::SelectedTaskProjectChanged(new_project) => {
             let new_project = new_project.trim();
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 task.set_project(if new_project.is_empty() {
                     Vec::new()
                 } else {
@@ -83,7 +83,7 @@ pub fn update(
         }
         Msg::SelectedTaskTagsChanged(new_tags) => {
             let new_end = new_tags.ends_with(' ');
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 task.set_tags(if new_tags.is_empty() {
                     Vec::new()
                 } else {
@@ -99,7 +99,7 @@ pub fn update(
             }
         }
         Msg::SelectedTaskPriorityChanged(new_priority) => {
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 task.set_priority(match Priority::try_from(new_priority) {
                     Ok(p) => Some(p),
                     Err(()) => None,
@@ -107,12 +107,12 @@ pub fn update(
             }
         }
         Msg::SelectedTaskNotesChanged(new_notes) => {
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 task.set_notes(new_notes);
             }
         }
         Msg::SelectedTaskDueDateChanged(new_date) => {
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
                 match new_date {
                     Ok(new_date) => {
@@ -137,7 +137,7 @@ pub fn update(
             }
         }
         Msg::SelectedTaskDueTimeChanged(new_time) => {
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
                 match new_time {
                     Ok(new_time) => {
@@ -163,7 +163,7 @@ pub fn update(
             }
         }
         Msg::SelectedTaskScheduledDateChanged(new_date) => {
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 let new_date = chrono::NaiveDate::parse_from_str(&new_date, "%Y-%m-%d");
                 match new_date {
                     Ok(new_date) => {
@@ -188,7 +188,7 @@ pub fn update(
             }
         }
         Msg::SelectedTaskScheduledTimeChanged(new_time) => {
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 let new_time = chrono::NaiveTime::parse_from_str(&new_time, "%H:%M");
                 match new_time {
                     Ok(new_time) => {
@@ -214,7 +214,7 @@ pub fn update(
             }
         }
         Msg::SelectedTaskRecurAmountChanged(new_amount) => {
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 if let Ok(n) = new_amount.parse::<u16>() {
                     if n > 0 {
                         task.set_recur(Some(Recur {
@@ -228,7 +228,7 @@ pub fn update(
             }
         }
         Msg::SelectedTaskRecurUnitChanged(new_unit) => {
-            if let Some(task) = &mut global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = &mut global_model.document.tasks.get_mut(&model.selected_task) {
                 match RecurUnit::try_from(new_unit) {
                     Ok(unit) => task.set_recur(Some(Recur {
                         amount: task.recur().as_ref().map_or(1, |r| r.amount),
@@ -240,7 +240,7 @@ pub fn update(
         }
         Msg::DeleteSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = global_model.document.tasks.get_mut(&model.selected_task) {
                 match task.status() {
                     Status::Pending | Status::Completed | Status::Waiting | Status::Recurring => {
                         task.delete();
@@ -250,7 +250,7 @@ pub fn update(
                     ) {
                         Ok(true) => {
                             /* already removed from set so just don't add it back */
-                            global_model.tasks.remove(&model.selected_task);
+                            global_model.document.tasks.remove(&model.selected_task);
                         }
                         Ok(false) | Err(_) => {}
                     },
@@ -259,25 +259,25 @@ pub fn update(
         }
         Msg::CompleteSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = global_model.document.tasks.get_mut(&model.selected_task) {
                 task.complete();
             }
         }
         Msg::StartSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = global_model.document.tasks.get_mut(&model.selected_task) {
                 task.activate();
             }
         }
         Msg::StopSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = global_model.document.tasks.get_mut(&model.selected_task) {
                 task.deactivate();
             }
         }
         Msg::MoveSelectedTaskToPending => {
             orders.request_url(Urls::new(&global_model.base_url).home());
-            if let Some(task) = global_model.tasks.get_mut(&model.selected_task) {
+            if let Some(task) = global_model.document.tasks.get_mut(&model.selected_task) {
                 task.restore();
             }
         }
@@ -289,10 +289,11 @@ pub fn update(
 
 pub fn view(global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
     let task = global_model
+        .document
         .tasks
         .get(&model.selected_task)
         .expect("the given task to exist");
-    div![view_selected_task(task, &global_model.tasks),]
+    div![view_selected_task(task, &global_model.document.tasks),]
 }
 
 #[allow(clippy::too_many_lines)]

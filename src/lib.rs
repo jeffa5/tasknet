@@ -8,17 +8,18 @@ use apply::Apply;
 use seed::{prelude::*, *};
 
 mod components;
+mod document;
 mod filters;
 mod pages;
 mod task;
 mod urgency;
 
 use components::view_button;
+use document::Document;
 use filters::Filters;
 use task::{Recur, Status, Task};
 
 const VIEW_TASK: &str = "view";
-const TASKS_STORAGE_KEY: &str = "tasknet-tasks";
 
 // ------ ------
 //     Init
@@ -47,17 +48,11 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .stream(streams::interval(1000, || Msg::OnRenderTick))
         .stream(streams::interval(60000, || Msg::OnRecurTick))
         .subscribe(Msg::UrlChanged);
-    let tasks = match LocalStorage::get(TASKS_STORAGE_KEY) {
-        Ok(tasks) => tasks,
-        Err(seed::browser::web_storage::WebStorageError::JsonError(err)) => {
-            panic!("failed to parse tasks: {:?}", err)
-        }
-        Err(_) => HashMap::new(),
-    };
-    let page = Page::init(url.clone(), &tasks, orders);
+    let document = Document::load();
+    let page = Page::init(url.clone(), &document, orders);
     Model {
         global: GlobalModel {
-            tasks,
+            document,
             base_url: url.to_hash_base_url(),
         },
         page,
@@ -70,7 +65,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 
 #[derive(Debug)]
 pub struct GlobalModel {
-    tasks: HashMap<uuid::Uuid, Task>,
+    document: Document,
     base_url: Url,
 }
 
@@ -110,11 +105,7 @@ enum Page {
 }
 
 impl Page {
-    fn init(
-        mut url: Url,
-        tasks: &HashMap<uuid::Uuid, Task>,
-        orders: &mut impl Orders<Msg>,
-    ) -> Self {
+    fn init(mut url: Url, document: &Document, orders: &mut impl Orders<Msg>) -> Self {
         match url.next_hash_path_part() {
             Some(VIEW_TASK) => url.next_hash_path_part().map_or_else(
                 || Self::Home(pages::home::init()),
@@ -122,7 +113,7 @@ impl Page {
                     uuid::Uuid::parse_str(uuid).map_or_else(
                         |_| Self::Home(pages::home::init()),
                         |uuid| {
-                            if tasks.get(&uuid).is_some() {
+                            if document.tasks.get(&uuid).is_some() {
                                 Self::ViewTask(pages::view_task::init(uuid, orders))
                             } else {
                                 Self::Home(pages::home::init())
@@ -166,13 +157,14 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::CreateTask => {
             let task = Task::new();
             let id = task.uuid();
-            model.global.tasks.insert(task.uuid(), task);
+            model.global.document.tasks.insert(task.uuid(), task);
             orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
             let recurring: Vec<_> = model
                 .global
+                .document
                 .tasks
                 .values()
                 .filter(|t| t.status() == &Status::Recurring)
@@ -181,6 +173,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             for r in recurring {
                 let mut children: Vec<_> = model
                     .global
+                    .document
                     .tasks
                     .values()
                     .filter(|t| t.parent().map_or(false, |p| p == r.uuid()))
@@ -202,18 +195,18 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
             }
             for t in new_tasks {
-                model.global.tasks.insert(t.uuid(), t);
+                model.global.document.tasks.insert(t.uuid(), t);
             }
         }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
-            model.page = Page::init(url, &model.global.tasks, orders);
+            model.page = Page::init(url, &model.global.document, orders);
         }
         Msg::ImportTasks => match window().prompt_with_message("Paste the tasks json here") {
             Ok(Some(content)) => {
                 match serde_json::from_str::<HashMap<uuid::Uuid, Task>>(&content) {
                     Ok(tasks) => {
                         for (id, task) in tasks {
-                            model.global.tasks.insert(id, task);
+                            model.global.document.tasks.insert(id, task);
                         }
                     }
                     Err(e) => {
@@ -233,7 +226,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         },
         Msg::ExportTasks => {
-            let json = serde_json::to_string(&model.global.tasks);
+            let json = serde_json::to_string(&model.global.document.tasks);
             match json {
                 Ok(json) => {
                     window()
@@ -257,8 +250,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
     }
-    LocalStorage::insert(TASKS_STORAGE_KEY, &model.global.tasks)
-        .expect("save tasks to LocalStorage");
+    model.global.document.save();
 }
 
 // ------ ------
