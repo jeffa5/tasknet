@@ -33,6 +33,7 @@ impl Hydrate for DateTime {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Reconcile, Hydrate)]
 #[repr(transparent)]
+#[allow(clippy::module_name_repetitions)]
 pub struct TaskId(String);
 
 impl TaskId {
