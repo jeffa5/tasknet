@@ -6,7 +6,7 @@ use clap::Parser;
 
 #[derive(clap::Parser)]
 struct ServerOptions {
-    #[clap(long, short)]
+    #[clap(long, short, default_value = "3000")]
     port: u16,
     #[clap(long, short, default_value = "web/dist")]
     serve_dir: PathBuf,
