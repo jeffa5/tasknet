@@ -1,12 +1,10 @@
-use std::{
-    collections::{HashMap, HashSet},
-    convert::TryFrom,
-};
+use std::collections::{HashMap, HashSet};
 
 use autosurgeon::{
     reconcile::{MapReconciler, NoKey},
-    Reconcile,
+    Hydrate, HydrateError, Prop, ReadDoc, Reconcile,
 };
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 // Based on https://taskwarrior.org/docs/design/task.html
@@ -26,7 +24,14 @@ impl Reconcile for DateTime {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Reconcile)]
+impl Hydrate for DateTime {
+    fn hydrate_timestamp(t: i64) -> Result<Self, autosurgeon::HydrateError> {
+        let dt = NaiveDateTime::from_timestamp_millis(t).unwrap_or_default();
+        Ok(Self(chrono::DateTime::from_utc(dt, chrono::Utc)))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Reconcile, Hydrate)]
 #[repr(transparent)]
 pub struct TaskId(String);
 
@@ -42,22 +47,26 @@ impl AsRef<str> for TaskId {
     }
 }
 
+impl From<String> for TaskId {
+    fn from(s: String) -> Self {
+        Self::from(s.as_str())
+    }
+}
+
+impl From<&str> for TaskId {
+    fn from(s: &str) -> Self {
+        let u = uuid::Uuid::parse_str(s).unwrap_or_default();
+        Self(u.to_string())
+    }
+}
+
 impl ToString for TaskId {
     fn to_string(&self) -> String {
         self.0.clone()
     }
 }
 
-impl TryFrom<&str> for TaskId {
-    type Error = uuid::Error;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let u = uuid::Uuid::parse_str(value)?;
-        Ok(TaskId(u.to_string()))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Reconcile)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Reconcile, Hydrate)]
 pub struct Task {
     status: Status,
     id: TaskId,
@@ -92,7 +101,7 @@ pub struct Task {
     priority: Option<Priority>,
     #[serde(skip_serializing_if = "HashSet::is_empty")]
     #[serde(default)]
-    #[autosurgeon(reconcile = "reconcile_taskid_set")]
+    #[autosurgeon(reconcile = "reconcile_taskid_set", hydrate = "hydrate_taskid_set")]
     depends: HashSet<TaskId>,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     #[serde(default)]
@@ -112,7 +121,18 @@ fn reconcile_taskid_set<R: autosurgeon::Reconciler>(
     Ok(())
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Reconcile)]
+fn hydrate_taskid_set<'a, D: ReadDoc>(
+    doc: &D,
+    obj: &automerge::ObjId,
+    prop: Prop<'a>,
+) -> Result<HashSet<TaskId>, HydrateError> {
+    let map = <HashMap<TaskId, bool>>::hydrate(doc, obj, prop)?;
+    Ok(map.into_keys().collect())
+}
+
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Reconcile, Hydrate,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum Status {
     Pending,
@@ -295,7 +315,7 @@ impl Task {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reconcile)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reconcile, Hydrate)]
 pub struct Recur {
     pub amount: u16,
     pub unit: RecurUnit,
@@ -307,7 +327,7 @@ impl Recur {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Reconcile)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Reconcile, Hydrate)]
 pub enum RecurUnit {
     Year,
     Month,
@@ -349,7 +369,9 @@ impl std::convert::TryFrom<String> for RecurUnit {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Reconcile)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Reconcile, Hydrate,
+)]
 pub enum Priority {
     #[serde(rename(serialize = "H", deserialize = "H"))]
     High,
@@ -372,7 +394,7 @@ impl std::convert::TryFrom<String> for Priority {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Reconcile)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Reconcile, Hydrate)]
 #[serde(untagged)]
 pub enum Uda {
     Duration(String), // TODO: use custom newtype struct

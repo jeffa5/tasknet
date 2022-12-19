@@ -1,11 +1,10 @@
 use automerge::AutoCommit;
-use autosurgeon::reconcile;
+use autosurgeon::{hydrate, reconcile};
 use seed::prelude::{LocalStorage, WebStorage};
 
 use crate::task::{Task, TaskId};
 use std::collections::HashMap;
 
-const TASKS_STORAGE_KEY: &str = "tasknet-tasks";
 const AUTODOC_STORAGE_KEY: &str = "tasknet-autodoc";
 
 #[derive(Debug)]
@@ -49,21 +48,14 @@ impl Document {
     }
 
     pub fn load() -> Self {
-        let tasks = match LocalStorage::get(TASKS_STORAGE_KEY) {
-            Ok(tasks) => tasks,
-            Err(seed::browser::web_storage::WebStorageError::JsonError(err)) => {
-                panic!("failed to parse tasks: {:?}", err)
-            }
-            Err(_) => HashMap::new(),
-        };
         let saved_document: Vec<u8> =
             LocalStorage::get(AUTODOC_STORAGE_KEY).map_or_else(|_| Vec::new(), |bytes| bytes);
         let autodoc = AutoCommit::load(&saved_document).unwrap_or_else(|_| AutoCommit::new());
+        let tasks = hydrate(&autodoc).unwrap();
         Self { tasks, autodoc }
     }
 
     pub fn save(&mut self) {
-        LocalStorage::insert(TASKS_STORAGE_KEY, &self.tasks).expect("save tasks to LocalStorage");
         LocalStorage::insert(AUTODOC_STORAGE_KEY, &self.autodoc.save())
             .expect("save autodoc to LocalStorage");
     }
