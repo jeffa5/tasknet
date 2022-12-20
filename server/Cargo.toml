@@ -17,3 +17,5 @@ automerge-persistent-fs = "0.2.0"
 automerge-persistent = "0.2.0"
 tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
+serde = { version = "1.0.151", features = ["derive"] }
+serde_yaml = "0.9.16"

@@ -1,3 +1,4 @@
+use config::ServerConfig;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tracing::debug;
 use tracing::info;
@@ -21,19 +22,19 @@ use futures::{
 use sync::SyncMessage;
 use tokio::sync::Mutex;
 
+mod config;
+mod google;
+
 #[derive(clap::Parser)]
 struct ServerOptions {
-    #[clap(long, short, default_value = "3000")]
-    port: u16,
-    #[clap(long, short, default_value = "web/dist")]
-    serve_dir: PathBuf,
-    #[clap(long, default_value = "documents")]
-    documents_dir: PathBuf,
+    #[clap(long, short, default_value = "config.yaml")]
+    config_file: PathBuf,
 }
 
-struct Server {
+pub struct Server {
     doc: automerge_persistent::PersistentAutomerge<automerge_persistent_fs::FsPersister>,
     changed: tokio::sync::broadcast::Sender<()>,
+    config: ServerConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -45,21 +46,28 @@ struct ConnectionMetadata {
 async fn main() {
     let options = ServerOptions::parse();
 
+    let config = config::ServerConfig::load(&options.config_file);
+
     tracing_subscriber::fmt::init();
 
     let (changed, _) = tokio::sync::broadcast::channel(1);
+
+    let port = config.port;
+
     let app = Router::new()
         .route("/sync", get(sync_handler))
-        .merge(SpaRouter::new("/", options.serve_dir).index_file("index.html"))
+        .route("/auth/google", get(google::handler))
+        .merge(SpaRouter::new("/", &config.serve_dir).index_file("index.html"))
         .with_state(Arc::new(Mutex::new(Server {
             doc: automerge_persistent::PersistentAutomerge::load(
-                automerge_persistent_fs::FsPersister::new(options.documents_dir, "test").unwrap(),
+                automerge_persistent_fs::FsPersister::new(&config.documents_dir, "test").unwrap(),
             )
             .unwrap(),
             changed,
+            config,
         })));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], options.port));
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
     info!("Listening on http://{}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
