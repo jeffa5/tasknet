@@ -321,8 +321,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.global.web_socket = create_websocket(orders);
         }
         Msg::SendWebSocketMessage(message) => {
-            let bytes = Vec::<u8>::from(message);
-            model.global.web_socket.send_bytes(&bytes).unwrap();
+            model.global.web_socket.send_bytes(&message).unwrap();
         }
         Msg::ReceiveWebSocketMessage(message) => {
             log!("Received ws message: {}", message);
@@ -359,7 +358,10 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
-            view_button(&format!("Connection: {:?}", model.global.web_socket.state()), Msg::ReconnectWebSocket(0)),
+            view_button(
+                &format!("Connection: {:?}", model.global.web_socket.state()),
+                Msg::ReconnectWebSocket(0)
+            ),
             view_button("Import Tasks", Msg::ImportTasks),
             view_button("Export Tasks", Msg::ExportTasks),
             view_button("Create", Msg::CreateTask),
