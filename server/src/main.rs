@@ -1,4 +1,7 @@
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use tracing::debug;
+use tracing::info;
+use tracing::warn;
 
 use axum::{
     extract::{
@@ -32,13 +35,16 @@ struct Server {
     doc: automerge_persistent::PersistentAutomerge<automerge_persistent_fs::FsPersister>,
 }
 
-struct ConnectionState {
+#[derive(Debug, Clone)]
+struct ConnectionMetadata {
     peer_id: uuid::Uuid,
 }
 
 #[tokio::main]
 async fn main() {
     let options = ServerOptions::parse();
+
+    tracing_subscriber::fmt::init();
 
     let app = Router::new()
         .route("/sync", get(sync_handler))
@@ -51,7 +57,7 @@ async fn main() {
         })));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], options.port));
-    println!("listening on http://{}", addr);
+    info!("listening on http://{}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
@@ -64,32 +70,34 @@ async fn sync_handler(ws: WebSocketUpgrade, State(server): State<Arc<Mutex<Serve
 
 async fn handle_sync_socket(socket: WebSocket, server: Arc<Mutex<Server>>) {
     let (sender, receiver) = socket.split();
-    let connection_state = ConnectionState {
+    let connection_metadata = ConnectionMetadata {
         peer_id: uuid::Uuid::new_v4(),
     };
-    let connection_state = Arc::new(Mutex::new(connection_state));
+    info!(?connection_metadata, "New sync connection");
+
     let (changed_sender, changed_receiver) = tokio::sync::mpsc::channel(1);
+
     tokio::spawn(sync_read(
         server.clone(),
-        connection_state.clone(),
+        connection_metadata.clone(),
         changed_sender,
         receiver,
     ));
     tokio::spawn(sync_write(
         server,
-        connection_state,
+        connection_metadata,
         changed_receiver,
         sender,
     ));
 }
 
+#[tracing::instrument(skip(server, changed_sender, receiver))]
 async fn sync_read(
     server: Arc<Mutex<Server>>,
-    connection_state: Arc<Mutex<ConnectionState>>,
+    connection_metadata: ConnectionMetadata,
     changed_sender: mpsc::Sender<()>,
     mut receiver: SplitStream<WebSocket>,
 ) {
-    let peer_id = connection_state.lock().await.peer_id;
     while let Some(msg) = receiver.next().await {
         match msg {
             Ok(msg) => {
@@ -97,18 +105,21 @@ async fn sync_read(
                     Message::Text(_) => {}
                     Message::Binary(b) => {
                         // parse the sync message
-                        println!("received message");
+                        debug!("received message");
                         let msg = SyncMessage::try_from(&b).unwrap();
                         match msg {
                             SyncMessage::Message(bytes) => {
-                                println!("parsed message as sync message, applying");
+                                debug!("parsed message as sync message, applying");
                                 let msg = automerge::sync::Message::decode(&bytes).unwrap();
                                 // apply the message to the document
                                 server
                                     .lock()
                                     .await
                                     .doc
-                                    .receive_sync_message(peer_id.as_bytes().to_vec(), msg)
+                                    .receive_sync_message(
+                                        connection_metadata.peer_id.as_bytes().to_vec(),
+                                        msg,
+                                    )
                                     .unwrap();
                                 let num_changes = server
                                     .lock()
@@ -119,9 +130,9 @@ async fn sync_read(
                                     .unwrap()
                                     .len();
                                 let _ = changed_sender.send(()).await;
-                                println!("applied sync message, now have {}", num_changes);
+                                debug!("applied sync message, now have {}", num_changes);
                                 server.lock().await.doc.flush().unwrap();
-                                println!("flushed");
+                                debug!("flushed");
                             }
                         }
                     }
@@ -131,38 +142,37 @@ async fn sync_read(
                 }
             }
             Err(err) => {
-                println!("failed to receive message: {}", err);
+                warn!("failed to receive message: {}", err);
             }
         }
     }
 }
 
+#[tracing::instrument(skip(server, changed_receiver, sender))]
 async fn sync_write(
     server: Arc<Mutex<Server>>,
-    connection_state: Arc<Mutex<ConnectionState>>,
+    connection_metadata: ConnectionMetadata,
     mut changed_receiver: mpsc::Receiver<()>,
     mut sender: SplitSink<WebSocket, Message>,
 ) {
-    let peer_id = connection_state.lock().await.peer_id;
-
     while let Some(()) = changed_receiver.recv().await {
-        println!("got msg");
+        debug!("got msg");
         if let Ok(Some(msg)) = server
             .lock()
             .await
             .doc
-            .generate_sync_message(peer_id.as_bytes().to_vec())
+            .generate_sync_message(connection_metadata.peer_id.as_bytes().to_vec())
         {
-            println!("generated sync message");
+            debug!("generated sync message");
             let msg = SyncMessage::Message(msg.encode());
 
             match Vec::try_from(msg) {
                 Ok(bytes) => {
                     sender.send(Message::Binary(bytes)).await.unwrap();
-                    println!("sent sync message");
+                    debug!("sent sync message");
                 }
                 Err(err) => {
-                    println!("failed to convert sync message to bytes {}", err);
+                    warn!("failed to convert sync message to bytes {}", err);
                 }
             }
         }
