@@ -60,7 +60,7 @@ async fn main() {
         })));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], options.port));
-    info!("listening on http://{}", addr);
+    info!("Listening on http://{}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
