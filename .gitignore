@@ -2,3 +2,5 @@ target/
 .direnv/
 dist/
 documents/
+
+config.yaml

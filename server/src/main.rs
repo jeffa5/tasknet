@@ -1,4 +1,6 @@
+use async_session::MemoryStore;
 use config::ServerConfig;
+use google::Google;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tracing::debug;
 use tracing::info;
@@ -35,6 +37,8 @@ pub struct Server {
     doc: automerge_persistent::PersistentAutomerge<automerge_persistent_fs::FsPersister>,
     changed: tokio::sync::broadcast::Sender<()>,
     config: ServerConfig,
+    google: Option<Google>,
+    sessions: MemoryStore,
 }
 
 #[derive(Debug, Clone)]
@@ -54,9 +58,16 @@ async fn main() {
 
     let port = config.port;
 
+    let google = if let Some(config) = config.google.as_ref() {
+        Some(Google::new(config).await)
+    } else {
+        None
+    };
+
     let app = Router::new()
         .route("/sync", get(sync_handler))
         .route("/auth/google", get(google::handler))
+        .route("/auth/google/callback", get(google::callback_handler))
         .merge(SpaRouter::new("/", &config.serve_dir).index_file("index.html"))
         .with_state(Arc::new(Mutex::new(Server {
             doc: automerge_persistent::PersistentAutomerge::load(
@@ -65,6 +76,8 @@ async fn main() {
             .unwrap(),
             changed,
             config,
+            google,
+            sessions: MemoryStore::new(),
         })));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
