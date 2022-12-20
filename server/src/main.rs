@@ -19,7 +19,7 @@ async fn main() {
     let app = Router::new().merge(SpaRouter::new("/", options.serve_dir).index_file("index.html"));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], options.port));
-    println!("listening on {}", addr);
+    println!("listening on http://{}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
