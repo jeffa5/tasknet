@@ -155,6 +155,27 @@ async fn sync_write(
     mut changed_receiver: mpsc::Receiver<()>,
     mut sender: SplitSink<WebSocket, Message>,
 ) {
+    debug!("trying to generate initial sync message");
+    if let Ok(Some(msg)) = server
+        .lock()
+        .await
+        .doc
+        .generate_sync_message(connection_metadata.peer_id.as_bytes().to_vec())
+    {
+        debug!("generated initial sync message");
+        let msg = SyncMessage::Message(msg.encode());
+
+        match Vec::try_from(msg) {
+            Ok(bytes) => {
+                sender.send(Message::Binary(bytes)).await.unwrap();
+                debug!("sent initial sync message");
+            }
+            Err(err) => {
+                warn!("failed to convert sync message to bytes {}", err);
+            }
+        }
+    }
+
     while let Some(()) = changed_receiver.recv().await {
         debug!("got msg");
         if let Ok(Some(msg)) = server
