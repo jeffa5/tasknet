@@ -1,6 +1,9 @@
 use automerge::AutoCommit;
 use autosurgeon::{hydrate, reconcile};
-use seed::prelude::{LocalStorage, WebStorage};
+use seed::{
+    log,
+    prelude::{LocalStorage, WebStorage},
+};
 
 use crate::task::{Task, TaskId};
 use std::collections::HashMap;
@@ -11,6 +14,7 @@ const AUTODOC_STORAGE_KEY: &str = "tasknet-autodoc";
 pub struct Document {
     tasks: HashMap<TaskId, Task>,
     autodoc: automerge::AutoCommit,
+    server_sync_state: automerge::sync::State,
 }
 
 impl Document {
@@ -53,12 +57,38 @@ impl Document {
         let saved_document = base64::decode(saved_document).unwrap_or_default();
         let autodoc = AutoCommit::load(&saved_document).unwrap_or_else(|_| AutoCommit::new());
         let tasks = hydrate(&autodoc).unwrap();
-        Self { tasks, autodoc }
+        Self {
+            tasks,
+            autodoc,
+            server_sync_state: automerge::sync::State::default(),
+        }
     }
 
     pub fn save(&mut self) {
         let bytes = self.autodoc.save();
         let bytes = base64::encode(bytes);
         LocalStorage::insert(AUTODOC_STORAGE_KEY, &bytes).expect("save autodoc to LocalStorage");
+    }
+
+    pub fn generate_sync_message(&mut self) -> Option<Vec<u8>> {
+        self.autodoc
+            .generate_sync_message(&mut self.server_sync_state)
+            .map(automerge::sync::Message::encode)
+    }
+
+    pub fn receive_sync_message(&mut self, message: &[u8]) {
+        match automerge::sync::Message::decode(message) {
+            Ok(message) => {
+                if let Err(err) = self
+                    .autodoc
+                    .receive_sync_message(&mut self.server_sync_state, message)
+                {
+                    log!("Failed to receive sync message from server: ", err);
+                }
+            }
+            Err(err) => {
+                log!("Failed to decode sync message:", err);
+            }
+        }
     }
 }

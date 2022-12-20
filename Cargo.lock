@@ -70,6 +70,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "automerge-persistent"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fdcc5bbcff2b3fa5274ff9ee97ea063b634b2eb11b19b557a0a5907e3d0513c"
+dependencies = [
+ "automerge",
+ "thiserror",
+]
+
+[[package]]
+name = "automerge-persistent-fs"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "364f050319fce049b0d9607890c5af81c3beed64018028128ffde2abde69cba5"
+dependencies = [
+ "automerge",
+ "automerge-persistent",
+ "hex",
+ "thiserror",
+]
+
+[[package]]
 name = "autosurgeon"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1238,11 +1260,16 @@ dependencies = [
 name = "server"
 version = "0.1.0"
 dependencies = [
+ "automerge",
+ "automerge-persistent",
+ "automerge-persistent-fs",
  "axum",
  "axum-extra",
  "clap",
  "futures",
+ "sync",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -1319,6 +1346,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "sync"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "sync_wrapper"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1338,6 +1373,7 @@ dependencies = [
  "seed",
  "serde",
  "serde_json",
+ "sync",
  "uuid",
  "wasm-bindgen-test",
  "web-sys",

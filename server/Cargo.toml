@@ -4,8 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+sync = {path = "../sync"}
+
 axum = { version = "0.6.1", features = ["ws"] }
 axum-extra = { version = "0.4.2", features = ["spa"] }
 clap = { version = "4.0.29", features = ["derive"] }
 futures = "0.3.25"
 tokio = { version = "1.23.0", features = ["rt-multi-thread", "macros"] }
+uuid = "1.2.2"
+automerge = "0.2.0"
+automerge-persistent-fs = "0.2.0"
+automerge-persistent = "0.2.0"

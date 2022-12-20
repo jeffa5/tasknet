@@ -17,6 +17,7 @@ mod urgency;
 use components::view_button;
 use document::Document;
 use filters::Filters;
+use sync::SyncMessage;
 use task::{Recur, Status, Task, TaskId};
 
 const VIEW_TASK: &str = "view";
@@ -324,10 +325,33 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.global.web_socket.send_bytes(&message).unwrap();
         }
         Msg::ReceiveWebSocketMessage(message) => {
-            log!("Received ws message: {}", message);
+            match SyncMessage::try_from(&message) {
+                Ok(message) => match message {
+                    SyncMessage::Message(m) => {
+                        model.global.document.receive_sync_message(&m);
+                    }
+                },
+                Err(err) => {
+                    log!("Failed to decode websocket sync message", err);
+                }
+            }
+            log!("Received ws message");
         }
     }
     model.global.document.save();
+    log!("trying to generate a sync message");
+    if let Some(msg) = model.global.document.generate_sync_message() {
+        let sync_message = SyncMessage::Message(msg);
+        match Vec::try_from(sync_message) {
+            Ok(bytes) => {
+                log!("generated sync message");
+                orders.send_msg(Msg::SendWebSocketMessage(bytes));
+            }
+            Err(err) => {
+                log!("Failed to serialize sync message", err);
+            }
+        }
+    }
 }
 
 // ------ ------
