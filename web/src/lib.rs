@@ -361,7 +361,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 fn view(model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-col", "container", "mx-auto"],
-        view_titlebar(&model),
+        view_titlebar(model),
         match &model.page {
             Page::Home(lm) => pages::home::view(&model.global, lm),
             Page::ViewTask(lm) => pages::view_task::view(&model.global, lm),
