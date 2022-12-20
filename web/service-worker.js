@@ -3,7 +3,6 @@ const appName = "tasknet";
 const cacheName = `${appName}-${version}`;
 const contentToCache = [
   "index.html",
-  "pkg/package.js",
 ];
 
 self.addEventListener('install', (event) => {
