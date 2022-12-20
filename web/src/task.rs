@@ -114,6 +114,18 @@ fn reconcile_taskid_set<R: autosurgeon::Reconciler>(
     mut reconciler: R,
 ) -> Result<(), R::Error> {
     let mut map = reconciler.map()?;
+    let mut keys_to_delete = Vec::new();
+    // remove unnecessary ids
+    for (id, _) in map.entries() {
+        if !set.contains(&TaskId::from(id)) {
+            keys_to_delete.push(id.to_owned());
+        }
+    }
+    for key in keys_to_delete {
+        map.delete(key).unwrap();
+    }
+
+    // add any remaining ones
     for id in set {
         if map.entry(id).is_none() {
             map.put(id, true)?;
