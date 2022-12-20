@@ -21,6 +21,36 @@ use task::{Recur, Status, Task, TaskId};
 
 const VIEW_TASK: &str = "view";
 
+fn ws_url() -> String {
+    let location = window().location();
+    format!(
+        "ws://{}{}sync",
+        location.host().unwrap(),
+        location.pathname().unwrap(),
+    )
+}
+
+fn create_websocket(orders: &impl Orders<Msg>) -> WebSocket {
+    let msg_sender = orders.msg_sender();
+
+    WebSocket::builder(ws_url(), orders)
+        .on_open(|| Msg::WebSocketOpened)
+        .on_message(|message| {
+            spawn_local(async move {
+                let bytes = message
+                    .bytes()
+                    .await
+                    .expect("WebsocketError on binary data");
+
+                msg_sender(Some(Msg::ReceiveWebSocketMessage(bytes)));
+            });
+        })
+        .on_close(Msg::WebSocketClosed)
+        .on_error(|| Msg::WebSocketFailed)
+        .build_and_open()
+        .unwrap()
+}
+
 // ------ ------
 //     Init
 // ------ ------
@@ -50,10 +80,15 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .subscribe(Msg::UrlChanged);
     let document = Document::load();
     let page = Page::init(url.clone(), &document, orders);
+
+    let web_socket = create_websocket(orders);
+
     Model {
         global: GlobalModel {
             document,
             base_url: url.to_hash_base_url(),
+            web_socket,
+            web_socket_reconnector: None,
         },
         page,
     }
@@ -67,6 +102,8 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 pub struct GlobalModel {
     document: Document,
     base_url: Url,
+    web_socket: WebSocket,
+    web_socket_reconnector: Option<StreamHandle>,
 }
 
 #[derive(Debug)]
@@ -142,6 +179,13 @@ pub enum Msg {
     ExportTasks,
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
+
+    WebSocketOpened,
+    WebSocketClosed(CloseEvent),
+    WebSocketFailed,
+    ReconnectWebSocket(usize),
+    SendWebSocketMessage(Vec<u8>),
+    ReceiveWebSocketMessage(Vec<u8>),
 }
 
 #[allow(clippy::too_many_lines)]
@@ -245,6 +289,44 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 pages::home::update(msg, lm, orders);
             }
         }
+        Msg::WebSocketOpened => {
+            model.global.web_socket_reconnector = None;
+            log!("WebSocket connection is open now");
+        }
+        Msg::WebSocketClosed(close_event) => {
+            log!("==================");
+            log!("WebSocket connection was closed:");
+            log!("Clean:", close_event.was_clean());
+            log!("Code:", close_event.code());
+            log!("Reason:", close_event.reason());
+            log!("==================");
+
+            // Chrome doesn't invoke `on_error` when the connection is lost.
+            if !close_event.was_clean() && model.global.web_socket_reconnector.is_none() {
+                model.global.web_socket_reconnector = Some(
+                    orders.stream_with_handle(streams::backoff(None, Msg::ReconnectWebSocket)),
+                );
+            }
+        }
+        Msg::WebSocketFailed => {
+            log!("WebSocket failed");
+            if model.global.web_socket_reconnector.is_none() {
+                model.global.web_socket_reconnector = Some(
+                    orders.stream_with_handle(streams::backoff(None, Msg::ReconnectWebSocket)),
+                );
+            }
+        }
+        Msg::ReconnectWebSocket(retries) => {
+            log!("Reconnect attempt:", retries);
+            model.global.web_socket = create_websocket(orders);
+        }
+        Msg::SendWebSocketMessage(message) => {
+            let bytes = Vec::<u8>::from(message);
+            model.global.web_socket.send_bytes(&bytes).unwrap();
+        }
+        Msg::ReceiveWebSocketMessage(message) => {
+            log!("Received ws message: {}", message);
+        }
     }
     model.global.document.save();
 }
@@ -256,7 +338,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 fn view(model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-col", "container", "mx-auto"],
-        view_titlebar(),
+        view_titlebar(&model),
         match &model.page {
             Page::Home(lm) => pages::home::view(&model.global, lm),
             Page::ViewTask(lm) => pages::view_task::view(&model.global, lm),
@@ -264,7 +346,7 @@ fn view(model: &Model) -> Node<Msg> {
     ]
 }
 
-fn view_titlebar() -> Node<Msg> {
+fn view_titlebar(model: &Model) -> Node<Msg> {
     div![
         C!["flex", "flex-row", "justify-between"],
         div![
@@ -277,6 +359,7 @@ fn view_titlebar() -> Node<Msg> {
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
+            view_button(&format!("Connection: {:?}", model.global.web_socket.state()), Msg::ReconnectWebSocket(0)),
             view_button("Import Tasks", Msg::ImportTasks),
             view_button("Export Tasks", Msg::ExportTasks),
             view_button("Create", Msg::CreateTask),
