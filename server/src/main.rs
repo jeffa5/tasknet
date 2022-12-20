@@ -24,6 +24,8 @@ struct ServerOptions {
     port: u16,
     #[clap(long, short, default_value = "web/dist")]
     serve_dir: PathBuf,
+    #[clap(long, default_value = "documents")]
+    documents_dir: PathBuf,
 }
 
 struct Server {
@@ -43,7 +45,7 @@ async fn main() {
         .merge(SpaRouter::new("/", options.serve_dir).index_file("index.html"))
         .with_state(Arc::new(Mutex::new(Server {
             doc: automerge_persistent::PersistentAutomerge::load(
-                automerge_persistent_fs::FsPersister::new("documents", "test").unwrap(),
+                automerge_persistent_fs::FsPersister::new(options.documents_dir, "test").unwrap(),
             )
             .unwrap(),
         })));
