@@ -7,5 +7,5 @@ server:
 	cargo build -p server
 
 .PHONY: run
-run:
+run: web server
 	cargo run -p server
