@@ -328,6 +328,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             match SyncMessage::try_from(&message) {
                 Ok(message) => match message {
                     SyncMessage::Message(m) => {
+                        log!("Applying sync message");
                         model.global.document.receive_sync_message(&m);
                     }
                 },
@@ -339,12 +340,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
     }
     model.global.document.save();
-    log!("trying to generate a sync message");
     if let Some(msg) = model.global.document.generate_sync_message() {
         let sync_message = SyncMessage::Message(msg);
         match Vec::try_from(sync_message) {
             Ok(bytes) => {
-                log!("generated sync message");
+                log!("sending sync message");
                 orders.send_msg(Msg::SendWebSocketMessage(bytes));
             }
             Err(err) => {

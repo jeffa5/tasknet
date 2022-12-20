@@ -79,11 +79,16 @@ impl Document {
     pub fn receive_sync_message(&mut self, message: &[u8]) {
         match automerge::sync::Message::decode(message) {
             Ok(message) => {
-                if let Err(err) = self
+                match self
                     .autodoc
                     .receive_sync_message(&mut self.server_sync_state, message)
                 {
-                    log!("Failed to receive sync message from server: ", err);
+                    Ok(()) => {
+                        self.tasks = hydrate(&self.autodoc).unwrap();
+                    }
+                    Err(err) => {
+                        log!("Failed to receive sync message from server: ", err);
+                    }
                 }
             }
             Err(err) => {
