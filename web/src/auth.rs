@@ -1,4 +1,5 @@
 use seed::cookies;
+use seed::{prelude::*, *};
 
 pub const SESSION_COOKIE: &str = "session";
 pub const AUTH_PROVIDER_COOKIE: &str = "auth-provider";
@@ -20,4 +21,11 @@ pub fn provider() -> Option<String> {
     } else {
         None
     }
+}
+
+pub fn google_logo() -> Node<crate::Msg> {
+    seed::img![
+        C!["inline", "pr-2"],
+        attrs! {At::Src => "/assets/btn_google_light_normal_ios.svg"}
+    ]
 }

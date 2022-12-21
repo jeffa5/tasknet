@@ -1,7 +1,7 @@
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
-use crate::{GlobalModel, Msg as GMsg};
+use crate::{auth::google_logo, GlobalModel, Msg as GMsg};
 
 pub fn init() -> Model {
     let auth_provider = crate::auth::provider();
@@ -25,10 +25,6 @@ pub fn update(
 }
 
 pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
-    let google_logo = img![
-        C!["inline", "pr-2"],
-        attrs! {At::Src => "/assets/btn_google_light_normal_ios.svg"}
-    ];
     div![
         C![
             "flex",
@@ -44,7 +40,7 @@ pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             a![
                 C!["bg-gray-200", "py-1", "px-2", "m-1", "hover:bg-gray-300"],
                 attrs! {At::Href => "/auth/google/sign_in"},
-                google_logo.clone(),
+                google_logo(),
                 "Sign in with Google",
             ]
         ),
@@ -53,7 +49,7 @@ pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             a![
                 C!["bg-gray-200", "py-1", "px-2", "m-1", "hover:bg-gray-300"],
                 attrs! {At::Href => "/auth/google/sign_out"},
-                google_logo,
+                google_logo(),
                 "Sign out with Google",
             ]
         ),
