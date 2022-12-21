@@ -7,6 +7,7 @@ use apply::Apply;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
+mod auth;
 mod components;
 mod document;
 mod filters;
@@ -396,6 +397,11 @@ fn view(model: &Model) -> Node<Msg> {
 }
 
 fn view_titlebar(model: &Model) -> Node<Msg> {
+    let auth_string = if let Some(provider) = auth::provider() {
+        format!("Signed in with {}", provider)
+    } else {
+        "Signed out".to_owned()
+    };
     div![
         C!["flex", "flex-row", "justify-between"],
         div![
@@ -408,6 +414,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
+            auth_string,
             view_button("Auth", Msg::GoAuth),
             view_button(
                 &format!("Connection: {:?}", model.global.web_socket.state()),

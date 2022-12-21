@@ -3,25 +3,8 @@ use seed::{prelude::*, *};
 
 use crate::{GlobalModel, Msg as GMsg};
 
-pub const SESSION_COOKIE: &str = "session";
-pub const AUTH_PROVIDER_COOKIE: &str = "auth-provider";
-
 pub fn init() -> Model {
-    let have_session = cookies()
-        .map(|cookie_jar| cookie_jar.get(SESSION_COOKIE).is_some())
-        .unwrap_or_default();
-
-    let auth_provider = if have_session {
-        cookies().and_then(|cookie_jar| {
-            cookie_jar
-                .get(AUTH_PROVIDER_COOKIE)
-                .map(|cookie| cookie.value())
-                .map(std::borrow::ToOwned::to_owned)
-        })
-    } else {
-        None
-    };
-
+    let auth_provider = crate::auth::provider();
     Model { auth_provider }
 }
 
