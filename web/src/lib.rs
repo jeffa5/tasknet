@@ -402,6 +402,13 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
     } else {
         "Sign in"
     };
+
+    let connection_string = match model.global.web_socket.state() {
+        web_sys::TcpReadyState::Connecting => "Connecting",
+        web_sys::TcpReadyState::Open => "Connected",
+        web_sys::TcpReadyState::Closing | web_sys::TcpReadyState::Closed => "Disconnected",
+        _ => todo!(),
+    };
     div![
         C!["flex", "flex-row", "justify-between"],
         div![
@@ -415,10 +422,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
         nav![
             C!["flex", "flex-row", "justify-end"],
             view_button(account_string, Msg::GoAuth),
-            view_button(
-                &format!("Connection: {:?}", model.global.web_socket.state()),
-                Msg::ReconnectWebSocket(0)
-            ),
+            view_button(connection_string, Msg::ReconnectWebSocket(0)),
             view_button("Import Tasks", Msg::ImportTasks),
             view_button("Export Tasks", Msg::ExportTasks),
             view_button("Create", Msg::CreateTask),
