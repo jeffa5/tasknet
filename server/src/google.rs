@@ -1,6 +1,7 @@
 use axum::extract::TypedHeader;
 use axum::headers::Cookie;
-use axum::{http::request::Parts, RequestPartsExt};
+use axum::response::Response;
+use axum::{http::request::Parts, http::StatusCode, RequestPartsExt};
 use std::sync::Arc;
 
 use async_session::{async_trait, Session, SessionStore};
@@ -133,6 +134,68 @@ impl FromRequestParts<Arc<Mutex<Server>>> for UserIdFromSession {
             session_cookie: session_cookie.to_owned(),
             session_data: user_data,
         })
+    }
+}
+
+#[async_trait]
+impl FromRequestParts<Arc<Mutex<Server>>> for UserSessionData {
+    type Rejection = (HeaderMap, Response);
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &Arc<Mutex<Server>>,
+    ) -> Result<Self, Self::Rejection> {
+        let server = state.lock().await;
+
+        let cookie: Option<TypedHeader<Cookie>> = parts.extract().await.unwrap();
+
+        let session_cookie = cookie
+            .as_ref()
+            .and_then(|cookie| cookie.get(SESSION_COOKIE))
+            .unwrap_or_default();
+
+        let error_response = if let Some("websocket") =
+            parts.headers.get("upgrade").and_then(|hv| hv.to_str().ok())
+        {
+            StatusCode::UNAUTHORIZED.into_response()
+        } else {
+            Redirect::to("/").into_response()
+        };
+
+        let mut headers = HeaderMap::new();
+        // return the new created session cookie for client
+        if session_cookie.is_empty() {
+            debug!("found an empty session cookie");
+            return Err((headers, error_response));
+        }
+
+        // continue to decode the session cookie
+        if let Some(session) = server
+            .sessions
+            .load_session(session_cookie.to_owned())
+            .await
+            .unwrap()
+        {
+            if let Some(user_data) = session.get::<UserSessionData>("user_data") {
+                debug!(
+                    "UserIdFromSession: session decoded success, user_data={:?}",
+                    user_data
+                );
+                return Ok(user_data);
+            } else {
+                debug!("Failed to get user_data from session");
+                return Err((headers, error_response));
+            }
+        } else {
+            debug!(
+                "UserIdFromSession: err session not exists in store, {}={}",
+                SESSION_COOKIE, session_cookie
+            );
+
+            clear_session_cookies(&mut headers).await;
+
+            return Err((headers, error_response));
+        }
     }
 }
 

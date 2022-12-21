@@ -1,6 +1,7 @@
 use async_session::MemoryStore;
 use config::ServerConfig;
 use google::Google;
+use google::UserSessionData;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tracing::debug;
 use tracing::info;
@@ -89,11 +90,11 @@ async fn main() {
         .unwrap();
 }
 
-async fn sync_handler(ws: WebSocketUpgrade, State(server): State<Arc<Mutex<Server>>>) -> Response {
-    ws.on_upgrade(|socket| handle_sync_socket(socket, server))
+async fn sync_handler(ws: WebSocketUpgrade, user: UserSessionData, State(server): State<Arc<Mutex<Server>>>) -> Response {
+    ws.on_upgrade(|socket| handle_sync_socket(socket, server, user))
 }
 
-async fn handle_sync_socket(socket: WebSocket, server: Arc<Mutex<Server>>) {
+async fn handle_sync_socket(socket: WebSocket, server: Arc<Mutex<Server>>, user: UserSessionData) {
     let (sender, receiver) = socket.split();
     let connection_metadata = ConnectionMetadata {
         peer_id: uuid::Uuid::new_v4(),
