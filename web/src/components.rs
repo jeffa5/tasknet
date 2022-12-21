@@ -5,6 +5,11 @@ use seed::{prelude::*, *};
 
 use crate::Msg;
 
+#[derive(Debug, Default)]
+pub struct ButtonOptions {
+    pub disabled: bool,
+}
+
 pub fn view_button_str(text: &str, msg: Msg) -> Node<Msg> {
     button![
         C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300"],
@@ -13,9 +18,22 @@ pub fn view_button_str(text: &str, msg: Msg) -> Node<Msg> {
     ]
 }
 
-pub fn view_button(node: Node<Msg>, msg: Msg) -> Node<Msg> {
+pub fn view_button(node: Node<Msg>, msg: Msg, options: ButtonOptions) -> Node<Msg> {
+    let bg = if options.disabled {
+        "bg-gray-100"
+    } else {
+        "bg-gray-200"
+    };
+    let text_colour = if options.disabled {
+        "text-gray-600"
+    } else {
+        "text-current"
+    };
     button![
-        C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300"],
+        C![bg, text_colour, "py-2", "px-4", "m-2", "hover:bg-gray-300"],
+        attrs! {
+            At::Disabled => if options.disabled { AtValue::None } else { AtValue::Ignored },
+        },
         mouse_ev(Ev::Click, |_| msg),
         node
     ]

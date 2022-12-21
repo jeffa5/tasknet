@@ -90,7 +90,11 @@ async fn main() {
         .unwrap();
 }
 
-async fn sync_handler(ws: WebSocketUpgrade, user: UserSessionData, State(server): State<Arc<Mutex<Server>>>) -> Response {
+async fn sync_handler(
+    ws: WebSocketUpgrade,
+    user: UserSessionData,
+    State(server): State<Arc<Mutex<Server>>>,
+) -> Response {
     ws.on_upgrade(|socket| handle_sync_socket(socket, server, user))
 }
 

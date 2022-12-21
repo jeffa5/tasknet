@@ -15,7 +15,7 @@ mod pages;
 mod task;
 mod urgency;
 
-use components::{view_button, view_button_str};
+use components::{view_button, view_button_str, ButtonOptions};
 use document::Document;
 use filters::Filters;
 use sync::SyncMessage;
@@ -414,7 +414,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
     };
     let connection = span![
         attrs! {
-            At::Title => "Click to reconnect", 
+            At::Title => "Click to reconnect",
         },
         connection_string
     ];
@@ -431,7 +431,13 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
         nav![
             C!["flex", "flex-row", "justify-end"],
             view_button_str(account_string, Msg::GoAuth),
-            view_button(connection, Msg::ReconnectWebSocket(0)),
+            view_button(
+                connection,
+                Msg::ReconnectWebSocket(0),
+                ButtonOptions {
+                    disabled: !signed_in
+                }
+            ),
             view_button_str("Import Tasks", Msg::ImportTasks),
             view_button_str("Export Tasks", Msg::ExportTasks),
             view_button_str("Create", Msg::CreateTask),
