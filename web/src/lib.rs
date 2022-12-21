@@ -21,6 +21,7 @@ use sync::SyncMessage;
 use task::{Recur, Status, Task, TaskId};
 
 const VIEW_TASK: &str = "view";
+const AUTH: &str = "auth";
 
 fn ws_url() -> String {
     let location = window().location();
@@ -75,6 +76,12 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         }
     });
 
+    orders.subscribe(|subs::UrlRequested(url, url_request)| {
+        if url.path().starts_with(&["auth".to_owned()]) {
+            url_request.handled();
+        }
+    });
+
     orders
         .stream(streams::interval(1000, || Msg::OnRenderTick))
         .stream(streams::interval(60000, || Msg::OnRecurTick))
@@ -125,6 +132,11 @@ impl<'a> Urls<'a> {
     }
 
     #[must_use]
+    pub fn auth(self) -> Url {
+        self.base_url().add_hash_path_part(AUTH)
+    }
+
+    #[must_use]
     pub fn view_task(self, id: &TaskId) -> Url {
         self.base_url()
             .add_hash_path_part(VIEW_TASK)
@@ -140,6 +152,7 @@ impl<'a> Urls<'a> {
 enum Page {
     Home(pages::home::Model),
     ViewTask(pages::view_task::Model),
+    Auth(pages::auth::Model),
 }
 
 impl Page {
@@ -160,6 +173,7 @@ impl Page {
                     )
                 },
             ),
+            Some(AUTH) => Self::Auth(pages::auth::init()),
             None | Some(_) => Self::Home(pages::home::init()),
         }
     }
@@ -180,6 +194,7 @@ pub enum Msg {
     ExportTasks,
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
+    Auth(pages::auth::Msg),
 
     WebSocketOpened,
     WebSocketClosed(CloseEvent),
@@ -187,6 +202,8 @@ pub enum Msg {
     ReconnectWebSocket(usize),
     SendWebSocketMessage(Vec<u8>),
     ReceiveWebSocketMessage(Vec<u8>),
+
+    GoAuth,
 }
 
 #[allow(clippy::too_many_lines)]
@@ -202,6 +219,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::CreateTask => {
             let id = model.global.document.new_task();
             orders.request_url(Urls::new(&model.global.base_url).view_task(&id));
+        }
+        Msg::GoAuth => {
+            orders.request_url(Urls::new(&model.global.base_url).auth());
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::OnRecurTick => {
@@ -285,6 +305,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 pages::view_task::update(msg, &mut model.global, lm, orders);
             }
         }
+        Msg::Auth(msg) => {
+            if let Page::Auth(lm) = &mut model.page {
+                pages::auth::update(msg, &mut model.global, lm, orders);
+            }
+        }
         Msg::Home(msg) => {
             if let Page::Home(lm) = &mut model.page {
                 pages::home::update(msg, lm, orders);
@@ -365,6 +390,7 @@ fn view(model: &Model) -> Node<Msg> {
         match &model.page {
             Page::Home(lm) => pages::home::view(&model.global, lm),
             Page::ViewTask(lm) => pages::view_task::view(&model.global, lm),
+            Page::Auth(lm) => pages::auth::view(&model.global, lm),
         },
     ]
 }
@@ -382,6 +408,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
+            view_button("Auth", Msg::GoAuth),
             view_button(
                 &format!("Connection: {:?}", model.global.web_socket.state()),
                 Msg::ReconnectWebSocket(0)

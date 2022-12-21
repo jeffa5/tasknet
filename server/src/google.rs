@@ -14,7 +14,8 @@ use tracing::info;
 
 use crate::Server;
 
-pub const COOKIE_NAME: &str = "tasknet-session";
+pub const SESSION_COOKIE: &str = "session";
+pub const AUTH_PROVIDER_COOKIE: &str = "auth-provider";
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GoogleConfig {
@@ -63,15 +64,6 @@ pub async fn handler(State(server): State<Arc<Mutex<Server>>>) -> impl IntoRespo
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct AuthResponse {
-    access_token: String,
-    expires_in: u32,
-    scope: String,
-    token_type: String,
-    id_token: String,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct AuthRequest {
     code: String,
@@ -106,7 +98,7 @@ pub async fn callback_handler(
             session.insert("google_id", &payload.sub).unwrap();
 
             // Store session and get corresponding cookie
-            let cookie = server
+            let session_cookie = server
                 .sessions
                 .store_session(session)
                 .await
@@ -114,10 +106,18 @@ pub async fn callback_handler(
                 .unwrap();
 
             // Build the cookie
-            let cookie = format!("{}={}; SameSite=Lax; Path=/", COOKIE_NAME, cookie);
+            let cookies = vec![
+                format!(
+                    "{}={}; SameSite=Lax; Path=/",
+                    SESSION_COOKIE, session_cookie
+                ),
+                format!("{}={}; Path=/", AUTH_PROVIDER_COOKIE, "google"),
+            ];
 
-            // Set cookie
-            headers.insert(SET_COOKIE, cookie.parse().unwrap());
+            // Set cookies
+            for cookie in cookies {
+                headers.append(SET_COOKIE, cookie.parse().unwrap());
+            }
         }
     }
 

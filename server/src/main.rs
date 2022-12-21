@@ -66,7 +66,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/sync", get(sync_handler))
-        .route("/auth/google", get(google::handler))
+        .route("/auth/google/sign_in", get(google::handler))
         .route("/auth/google/callback", get(google::callback_handler))
         .merge(SpaRouter::new("/", &config.serve_dir).index_file("index.html"))
         .with_state(Arc::new(Mutex::new(Server {
@@ -81,7 +81,7 @@ async fn main() {
         })));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    info!("Listening on http://{}", addr);
+    info!("Listening on http://localhost:{}", port);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
