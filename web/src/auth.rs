@@ -9,12 +9,14 @@ pub fn provider() -> Option<String> {
         .unwrap_or_default();
 
     if have_session {
-        cookies().and_then(|cookie_jar| {
-            cookie_jar
-                .get(AUTH_PROVIDER_COOKIE)
-                .map(|cookie| cookie.value())
-                .map(std::borrow::ToOwned::to_owned)
-        })
+        cookies()
+            .and_then(|cookie_jar| {
+                cookie_jar
+                    .get(AUTH_PROVIDER_COOKIE)
+                    .map(|cookie| cookie.value())
+                    .map(std::borrow::ToOwned::to_owned)
+            })
+            .filter(|provider| !provider.is_empty())
     } else {
         None
     }
