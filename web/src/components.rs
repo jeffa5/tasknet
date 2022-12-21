@@ -13,6 +13,14 @@ pub fn view_button_str(text: &str, msg: Msg) -> Node<Msg> {
     ]
 }
 
+pub fn view_button(node: Node<Msg>, msg: Msg) -> Node<Msg> {
+    button![
+        C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300"],
+        mouse_ev(Ev::Click, |_| msg),
+        node
+    ]
+}
+
 pub fn view_checkbox(name: &str, title: &str, checked: bool, msg: Msg) -> Node<Msg> {
     let msg_clone = msg.clone();
     div![
