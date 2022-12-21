@@ -15,7 +15,7 @@ mod pages;
 mod task;
 mod urgency;
 
-use components::view_button;
+use components::view_button_str;
 use document::Document;
 use filters::Filters;
 use sync::SyncMessage;
@@ -421,11 +421,11 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
-            view_button(account_string, Msg::GoAuth),
-            view_button(connection_string, Msg::ReconnectWebSocket(0)),
-            view_button("Import Tasks", Msg::ImportTasks),
-            view_button("Export Tasks", Msg::ExportTasks),
-            view_button("Create", Msg::CreateTask),
+            view_button_str(account_string, Msg::GoAuth),
+            view_button_str(connection_string, Msg::ReconnectWebSocket(0)),
+            view_button_str("Import Tasks", Msg::ImportTasks),
+            view_button_str("Export Tasks", Msg::ExportTasks),
+            view_button_str("Create", Msg::CreateTask),
         ]
     ]
 }
