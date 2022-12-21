@@ -415,7 +415,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
             C!["flex", "flex-row", "justify-start"],
             a![
                 C!["bg-gray-200", "py-2", "px-4", "m-2", "hover:bg-gray-300",],
-                attrs! {At::Href => "/tasknet"},
+                attrs! {At::Href => "#"},
                 "TaskNet"
             ]
         ],
