@@ -47,6 +47,9 @@ function unableToResolve () {
 }
 
 self.addEventListener('fetch', (event) => {
+  if (event.request.url.match("^\/auth\/.*$")) {
+    return false;
+  }
   event.respondWith(
     caches.match(event.request).then((cached) => {
       var networked = fetch(event.request).then((response) => fetchedFromNetwork(event, response), unableToResolve).catch(unableToResolve);
