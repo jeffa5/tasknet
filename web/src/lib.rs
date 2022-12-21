@@ -348,7 +348,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.global.web_socket = create_websocket(orders);
         }
         Msg::SendWebSocketMessage(message) => {
-            model.global.web_socket.send_bytes(&message).unwrap();
+            if let Err(err) = model.global.web_socket.send_bytes(&message) {
+                log!("Failed to send websocket message:", err);
+            }
         }
         Msg::ReceiveWebSocketMessage(message) => {
             match SyncMessage::try_from(&message) {
@@ -397,20 +399,23 @@ fn view(model: &Model) -> Node<Msg> {
 }
 
 fn view_titlebar(model: &Model) -> Node<Msg> {
-    let account_string = if auth::provider().is_some() {
-        "Account"
-    } else {
-        "Sign in"
-    };
+    let signed_in = auth::provider().is_some();
+    let account_string = if signed_in { "Account" } else { "Sign in" };
 
-    let connection_string = match model.global.web_socket.state() {
-        web_sys::TcpReadyState::Connecting => "Connecting",
-        web_sys::TcpReadyState::Open => "Connected",
-        web_sys::TcpReadyState::Closing | web_sys::TcpReadyState::Closed => "Disconnected",
-        _ => todo!(),
+    let connection_string = if signed_in {
+        match model.global.web_socket.state() {
+            web_sys::TcpReadyState::Connecting => "Connecting",
+            web_sys::TcpReadyState::Open => "Connected",
+            web_sys::TcpReadyState::Closing | web_sys::TcpReadyState::Closed => "Disconnected",
+            _ => "Unknown",
+        }
+    } else {
+        "Sign in before syncing"
     };
     let connection = span![
-        attrs! {At::Title => "Click to reconnect"},
+        attrs! {
+            At::Title => "Click to reconnect", 
+        },
         connection_string
     ];
     div![
