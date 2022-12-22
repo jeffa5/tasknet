@@ -73,9 +73,9 @@ pub struct UserIdFromSession {
     pub session_data: UserSessionData,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserSessionData {
-    google_id: String,
+    pub google_id: String,
 }
 
 #[async_trait]
