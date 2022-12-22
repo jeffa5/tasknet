@@ -61,7 +61,7 @@ impl Server {
 
             self.documents.insert(id.to_owned(), doc);
             debug!(id, "Loaded document");
-        }else {
+        } else {
             debug!(id, "Document already loaded");
         }
 

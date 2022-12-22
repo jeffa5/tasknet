@@ -4,6 +4,7 @@
 use std::{collections::HashMap, convert::TryFrom};
 
 use apply::Apply;
+use auth::Provider;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
@@ -399,7 +400,7 @@ fn view(model: &Model) -> Node<Msg> {
 }
 
 fn view_titlebar(model: &Model) -> Node<Msg> {
-    let signed_in = auth::provider().is_some();
+    let signed_in = Provider::load_from_session().is_some();
     let account_string = if signed_in { "Account" } else { "Sign in" };
 
     let connection_string = if signed_in {
