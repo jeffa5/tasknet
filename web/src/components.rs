@@ -29,8 +29,13 @@ pub fn view_button(node: Node<Msg>, msg: Msg, options: ButtonOptions) -> Node<Ms
     } else {
         "text-current"
     };
+    let hover = if options.disabled {
+        ""
+    } else {
+        "hover:bg-gray-300"
+    };
     button![
-        C![bg, text_colour, "py-2", "px-4", "m-2", "hover:bg-gray-300"],
+        C![bg, text_colour, "py-2", "px-4", "m-2", hover],
         attrs! {
             At::Disabled => if options.disabled { AtValue::None } else { AtValue::Ignored },
         },
