@@ -10,7 +10,7 @@ axum = { version = "0.6.1", features = ["ws", "headers"] }
 axum-extra = { version = "0.4.2", features = ["spa"] }
 clap = { version = "4.0.29", features = ["derive"] }
 futures = "0.3.25"
-tokio = { version = "1.23.0", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.23.0", features = ["rt-multi-thread", "macros", "signal"] }
 uuid = "1.2.2"
 automerge = "0.2.0"
 automerge-persistent-fs = "0.2.0"

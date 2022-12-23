@@ -5,6 +5,7 @@ use google::Google;
 use google::UserSessionData;
 use std::collections::HashMap;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use tokio::signal;
 use tracing::debug;
 use tracing::info;
 use tracing::warn;
@@ -114,8 +115,35 @@ async fn main() {
     info!("Listening on http://localhost:{}", port);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("Failed to install terminate signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    info!("Signal received, starting graceful shutdown");
 }
 
 async fn sync_handler(
