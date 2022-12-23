@@ -4,8 +4,8 @@ web:
 
 .PHONY: server
 server:
-	cargo build -p server
+	cargo build -p tasknet-server
 
 .PHONY: run
 run: web server
-	cargo run -p server
+	cargo run -p tasknet-server

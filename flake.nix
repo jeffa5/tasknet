@@ -35,8 +35,9 @@
     apps.${system} = {
       tasknet-server = {
         type = "app";
-        program = "${nix.tasknet}/bin/server";
+        program = "${nix.tasknet-server}/bin/tasknet-server";
       };
+      default = self.apps.${system}.tasknet-server;
     };
 
     formatter.${system} = pkgs.alejandra;

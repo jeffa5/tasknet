@@ -4,7 +4,7 @@
   openssl,
 }: let
   src = craneLib.cleanCargoSource ./..;
-  cargoExtraArgs = "-p server";
+  cargoExtraArgs = "-p tasknet-server";
   deps = craneLib.buildDepsOnly {
     inherit src cargoExtraArgs;
     buildInputs = [pkg-config openssl];
