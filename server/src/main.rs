@@ -30,7 +30,7 @@ use tokio::sync::Mutex;
 mod config;
 mod google;
 
-#[derive(clap::Parser)]
+#[derive(Debug, clap::Parser)]
 struct ServerOptions {
     #[clap(long, short, default_value = "config.yaml")]
     config_file: PathBuf,
@@ -78,9 +78,13 @@ struct ConnectionMetadata {
 async fn main() {
     let options = ServerOptions::parse();
 
+    tracing_subscriber::fmt::init();
+
+    debug!(?options, "Parsed CLI options");
+
     let config = config::ServerConfig::load(&options.config_file);
 
-    tracing_subscriber::fmt::init();
+    debug!(?config, "Loaded config file");
 
     let (changed, _) = tokio::sync::broadcast::channel(1);
 
