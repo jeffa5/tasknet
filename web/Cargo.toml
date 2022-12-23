@@ -3,7 +3,6 @@ name = "tasknet-web"
 version = "0.1.0"
 authors = ["Andrew Jeffery <dev@jeffas.io>"]
 description = "A task management suite"
-readme = "./README.md"
 edition = "2018"
 
 [lib]

@@ -25,9 +25,7 @@
       inherit system;
       overlays = [rust-overlay.overlays.default];
     };
-    craneLib = crane.lib.${system};
-
-    nix = import ./nix {inherit pkgs craneLib;};
+    nix = import ./nix {inherit pkgs crane system;};
   in {
     packages.${system} =
       flake-utils.lib.filterPackages system nix;
