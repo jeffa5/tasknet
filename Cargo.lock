@@ -59,12 +59,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "autosurgeon"
-version = "0.2.2"
+name = "automerge"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7972026c38a654af4a22740583dd20a8b066d6cececc027ded44c138e7195818"
+checksum = "a5d09007bcd2c084589e2c4a8fd138ac9c2dd5e40dd47f40700682072ccfc146"
 dependencies = [
- "automerge",
+ "flate2",
+ "fxhash",
+ "hex",
+ "itertools",
+ "leb128",
+ "serde",
+ "sha2",
+ "smol_str",
+ "thiserror",
+ "tinyvec",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "autosurgeon"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5dc6e7174f5e5458374769ba67bd6f5ce7ccb4716918d25fe567bb6536d1ee90"
+dependencies = [
+ "automerge 0.4.1",
  "autosurgeon-derive",
  "similar",
  "smol_str",
@@ -73,9 +93,9 @@ dependencies = [
 
 [[package]]
 name = "autosurgeon-derive"
-version = "0.2.2"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d18ee0770f3d53eac1ce40e9b0ee27804654d80752d7f8871bd0a2a689098ae8"
+checksum = "a184caec1986923848e3d95fcd12ff1dab013e53f301b40cc26a938d8a7afa65"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -851,7 +871,7 @@ name = "tasknet-web"
 version = "0.1.0"
 dependencies = [
  "apply",
- "automerge",
+ "automerge 0.2.0",
  "autosurgeon",
  "base64",
  "chrono",
