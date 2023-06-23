@@ -59,12 +59,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "automerge"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5d09007bcd2c084589e2c4a8fd138ac9c2dd5e40dd47f40700682072ccfc146"
+dependencies = [
+ "flate2",
+ "fxhash",
+ "hex",
+ "itertools",
+ "leb128",
+ "serde",
+ "sha2",
+ "smol_str",
+ "thiserror",
+ "tinyvec",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "autosurgeon"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7972026c38a654af4a22740583dd20a8b066d6cececc027ded44c138e7195818"
 dependencies = [
- "automerge",
+ "automerge 0.2.0",
  "autosurgeon-derive",
  "similar",
  "smol_str",
@@ -851,7 +871,7 @@ name = "tasknet-web"
 version = "0.1.0"
 dependencies = [
  "apply",
- "automerge",
+ "automerge 0.4.1",
  "autosurgeon",
  "base64",
  "chrono",
