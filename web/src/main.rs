@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 
-use std::{collections::HashMap, convert::TryFrom};
+use std::{ convert::TryFrom};
 
 use auth::Provider;
 #[allow(clippy::wildcard_imports)]
@@ -19,10 +19,11 @@ use components::{view_button, view_button_str, ButtonOptions};
 use document::Document;
 use filters::Filters;
 use sync::SyncMessage;
-use task::{Task, TaskId};
+use task::TaskId;
 
 const VIEW_TASK: &str = "view";
 const AUTH: &str = "auth";
+const SETTINGS: &str = "settings";
 
 fn ws_url() -> String {
     let location = window().location();
@@ -125,6 +126,11 @@ impl<'a> Urls<'a> {
     }
 
     #[must_use]
+    pub fn settings(self) -> Url {
+        self.base_url().add_hash_path_part(SETTINGS)
+    }
+
+    #[must_use]
     pub fn view_task(self, id: &TaskId) -> Url {
         self.base_url()
             .add_hash_path_part(VIEW_TASK)
@@ -141,6 +147,7 @@ enum Page {
     Home(pages::home::Model),
     ViewTask(pages::view_task::Model),
     Auth(pages::auth::Model),
+    Settings(pages::settings::Model),
 }
 
 impl Page {
@@ -162,6 +169,7 @@ impl Page {
                 },
             ),
             Some(AUTH) => Self::Auth(pages::auth::init(orders)),
+            Some(SETTINGS) => Self::Settings(pages::settings::init()),
             None | Some(_) => Self::Home(pages::home::init()),
         }
     }
@@ -177,11 +185,10 @@ pub enum Msg {
     CreateTask,
     OnRenderTick,
     UrlChanged(subs::UrlChanged),
-    ImportTasks,
-    ExportTasks,
     Home(pages::home::Msg),
     ViewTask(pages::view_task::Msg),
     Auth(pages::auth::Msg),
+    Settings(pages::settings::Msg),
 
     WebSocketOpened,
     WebSocketClosed(CloseEvent),
@@ -191,6 +198,7 @@ pub enum Msg {
     ReceiveWebSocketMessage(Vec<u8>),
 
     GoAuth,
+    GoSettings,
 }
 
 #[allow(clippy::too_many_lines)]
@@ -210,45 +218,12 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::GoAuth => {
             orders.request_url(Urls::new(&model.global.base_url).auth());
         }
+        Msg::GoSettings => {
+            orders.request_url(Urls::new(&model.global.base_url).settings());
+        }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
             model.page = Page::init(url, &model.global.document, orders);
-        }
-        Msg::ImportTasks => match window().prompt_with_message("Paste the tasks json here") {
-            Ok(Some(content)) => match serde_json::from_str::<HashMap<TaskId, Task>>(&content) {
-                Ok(tasks) => {
-                    for task in tasks.into_values() {
-                        model.global.document.update_task(task);
-                    }
-                }
-                Err(e) => {
-                    log!(e);
-                    window()
-                        .alert_with_message("Failed to import tasks")
-                        .unwrap_or_else(|e| log!(e));
-                }
-            },
-            Ok(None) => {}
-            Err(e) => {
-                log!(e);
-                window()
-                    .alert_with_message("Failed to create prompt")
-                    .unwrap_or_else(|e| log!(e));
-            }
-        },
-        Msg::ExportTasks => {
-            let json = serde_json::to_string(&model.global.document.tasks());
-            match json {
-                Ok(json) => {
-                    window()
-                        .prompt_with_message_and_default("Copy this", &json)
-                        .unwrap_or_else(|e| {
-                            log!(e);
-                            None
-                        });
-                }
-                Err(e) => log!(e),
-            }
         }
         Msg::ViewTask(msg) => {
             if let Page::ViewTask(lm) = &mut model.page {
@@ -258,6 +233,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::Auth(msg) => {
             if let Page::Auth(lm) = &mut model.page {
                 pages::auth::update(msg, &mut model.global, lm, orders);
+            }
+        }
+        Msg::Settings(msg) => {
+            if let Page::Settings(lm) = &mut model.page {
+                pages::settings::update(msg, &mut model.global, lm, orders);
             }
         }
         Msg::Home(msg) => {
@@ -342,6 +322,7 @@ fn view(model: &Model) -> Node<Msg> {
             Page::Home(lm) => pages::home::view(&model.global, lm),
             Page::ViewTask(lm) => pages::view_task::view(&model.global, lm),
             Page::Auth(lm) => pages::auth::view(&model.global, lm),
+            Page::Settings(lm) => pages::settings::view(&model.global, lm),
         },
     ]
 }
@@ -386,8 +367,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
                     disabled: !signed_in
                 }
             ),
-            view_button_str("Import Tasks", Msg::ImportTasks),
-            view_button_str("Export Tasks", Msg::ExportTasks),
+            view_button_str("Settings", Msg::GoSettings),
             view_button_str("Create", Msg::CreateTask),
         ]
     ]
