@@ -119,12 +119,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "automerge"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5d09007bcd2c084589e2c4a8fd138ac9c2dd5e40dd47f40700682072ccfc146"
+dependencies = [
+ "flate2",
+ "fxhash",
+ "hex",
+ "itertools",
+ "leb128",
+ "serde",
+ "sha2 0.10.6",
+ "smol_str",
+ "thiserror",
+ "tinyvec",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "automerge-persistent"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fdcc5bbcff2b3fa5274ff9ee97ea063b634b2eb11b19b557a0a5907e3d0513c"
 dependencies = [
- "automerge",
+ "automerge 0.2.0",
  "thiserror",
 ]
 
@@ -134,7 +154,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "364f050319fce049b0d9607890c5af81c3beed64018028128ffde2abde69cba5"
 dependencies = [
- "automerge",
+ "automerge 0.2.0",
  "automerge-persistent",
  "hex",
  "thiserror",
@@ -142,11 +162,11 @@ dependencies = [
 
 [[package]]
 name = "autosurgeon"
-version = "0.2.2"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7972026c38a654af4a22740583dd20a8b066d6cececc027ded44c138e7195818"
+checksum = "a86eb8a5e7b27d18e72182cf27b2355279888d86bfb68537a57eddc7a56a7627"
 dependencies = [
- "automerge",
+ "automerge 0.4.1",
  "autosurgeon-derive",
  "similar",
  "smol_str",
@@ -155,14 +175,14 @@ dependencies = [
 
 [[package]]
 name = "autosurgeon-derive"
-version = "0.2.2"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d18ee0770f3d53eac1ce40e9b0ee27804654d80752d7f8871bd0a2a689098ae8"
+checksum = "d4835b2e115fe5f83411d17472973cf015ad6681d17880f6803a8eb16ee7864d"
 dependencies = [
  "proc-macro2",
  "quote",
  "smol_str",
- "syn 1.0.107",
+ "syn 2.0.26",
  "thiserror",
 ]
 
@@ -2022,7 +2042,7 @@ name = "tasknet-server"
 version = "0.1.0"
 dependencies = [
  "async-session",
- "automerge",
+ "automerge 0.2.0",
  "automerge-persistent",
  "automerge-persistent-fs",
  "axum",
@@ -2046,7 +2066,7 @@ name = "tasknet-web"
 version = "0.1.0"
 dependencies = [
  "apply",
- "automerge",
+ "automerge 0.2.0",
  "autosurgeon",
  "base64 0.21.2",
  "chrono",
