@@ -3,6 +3,6 @@ target/
 dist/
 documents/
 
-config.yaml
+config.json
 
 result
