@@ -35,7 +35,6 @@ pub enum Msg {
     SelectedTaskProjectChanged(String),
     SelectedTaskTagsChanged(String),
     SelectedTaskPriorityChanged(String),
-    SelectedTaskNotesChanged(String),
     SelectedTaskDueDateChanged(String),
     SelectedTaskDueTimeChanged(String),
     SelectedTaskScheduledDateChanged(String),
@@ -106,13 +105,6 @@ pub fn update(
                         Ok(p) => Some(p),
                         Err(()) => None,
                     });
-                });
-        }
-        Msg::SelectedTaskNotesChanged(new_notes) => {
-            global_model
-                .document
-                .change_task(&model.selected_task, |task| {
-                    task.set_notes(new_notes);
                 });
         }
         Msg::SelectedTaskDueDateChanged(new_date) => {
@@ -624,32 +616,6 @@ fn view_selected_task(task: &Task, document: &Document) -> Node<GMsg> {
                         ]
                     }
                 )
-            ]
-        ],
-        div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
-            div![C!["font-bold"], "Notes"],
-            div![
-                C!["flex", "flex-row"],
-                textarea![
-                    C!["flex-grow", "border", "mr-2"],
-                    attrs! {
-                        At::Value => task.notes(),
-                    },
-                    input_ev(Ev::Input, |s| GMsg::ViewTask(
-                        Msg::SelectedTaskNotesChanged(s)
-                    ))
-                ],
-                if task.notes().is_empty() {
-                    pre![" "]
-                } else {
-                    button![
-                        mouse_ev(Ev::Click, |_| GMsg::ViewTask(
-                            Msg::SelectedTaskNotesChanged(String::new())
-                        )),
-                        div![C!["text-red-600"], "X"]
-                    ]
-                }
             ]
         ],
         div![

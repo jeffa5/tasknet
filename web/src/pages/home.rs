@@ -159,7 +159,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
             }
         }
         Msg::FiltersDescriptionChanged(new_description) => {
-            model.filters.description_and_notes = new_description;
+            model.filters.description = new_description;
         }
         Msg::FiltersReset => model.filters = Filters::default(),
         Msg::FiltersSave => {
@@ -498,8 +498,8 @@ fn view_filters(model: &Model, document: &Document) -> Node<GMsg> {
             ),
         ],
         view_text_input(
-            "Description & Notes",
-            &model.filters.description_and_notes,
+            "Description",
+            &model.filters.description,
             false,
             BTreeSet::new(),
             |s| GMsg::Home(Msg::FiltersDescriptionChanged(s))

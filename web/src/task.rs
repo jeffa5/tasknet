@@ -85,9 +85,6 @@ pub struct Task {
     scheduled: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<DateTime>,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    #[serde(default)]
-    notes: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     project: Vec<String>,
@@ -159,7 +156,6 @@ impl Task {
             project: Vec::new(),
             start: None,
             scheduled: None,
-            notes: String::new(),
             tags: Vec::new(),
             priority: None,
             depends: HashSet::new(),
@@ -247,14 +243,6 @@ impl Task {
 
     pub fn set_priority(&mut self, priority: Option<Priority>) {
         self.priority = priority;
-    }
-
-    pub fn set_notes(&mut self, notes: String) {
-        self.notes = notes;
-    }
-
-    pub fn notes(&self) -> &str {
-        &self.notes
     }
 
     pub const fn start(&self) -> &Option<DateTime> {

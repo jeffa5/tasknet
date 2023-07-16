@@ -18,7 +18,7 @@ pub struct Filters {
     #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default)]
-    pub description_and_notes: String,
+    pub description: String,
     #[serde(default)]
     pub priority_none: bool,
     #[serde(default)]
@@ -38,7 +38,7 @@ impl Default for Filters {
             status_waiting: false,
             project: Vec::new(),
             tags: Vec::new(),
-            description_and_notes: String::new(),
+            description: String::new(),
             priority_none: true,
             priority_low: true,
             priority_medium: true,
@@ -65,24 +65,16 @@ impl Filters {
                 .iter()
                 .any(|t| t.to_lowercase().contains(&tag.to_lowercase()))
         });
-        let filter_description_and_notes = task
+        let filter_description = task
             .description()
             .to_lowercase()
-            .contains(&self.description_and_notes.to_lowercase())
-            || task
-                .notes()
-                .to_lowercase()
-                .contains(&self.description_and_notes.to_lowercase());
+            .contains(&self.description.to_lowercase());
         let filter_priority = match task.priority() {
             None => self.priority_none,
             Some(Priority::Low) => self.priority_low,
             Some(Priority::Medium) => self.priority_medium,
             Some(Priority::High) => self.priority_high,
         };
-        filter_status
-            && filter_project
-            && filter_tags
-            && filter_description_and_notes
-            && filter_priority
+        filter_status && filter_project && filter_tags && filter_description && filter_priority
     }
 }

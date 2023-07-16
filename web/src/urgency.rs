@@ -9,7 +9,6 @@ const LOW_PRIORITY_COEFFICIENT: f64 = 1.8;
 const SCHEDULED_COEFFICIENT: f64 = 5.0;
 const ACTIVE_COEFFICIENT: f64 = 4.0;
 const AGE_COEFFICIENT: f64 = 2.0;
-const NOTES_COEFFICIENT: f64 = 1.0;
 const TAGS_COEFFICIENT: f64 = 1.0;
 const PROJECT_COEFFICIENT: f64 = 1.0;
 const WAITING_COEFFICIENT: f64 = -3.0;
@@ -31,8 +30,7 @@ pub fn calculate(task: &Task) -> Option<f64> {
                 + urgency_scheduled(&task.scheduled().as_ref().map(|d| d.0))
                 + urgency_tags(task.tags())
                 + urgency_next(task.tags())
-                + urgency_priority(task.priority())
-                + urgency_notes(task.notes()),
+                + urgency_priority(task.priority()),
         ),
         Status::Pending => Some(
             urgency_age(task.entry().0)
@@ -42,8 +40,7 @@ pub fn calculate(task: &Task) -> Option<f64> {
                 + urgency_scheduled(&task.scheduled().as_ref().map(|d| d.0))
                 + urgency_tags(task.tags())
                 + urgency_next(task.tags())
-                + urgency_priority(task.priority())
-                + urgency_notes(task.notes()),
+                + urgency_priority(task.priority()),
         ),
     }
 }
@@ -127,13 +124,5 @@ const fn urgency_priority(priority: &Option<Priority>) -> f64 {
         Some(Priority::Low) => LOW_PRIORITY_COEFFICIENT,
         Some(Priority::Medium) => MEDIUM_PRIORITY_COEFFICIENT,
         Some(Priority::High) => HIGH_PRIORITY_COEFFICIENT,
-    }
-}
-
-const fn urgency_notes(notes: &str) -> f64 {
-    if notes.is_empty() {
-        0.0
-    } else {
-        NOTES_COEFFICIENT
     }
 }
