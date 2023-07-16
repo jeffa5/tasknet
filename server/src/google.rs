@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use tracing::{debug, info};
 
-use crate::Server;
+use crate::server::Server;
 
 pub const SESSION_COOKIE: &str = "session";
 pub const AUTH_PROVIDER_COOKIE: &str = "auth-provider";
