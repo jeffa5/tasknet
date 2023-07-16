@@ -3,11 +3,7 @@ name = "tasknet-web"
 version = "0.1.0"
 authors = ["Andrew Jeffery <dev@jeffas.io>"]
 description = "A task management suite"
-readme = "./README.md"
 edition = "2018"
-
-[lib]
-crate-type = ["cdylib"]
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.37"
@@ -15,6 +11,8 @@ pretty_assertions = "1.4.0"
 regex = "1.8.4"
 
 [dependencies]
+sync = {path = "../sync"}
+
 serde = "1.0.168"
 serde_json = "1.0.99"
 seed = "0.9.2"

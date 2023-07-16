@@ -134,10 +134,10 @@ fn reconcile_taskid_set<R: autosurgeon::Reconciler>(
     Ok(())
 }
 
-fn hydrate_taskid_set<'a, D: ReadDoc>(
+fn hydrate_taskid_set<D: ReadDoc>(
     doc: &D,
     obj: &automerge::ObjId,
-    prop: Prop<'a>,
+    prop: Prop<'_>,
 ) -> Result<HashSet<TaskId>, HydrateError> {
     let map = <HashMap<TaskId, bool>>::hydrate(doc, obj, prop)?;
     Ok(map.into_keys().collect())

@@ -1,3 +1,8 @@
-/target/
+target/
 .direnv/
-/dist/
+dist/
+documents/
+
+config.json
+
+result

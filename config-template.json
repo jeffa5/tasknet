@@ -1,0 +1,12 @@
+{
+  "port": 3000,
+  "serve_dir": "web/dist",
+  "documents_dir": "documents",
+  "google": {
+    "client_id": "",
+    "client_secret": "",
+    "issuer_uri": "https://accounts.google.com",
+    "redirect_uri": "http://localhost:3000/auth/google/callback",
+    "scopes": ["openid", "email"]
+  }
+}

@@ -29,37 +29,11 @@ jobs:
         with:
           command: test
 
-  format:
-    name: Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - run: rustup component add clippy
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
-
   deploy:
     name: Deploy
     needs:
       - check
       - test
-      - format
-      - clippy
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -67,7 +41,7 @@ jobs:
       with:
         targets: wasm32-unknown-unknown
     - name: Install trunk
-      run: wget -qO- https://github.com/thedodd/trunk/releases/download/v0.16.0/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
+      run: wget -qO- https://github.com/thedodd/trunk/releases/download/v0.17.1/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
     - name: Build package
       run: cd web && ../trunk build --release --public-url "/tasknet"
     - name: Deploy

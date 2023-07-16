@@ -1,6 +1,10 @@
 use automerge::AutoCommit;
 use autosurgeon::{hydrate, reconcile};
-use seed::prelude::{LocalStorage, WebStorage};
+use base64::Engine;
+use seed::{
+    log,
+    prelude::{LocalStorage, WebStorage},
+};
 
 use crate::task::{Task, TaskId};
 use std::collections::HashMap;
@@ -11,6 +15,7 @@ const AUTODOC_STORAGE_KEY: &str = "tasknet-autodoc";
 pub struct Document {
     tasks: HashMap<TaskId, Task>,
     autodoc: automerge::AutoCommit,
+    server_sync_state: automerge::sync::State,
 }
 
 impl Document {
@@ -50,15 +55,48 @@ impl Document {
     pub fn load() -> Self {
         let saved_document: String =
             LocalStorage::get(AUTODOC_STORAGE_KEY).map_or_else(|_| String::new(), |bytes| bytes);
-        let saved_document = base64::decode(saved_document).unwrap_or_default();
+        let b64_engine = base64::engine::general_purpose::STANDARD;
+        let saved_document = b64_engine.decode(saved_document).unwrap_or_default();
         let autodoc = AutoCommit::load(&saved_document).unwrap_or_else(|_| AutoCommit::new());
         let tasks = hydrate(&autodoc).unwrap();
-        Self { tasks, autodoc }
+        Self {
+            tasks,
+            autodoc,
+            server_sync_state: automerge::sync::State::default(),
+        }
     }
 
     pub fn save(&mut self) {
         let bytes = self.autodoc.save();
-        let bytes = base64::encode(bytes);
+        let b64_engine = base64::engine::general_purpose::STANDARD;
+        let bytes = b64_engine.encode(bytes);
         LocalStorage::insert(AUTODOC_STORAGE_KEY, &bytes).expect("save autodoc to LocalStorage");
+    }
+
+    pub fn generate_sync_message(&mut self) -> Option<Vec<u8>> {
+        self.autodoc
+            .generate_sync_message(&mut self.server_sync_state)
+            .map(automerge::sync::Message::encode)
+    }
+
+    pub fn receive_sync_message(&mut self, message: &[u8]) {
+        match automerge::sync::Message::decode(message) {
+            Ok(message) => {
+                match self
+                    .autodoc
+                    .receive_sync_message(&mut self.server_sync_state, message)
+                {
+                    Ok(()) => {
+                        self.tasks = hydrate(&self.autodoc).unwrap();
+                    }
+                    Err(err) => {
+                        log!("Failed to receive sync message from server: ", err);
+                    }
+                }
+            }
+            Err(err) => {
+                log!("Failed to decode sync message:", err);
+            }
+        }
     }
 }

@@ -8,7 +8,7 @@ use std::{
 use seed::{prelude::*, *};
 
 use crate::{
-    components::{duration_string, view_button, view_checkbox, view_text_input},
+    components::{duration_string, view_button_str, view_checkbox, view_text_input},
     document::Document,
     task::{DateTime, Priority, Status, Task, TaskId},
     urgency, Filters, GlobalModel, Msg as GMsg,
@@ -541,9 +541,9 @@ fn view_filters(model: &Model, document: &Document) -> Node<GMsg> {
         ],
         div![
             C!["flex", "flex-col"],
-            view_button("Reset Filters", GMsg::Home(Msg::FiltersReset)),
-            view_button("Save to context", GMsg::Home(Msg::FiltersSave)),
-            view_button("Remove context", GMsg::Home(Msg::ContextsRemove)),
+            view_button_str("Reset Filters", GMsg::Home(Msg::FiltersReset)),
+            view_button_str("Save to context", GMsg::Home(Msg::FiltersSave)),
+            view_button_str("Remove context", GMsg::Home(Msg::ContextsRemove)),
         ],
         div![
             C!["flex", "flex-col"],

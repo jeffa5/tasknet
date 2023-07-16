@@ -5,7 +5,7 @@ use chrono::{Datelike, Timelike};
 use seed::{prelude::*, *};
 
 use crate::{
-    components::{duration_string, view_button, view_text_input},
+    components::{duration_string, view_button_str, view_text_input},
     document::Document,
     task::{DateTime, Priority, RecurUnit, Status, Task, TaskId},
     urgency, GlobalModel, Msg as GMsg, Recur, Urls,
@@ -785,28 +785,28 @@ fn view_selected_task(task: &Task, document: &Document) -> Node<GMsg> {
             IF!(is_pending =>
                 div![
                     if start.is_some() {
-                        view_button("Stop", GMsg::ViewTask(Msg::StopSelectedTask))
+                        view_button_str("Stop", GMsg::ViewTask(Msg::StopSelectedTask))
                     } else {
-                        view_button("Start", GMsg::ViewTask(Msg::StartSelectedTask))
+                        view_button_str("Start", GMsg::ViewTask(Msg::StartSelectedTask))
                     }
                 ]
             ),
             IF!(is_pending =>
-                div![ view_button("Complete", GMsg::ViewTask(Msg::CompleteSelectedTask))]
+                div![ view_button_str("Complete", GMsg::ViewTask(Msg::CompleteSelectedTask))]
             ),
             IF!(matches!(task.status(), Status::Pending|Status::Waiting|Status::Recurring) =>
-                div![ view_button("Delete", GMsg::ViewTask(Msg::DeleteSelectedTask))]
+                div![ view_button_str("Delete", GMsg::ViewTask(Msg::DeleteSelectedTask))]
             ),
             IF!(matches!(task.status(), Status::Deleted) =>
-                div![ view_button("Permanently delete", GMsg::ViewTask(Msg::DeleteSelectedTask))]
+                div![ view_button_str("Permanently delete", GMsg::ViewTask(Msg::DeleteSelectedTask))]
             ),
             IF!(matches!(task.status(), Status::Deleted) =>
-                div![ view_button("Undelete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
+                div![ view_button_str("Undelete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
             ),
             IF!(matches!(task.status(), Status::Completed) =>
-                div![ view_button("Uncomplete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
+                div![ view_button_str("Uncomplete", GMsg::ViewTask(Msg::MoveSelectedTaskToPending))]
             ),
-            view_button("Close", GMsg::SelectTask(None))
+            view_button_str("Close", GMsg::SelectTask(None))
         ]
     ]
 }

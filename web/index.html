@@ -8,18 +8,11 @@
 
     <link data-trunk rel="icon" type="image/png" href="assets/favicon.ico">
     <link data-trunk rel="css" href="styles/tailwind.min.css"/>
-    <link data-trunk rel="copy-file" href="tasknet.webmanifest">
-    <link data-trunk rel="copy-file" href="service-worker.js">
-
-    <link rel="manifest" href="tasknet.webmanifest">
+    <link data-trunk rel="copy-dir" href="assets">
 </head>
 
 <body>
     <section id="app"></section>
-    <script type="module">
-        import init from '/tasknet/pkg/package.js';
-        init('/tasknet/pkg/package_bg.wasm');
-    </script>
 </body>
 
 </html>
