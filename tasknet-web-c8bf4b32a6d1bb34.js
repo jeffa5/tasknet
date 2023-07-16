@@ -1403,7 +1403,7 @@ async function __wbg_init(input) {
     if (wasm !== undefined) return wasm;
 
     if (typeof input === 'undefined') {
-        input = new URL('tasknet-web-6c4146726430f28c_bg.wasm', import.meta.url);
+        input = new URL('tasknet-web-c8bf4b32a6d1bb34_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 
