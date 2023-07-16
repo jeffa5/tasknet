@@ -27,7 +27,7 @@ const AUTH: &str = "auth";
 fn ws_url() -> String {
     let location = window().location();
     let protocol = match location.protocol().unwrap_or_default().as_str() {
-        "https" => "wss",
+        "https:" => "wss",
         _ => "ws",
     };
     format!(
