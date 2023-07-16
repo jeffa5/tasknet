@@ -14,7 +14,7 @@ use openid::{DiscoveredClient, Options, Token};
 use reqwest::header::SET_COOKIE;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::server::Server;
 
@@ -51,7 +51,7 @@ impl Google {
 pub async fn sign_in_handler(State(server): State<Arc<Mutex<Server>>>) -> impl IntoResponse {
     let server = server.lock().await;
     if let (Some(state), Some(config)) = (server.google.as_ref(), server.config.google.as_ref()) {
-        info!("google auth sign in");
+        debug!("google auth sign in");
 
         let auth_url: String = state
             .client
@@ -61,7 +61,7 @@ pub async fn sign_in_handler(State(server): State<Arc<Mutex<Server>>>) -> impl I
             })
             .into();
 
-        info!("Redirecting to {}", auth_url);
+        debug!("Redirecting to {}", auth_url);
         Redirect::to(auth_url.as_ref())
     } else {
         Redirect::to("/")
@@ -239,7 +239,7 @@ pub async fn callback_handler(
     Query(query): Query<AuthRequest>,
     State(server): State<Arc<Mutex<Server>>>,
 ) -> impl IntoResponse {
-    info!("Google auth callback");
+    debug!("Google auth callback");
 
     let server = server.lock().await;
 
@@ -256,7 +256,7 @@ pub async fn callback_handler(
         if let Some(id_token) = token.id_token.as_mut() {
             state.client.decode_token(id_token).unwrap();
             state.client.validate_token(id_token, None, None).unwrap();
-            info!("token: {:?}", id_token);
+            debug!("token: {:?}", id_token);
             let payload = id_token.payload().unwrap();
 
             // Create a new session filled with user data
