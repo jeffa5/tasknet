@@ -420,7 +420,7 @@ fn view_selected_task(task: &Task, document: &Document) -> Node<GMsg> {
             |s| GMsg::ViewTask(Msg::SelectedTaskDescriptionChanged(s))
         ),
         view_text_input(
-            "Project",
+            "Project (separate sub-projects with `.`)",
             &task.project().join("."),
             false,
             project_suggestions,
@@ -428,7 +428,7 @@ fn view_selected_task(task: &Task, document: &Document) -> Node<GMsg> {
         ),
         div![
             C!["flex", "flex-col", "px-2", "mb-2"],
-            div![C!["font-bold"], "Tags"],
+            div![C!["font-bold"], "Tags (space separated)"],
             div![
                 C!["flex", "flex-row"],
                 input![
