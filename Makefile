@@ -2,6 +2,10 @@
 web:
 	cd web && trunk build
 
+.PHONY: serve
+serve:
+	cd web && trunk serve
+
 .PHONY: server
 server:
 	cargo build -p tasknet-server
