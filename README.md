@@ -11,3 +11,7 @@ cd web && trunk serve
 ```shell
 make run
 ```
+
+### Server configuration
+
+A template configuration file is provided in `config-template.json`.
