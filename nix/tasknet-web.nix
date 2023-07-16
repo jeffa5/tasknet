@@ -1,7 +1,5 @@
 {
   craneLibWasm,
-  pkg-config,
-  openssl,
   trunk,
   lib,
   wasm-bindgen-cli,
