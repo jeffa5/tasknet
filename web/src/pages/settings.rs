@@ -75,12 +75,13 @@ pub fn view(_global_model: &GlobalModel, _model: &Model) -> Node<GMsg> {
         C![
             "flex",
             "flex-col",
+            "mx-auto",
             "bg-gray-100",
             "p-2",
             "border-4",
             "border-gray-200",
         ],
-        div![C!["m-2"], "Settings"],
+        div![C!["mx-auto"], "Settings"],
         view_button_str("Import Tasks", GMsg::Settings(Msg::ImportTasks)),
         view_button_str("Export Tasks", GMsg::Settings(Msg::ExportTasks)),
     ]
