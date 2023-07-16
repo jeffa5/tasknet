@@ -13,9 +13,8 @@
   assetsFilter = path: _type: builtins.match ".*/web/assets/.*$" path != null;
   stylesFilter = path: _type: builtins.match ".*/web/styles/.*$" path != null;
   manifestFilter = path: _type: builtins.match ".*/web/tasknet.webmanifest$" path != null;
-  serviceWorkerFilter = path: _type: builtins.match ".*/web/service-worker.js$" path != null;
   indexHTMLOrCargo = path: type:
-    builtins.any (f: f path type) [indexHTMLFilter assetsFilter stylesFilter manifestFilter serviceWorkerFilter craneLibWasm.filterCargoSources];
+    builtins.any (f: f path type) [indexHTMLFilter assetsFilter stylesFilter manifestFilter craneLibWasm.filterCargoSources];
   src = lib.cleanSourceWith {
     src = ./..;
     filter = indexHTMLOrCargo;

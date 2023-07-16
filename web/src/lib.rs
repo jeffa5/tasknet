@@ -3,7 +3,6 @@
 
 use std::{collections::HashMap, convert::TryFrom};
 
-use apply::Apply;
 use auth::Provider;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
@@ -61,23 +60,6 @@ fn create_websocket(orders: &impl Orders<Msg>) -> WebSocket {
 
 #[allow(clippy::needless_pass_by_value)]
 fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
-    let url_clone = url.clone();
-    orders.perform_cmd(async move {
-        let res = window()
-            .navigator()
-            .service_worker()
-            .register(&format!(
-                "{}/{}",
-                url_clone.path().join("/"),
-                "service-worker.js"
-            ))
-            .apply(JsFuture::from)
-            .await;
-        if let Err(e) = res {
-            log!("Error registering service worker:", e);
-        }
-    });
-
     orders.subscribe(|subs::UrlRequested(url, url_request)| {
         if url.path().starts_with(&["auth".to_owned()]) {
             url_request.handled();
