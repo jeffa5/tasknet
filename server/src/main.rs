@@ -17,7 +17,7 @@ mod server;
 
 #[derive(Debug, clap::Parser)]
 struct ServerOptions {
-    #[clap(long, short, default_value = "config.yaml")]
+    #[clap(long, short, default_value = "config.json")]
     config_file: PathBuf,
 }
 

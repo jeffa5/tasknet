@@ -21,6 +21,6 @@ impl ServerConfig {
     pub fn load(file: &Path) -> Self {
         let mut bytes = Vec::new();
         let _ = File::open(file).and_then(|mut f| f.read_to_end(&mut bytes));
-        serde_yaml::from_slice(&bytes).expect("Failed to read config file")
+        serde_json::from_slice(&bytes).expect("Failed to read config file")
     }
 }
