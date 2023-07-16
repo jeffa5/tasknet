@@ -316,11 +316,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             log!("Reason:", close_event.reason());
             log!("==================");
 
-            // Chrome doesn't invoke `on_error` when the connection is lost.
-            if !close_event.was_clean() && model.global.web_socket_reconnector.is_none() {
-                model.global.web_socket_reconnector = Some(
-                    orders.stream_with_handle(streams::backoff(None, Msg::ReconnectWebSocket)),
-                );
+            if !close_event.was_clean() {
+                // don't retry this
+                // TODO: filter it up in the UI later
+                model.global.web_socket_reconnector = None;
             }
         }
         Msg::WebSocketFailed => {
