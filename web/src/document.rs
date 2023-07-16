@@ -1,5 +1,6 @@
 use automerge::AutoCommit;
 use autosurgeon::{hydrate, reconcile};
+use base64::Engine;
 use seed::{
     log,
     prelude::{LocalStorage, WebStorage},
@@ -54,7 +55,8 @@ impl Document {
     pub fn load() -> Self {
         let saved_document: String =
             LocalStorage::get(AUTODOC_STORAGE_KEY).map_or_else(|_| String::new(), |bytes| bytes);
-        let saved_document = base64::decode(saved_document).unwrap_or_default();
+        let b64_engine = base64::engine::general_purpose::STANDARD;
+        let saved_document = b64_engine.decode(saved_document).unwrap_or_default();
         let autodoc = AutoCommit::load(&saved_document).unwrap_or_else(|_| AutoCommit::new());
         let tasks = hydrate(&autodoc).unwrap();
         Self {
@@ -66,7 +68,8 @@ impl Document {
 
     pub fn save(&mut self) {
         let bytes = self.autodoc.save();
-        let bytes = base64::encode(bytes);
+        let b64_engine = base64::engine::general_purpose::STANDARD;
+        let bytes = b64_engine.encode(bytes);
         LocalStorage::insert(AUTODOC_STORAGE_KEY, &bytes).expect("save autodoc to LocalStorage");
     }
 

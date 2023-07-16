@@ -417,7 +417,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
             view_button(
                 connection,
                 Msg::ReconnectWebSocket(0),
-                ButtonOptions {
+                &ButtonOptions {
                     disabled: !signed_in
                 }
             ),

@@ -34,7 +34,7 @@ impl Provider {
 
     pub fn logo(&self) -> Node<crate::Msg> {
         match self {
-            Provider::Google => seed::img![
+            Self::Google => seed::img![
                 C!["inline", "pr-2"],
                 attrs! {At::Src => "/assets/btn_google_light_normal_ios.svg"}
             ],

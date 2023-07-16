@@ -18,7 +18,7 @@ pub fn view_button_str(text: &str, msg: Msg) -> Node<Msg> {
     ]
 }
 
-pub fn view_button(node: Node<Msg>, msg: Msg, options: ButtonOptions) -> Node<Msg> {
+pub fn view_button(node: Node<Msg>, msg: Msg, options: &ButtonOptions) -> Node<Msg> {
     let bg = if options.disabled {
         "bg-gray-100"
     } else {
