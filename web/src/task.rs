@@ -84,10 +84,6 @@ pub struct Task {
     #[serde(skip_serializing_if = "Option::is_none")]
     scheduled: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    recur: Option<Recur>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    parent: Option<TaskId>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<DateTime>,
     #[serde(skip_serializing_if = "String::is_empty")]
     #[serde(default)]
@@ -152,7 +148,6 @@ pub enum Status {
     Deleted,
     Completed,
     Waiting,
-    Recurring,
 }
 
 impl Task {
@@ -173,36 +168,7 @@ impl Task {
             due: None,
             end: None,
             wait: None,
-            recur: None,
-            parent: None,
             until: None,
-        }
-    }
-
-    pub const fn parent(&self) -> &Option<TaskId> {
-        &self.parent
-    }
-
-    pub fn new_child(&self) -> Self {
-        Self {
-            id: TaskId::new(),
-            entry: now(),
-            description: self.description.clone(),
-            project: self.project.clone(),
-            start: self.start.clone(),
-            scheduled: self.scheduled.clone(),
-            notes: self.notes.clone(),
-            tags: self.tags.clone(),
-            priority: self.priority.clone(),
-            depends: self.depends.clone(),
-            udas: self.udas.clone(),
-            status: Status::Pending,
-            due: self.due.clone(),
-            end: self.end.clone(),
-            wait: self.wait.clone(),
-            recur: self.recur.clone(),
-            parent: Some(self.id.clone()),
-            until: self.until.clone(),
         }
     }
 
@@ -250,22 +216,6 @@ impl Task {
         self.scheduled = scheduled;
     }
 
-    pub const fn recur(&self) -> &Option<Recur> {
-        &self.recur
-    }
-
-    pub fn set_recur(&mut self, recur: Option<Recur>) {
-        match recur {
-            None => {
-                if self.status == Status::Recurring {
-                    self.status = Status::Pending;
-                }
-            }
-            Some(_) => self.status = Status::Recurring,
-        }
-        self.recur = recur;
-    }
-
     pub fn complete(&mut self) {
         self.end = Some(now());
         self.status = Status::Completed;
@@ -278,7 +228,7 @@ impl Task {
 
     pub fn restore(&mut self) {
         match self.status {
-            Status::Pending | Status::Waiting | Status::Recurring => {}
+            Status::Pending | Status::Waiting => {}
             Status::Completed | Status::Deleted => self.status = Status::Pending,
         }
     }
@@ -313,7 +263,7 @@ impl Task {
 
     pub const fn end(&self) -> &Option<DateTime> {
         match self.status {
-            Status::Pending | Status::Waiting | Status::Recurring => &None,
+            Status::Pending | Status::Waiting => &None,
             Status::Completed | Status::Deleted => &self.end,
         }
     }
@@ -325,60 +275,6 @@ impl Task {
 
     pub fn deactivate(&mut self) {
         self.start = None;
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reconcile, Hydrate)]
-pub struct Recur {
-    pub amount: u16,
-    pub unit: RecurUnit,
-}
-
-impl Recur {
-    pub fn duration(&self) -> chrono::Duration {
-        self.unit.duration() * i32::from(self.amount)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Reconcile, Hydrate)]
-pub enum RecurUnit {
-    Year,
-    Month,
-    Week,
-    Day,
-    Hour,
-}
-
-impl RecurUnit {
-    fn duration(self) -> chrono::Duration {
-        match self {
-            Self::Year => chrono::Duration::weeks(52),
-            Self::Month => chrono::Duration::weeks(4),
-            Self::Week => chrono::Duration::weeks(1),
-            Self::Day => chrono::Duration::days(1),
-            Self::Hour => chrono::Duration::hours(1),
-        }
-    }
-}
-
-impl Default for RecurUnit {
-    fn default() -> Self {
-        Self::Week
-    }
-}
-
-impl std::convert::TryFrom<String> for RecurUnit {
-    type Error = ();
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.trim().to_lowercase().as_ref() {
-            "year" => Ok(Self::Year),
-            "month" => Ok(Self::Month),
-            "week" => Ok(Self::Week),
-            "day" => Ok(Self::Day),
-            "hour" => Ok(Self::Hour),
-            _ => Err(()),
-        }
     }
 }
 

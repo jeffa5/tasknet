@@ -14,8 +14,6 @@ pub struct Filters {
     #[serde(default)]
     pub status_waiting: bool,
     #[serde(default)]
-    pub status_recurring: bool,
-    #[serde(default)]
     pub project: Vec<String>,
     #[serde(default)]
     pub tags: Vec<String>,
@@ -38,7 +36,6 @@ impl Default for Filters {
             status_completed: false,
             status_deleted: false,
             status_waiting: false,
-            status_recurring: false,
             project: Vec::new(),
             tags: Vec::new(),
             description_and_notes: String::new(),
@@ -57,7 +54,6 @@ impl Filters {
             Status::Deleted => self.status_deleted,
             Status::Completed => self.status_completed,
             Status::Waiting => self.status_waiting,
-            Status::Recurring => self.status_recurring,
         };
         let filter_project = task
             .project()

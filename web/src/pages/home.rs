@@ -93,7 +93,6 @@ pub enum Msg {
     FiltersStatusToggleDeleted,
     FiltersStatusToggleCompleted,
     FiltersStatusToggleWaiting,
-    FiltersStatusToggleRecurring,
     FiltersPriorityToggleNone,
     FiltersPriorityToggleLow,
     FiltersPriorityToggleMedium,
@@ -122,9 +121,6 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
         }
         Msg::FiltersStatusToggleWaiting => {
             model.filters.status_waiting = !model.filters.status_waiting;
-        }
-        Msg::FiltersStatusToggleRecurring => {
-            model.filters.status_recurring = !model.filters.status_recurring;
         }
         Msg::FiltersPriorityToggleNone => {
             model.filters.priority_none = !model.filters.priority_none;
@@ -248,7 +244,6 @@ fn view_tasks(document: &Document, model: &Model) -> Node<GMsg> {
                 Status::Completed => "Completed".to_owned(),
                 Status::Deleted => "Deleted".to_owned(),
                 Status::Waiting => "Waiting".to_owned(),
-                Status::Recurring => "Recurring".to_owned(),
             },
             project: t.project().to_owned(),
             description: t.description().to_owned(),
@@ -472,12 +467,6 @@ fn view_filters(model: &Model, document: &Document) -> Node<GMsg> {
                 "Waiting",
                 model.filters.status_waiting,
                 GMsg::Home(Msg::FiltersStatusToggleWaiting)
-            ),
-            view_checkbox(
-                "filters-status-recurring",
-                "Recurring",
-                model.filters.status_recurring,
-                GMsg::Home(Msg::FiltersStatusToggleRecurring)
             ),
         ],
         div![

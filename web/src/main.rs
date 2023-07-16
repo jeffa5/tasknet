@@ -19,7 +19,7 @@ use components::{view_button, view_button_str, ButtonOptions};
 use document::Document;
 use filters::Filters;
 use sync::SyncMessage;
-use task::{Recur, Status, Task, TaskId};
+use task::{Task, TaskId};
 
 const VIEW_TASK: &str = "view";
 const AUTH: &str = "auth";
@@ -73,7 +73,6 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 
     orders
         .stream(streams::interval(1000, || Msg::OnRenderTick))
-        .stream(streams::interval(60000, || Msg::OnRecurTick))
         .subscribe(Msg::UrlChanged);
     let document = Document::load();
     let page = Page::init(url.clone(), &document, orders);
@@ -177,7 +176,6 @@ pub enum Msg {
     SelectTask(Option<TaskId>),
     CreateTask,
     OnRenderTick,
-    OnRecurTick,
     UrlChanged(subs::UrlChanged),
     ImportTasks,
     ExportTasks,
@@ -213,43 +211,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             orders.request_url(Urls::new(&model.global.base_url).auth());
         }
         Msg::OnRenderTick => { /* just re-render to update the ages */ }
-        Msg::OnRecurTick => {
-            let recurring: Vec<_> = model
-                .global
-                .document
-                .tasks()
-                .values()
-                .filter(|t| t.status() == &Status::Recurring)
-                .collect();
-            let mut new_tasks = Vec::new();
-            for r in recurring {
-                let mut children: Vec<_> = model
-                    .global
-                    .document
-                    .tasks()
-                    .values()
-                    .filter(|t| t.parent().as_ref().map_or(false, |p| p == r.id()))
-                    .collect();
-                children.sort_by_key(|c| c.entry());
-                let last_child = children.last();
-                if let Some(child) = last_child {
-                    // if child's entry is older than the recurring duration, create a new child
-                    if chrono::offset::Utc::now() - child.entry().0
-                        > r.recur().as_ref().unwrap().duration()
-                    {
-                        log!("old enough");
-                        let new_child = r.new_child();
-                        new_tasks.push(new_child);
-                    }
-                } else {
-                    let new_child = r.new_child();
-                    new_tasks.push(new_child);
-                }
-            }
-            for t in new_tasks {
-                model.global.document.update_task(t);
-            }
-        }
         Msg::UrlChanged(subs::UrlChanged(url)) => {
             model.page = Page::init(url, &model.global.document, orders);
         }

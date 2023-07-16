@@ -7,8 +7,8 @@ use seed::{prelude::*, *};
 use crate::{
     components::{duration_string, view_button_str, view_text_input},
     document::Document,
-    task::{DateTime, Priority, RecurUnit, Status, Task, TaskId},
-    urgency, GlobalModel, Msg as GMsg, Recur, Urls,
+    task::{DateTime, Priority, Status, Task, TaskId},
+    urgency, GlobalModel, Msg as GMsg, Urls,
 };
 
 const ESCAPE_KEY: &str = "Escape";
@@ -40,8 +40,6 @@ pub enum Msg {
     SelectedTaskDueTimeChanged(String),
     SelectedTaskScheduledDateChanged(String),
     SelectedTaskScheduledTimeChanged(String),
-    SelectedTaskRecurUnitChanged(String),
-    SelectedTaskRecurAmountChanged(String),
     DeleteSelectedTask,
     CompleteSelectedTask,
     StartSelectedTask,
@@ -241,37 +239,11 @@ pub fn update(
                     }
                 });
         }
-        Msg::SelectedTaskRecurAmountChanged(new_amount) => {
-            global_model
-                .document
-                .change_task(&model.selected_task, |task| {
-                    if let Ok(n) = new_amount.parse::<u16>() {
-                        if n > 0 {
-                            task.set_recur(Some(Recur {
-                                amount: n,
-                                unit: task.recur().as_ref().map_or(RecurUnit::Week, |r| r.unit),
-                            }));
-                        } else {
-                            task.set_recur(None);
-                        }
-                    }
-                });
-        }
-        Msg::SelectedTaskRecurUnitChanged(new_unit) => global_model.document.change_task(
-            &model.selected_task,
-            |task| match RecurUnit::try_from(new_unit) {
-                Ok(unit) => task.set_recur(Some(Recur {
-                    amount: task.recur().as_ref().map_or(1, |r| r.amount),
-                    unit,
-                })),
-                Err(()) => task.set_recur(None),
-            },
-        ),
         Msg::DeleteSelectedTask => {
             orders.request_url(Urls::new(&global_model.base_url).home());
             if let Some(task) = global_model.document.get_task(&model.selected_task) {
                 match task.status() {
-                    Status::Pending | Status::Completed | Status::Waiting | Status::Recurring => {
+                    Status::Pending | Status::Completed | Status::Waiting => {
                         global_model
                             .document
                             .change_task(&model.selected_task, |task| {
@@ -411,7 +383,6 @@ fn view_selected_task(task: &Task, document: &Document) -> Node<GMsg> {
                 Status::Deleted => "Deleted",
                 Status::Completed => "Completed",
                 Status::Waiting => "Waiting",
-                Status::Recurring => "Recurring",
             }
         ],
         urgency.map_or_else(
@@ -657,105 +628,6 @@ fn view_selected_task(task: &Task, document: &Document) -> Node<GMsg> {
         ],
         div![
             C!["flex", "flex-col", "px-2", "mb-2"],
-            div![C!["font-bold"], "Recur"],
-            div![
-                span!["Every "],
-                input![
-                    attrs! {
-                        At::Type => "number",
-                        At::Value => task.recur().as_ref().map_or(0, |r|r.amount),
-                    },
-                    input_ev(Ev::Input, |s| GMsg::ViewTask(
-                        Msg::SelectedTaskRecurAmountChanged(s)
-                    ))
-                ],
-                span![" "],
-                select![
-                    C!["border", "bg-white"],
-                    option![
-                        attrs! {
-                            At::Value => "",
-                            At::Selected => if task.status() == &Status::Recurring {
-                                AtValue::Ignored
-                            } else {
-                                AtValue::None
-                            }
-                        },
-                        "None"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "Year",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
-                                if recur.unit == RecurUnit::Year {
-                                    AtValue::None
-                                } else {
-                                    AtValue::Ignored
-                                }
-                            })
-                        },
-                        "Years"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "Month",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
-                                if recur.unit == RecurUnit::Month {
-                                    AtValue::None
-                                } else {
-                                    AtValue::Ignored
-                                }
-                            })
-                        },
-                        "Months"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "Week",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
-                                if recur.unit == RecurUnit::Week {
-                                    AtValue::None
-                                } else {
-                                    AtValue::Ignored
-                                }
-                            })
-                        },
-                        "Weeks"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "Day",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
-                                if recur.unit == RecurUnit::Day {
-                                    AtValue::None
-                                } else {
-                                    AtValue::Ignored
-                                }
-                            })
-                        },
-                        "Days"
-                    ],
-                    option![
-                        attrs! {
-                            At::Value => "Hour",
-                            At::Selected => task.recur().as_ref().map_or(AtValue::Ignored, |recur| {
-                                if recur.unit == RecurUnit::Hour {
-                                    AtValue::None
-                                } else {
-                                    AtValue::Ignored
-                                }
-                            })
-                        },
-                        "Hours"
-                    ],
-                    input_ev(Ev::Input, |s| GMsg::ViewTask(
-                        Msg::SelectedTaskRecurUnitChanged(s)
-                    ))
-                ]
-            ]
-        ],
-        div![
-            C!["flex", "flex-col", "px-2", "mb-2"],
             div![C!["font-bold"], "Notes"],
             div![
                 C!["flex", "flex-row"],
@@ -794,7 +666,7 @@ fn view_selected_task(task: &Task, document: &Document) -> Node<GMsg> {
             IF!(is_pending =>
                 div![ view_button_str("Complete", GMsg::ViewTask(Msg::CompleteSelectedTask))]
             ),
-            IF!(matches!(task.status(), Status::Pending|Status::Waiting|Status::Recurring) =>
+            IF!(matches!(task.status(), Status::Pending|Status::Waiting) =>
                 div![ view_button_str("Delete", GMsg::ViewTask(Msg::DeleteSelectedTask))]
             ),
             IF!(matches!(task.status(), Status::Deleted) =>
