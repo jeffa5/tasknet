@@ -12,6 +12,7 @@ use axum_extra::routing::SpaRouter;
 use clap::Parser;
 use tokio::sync::Mutex;
 
+mod auth;
 mod config;
 mod google;
 mod server;
@@ -46,6 +47,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/sync", get(server::sync_handler))
+        .route("/auth/providers", get(auth::providers))
         .route("/auth/google/sign_in", get(google::sign_in_handler))
         .route("/auth/google/sign_out", get(google::sign_out_handler))
         .route("/auth/google/callback", get(google::callback_handler))

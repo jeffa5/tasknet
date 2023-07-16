@@ -3,6 +3,8 @@ use std::convert::TryFrom;
 use serde::Deserialize;
 use serde::Serialize;
 
+pub mod providers;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SyncMessage {
     Message(Vec<u8>),

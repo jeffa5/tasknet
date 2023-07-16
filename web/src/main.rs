@@ -157,7 +157,7 @@ impl Page {
                     )
                 },
             ),
-            Some(AUTH) => Self::Auth(pages::auth::init()),
+            Some(AUTH) => Self::Auth(pages::auth::init(orders)),
             None | Some(_) => Self::Home(pages::home::init()),
         }
     }
