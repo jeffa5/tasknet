@@ -359,7 +359,6 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
         ],
         nav![
             C!["flex", "flex-row", "justify-end"],
-            view_button_str(account_string, Msg::GoAuth),
             view_button(
                 connection,
                 Msg::ReconnectWebSocket(0),
@@ -367,6 +366,7 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
                     disabled: !signed_in
                 }
             ),
+            view_button_str(account_string, Msg::GoAuth),
             view_button_str("Settings", Msg::GoSettings),
             view_button_str("Create", Msg::CreateTask),
         ]
