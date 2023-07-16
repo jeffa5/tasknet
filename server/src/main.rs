@@ -3,6 +3,7 @@ use google::Google;
 use std::collections::HashMap;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::signal;
+use tower_http::trace::TraceLayer;
 use tracing::debug;
 use tracing::info;
 
@@ -55,7 +56,8 @@ async fn main() {
             config,
             google,
             sessions: MemoryStore::new(),
-        })));
+        })))
+        .layer(TraceLayer::new_for_http());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     info!("Listening on http://localhost:{}", port);
