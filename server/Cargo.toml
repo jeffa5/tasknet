@@ -7,7 +7,7 @@ edition = "2021"
 sync = {path = "../sync"}
 
 axum = { version = "0.6.1", features = ["ws", "headers"] }
-axum-extra = { version = "0.4.2", features = ["spa"] }
+axum-extra = { version = "0.6.0", features = ["spa"] }
 clap = { version = "4.0.29", features = ["derive"] }
 futures = "0.3.25"
 tokio = { version = "1.23.0", features = ["rt-multi-thread", "macros", "signal"] }
