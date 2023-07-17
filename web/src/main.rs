@@ -1,11 +1,16 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 
-use std::{ convert::TryFrom};
+use std::convert::TryFrom;
+use wasm_sockets::{self, ConnectionStatus, EventClient};
+use web_sys::CloseEvent;
 
 use auth::Provider;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
+
+use gloo_console::error;
+use gloo_console::log;
 
 mod auth;
 mod components;
@@ -39,25 +44,54 @@ fn ws_url() -> String {
     )
 }
 
-fn create_websocket(orders: &impl Orders<Msg>) -> WebSocket {
+fn create_websocket(orders: &impl Orders<Msg>) -> EventClient {
     let msg_sender = orders.msg_sender();
 
-    WebSocket::builder(ws_url(), orders)
-        .on_open(|| Msg::WebSocketOpened)
-        .on_message(|message| {
-            spawn_local(async move {
-                let bytes = message
-                    .bytes()
-                    .await
-                    .expect("WebsocketError on binary data");
+    let mut client = EventClient::new(&ws_url()).expect("Failed to create websocket client");
 
-                msg_sender(Some(Msg::ReceiveWebSocketMessage(bytes)));
-            });
-        })
-        .on_close(Msg::WebSocketClosed)
-        .on_error(|| Msg::WebSocketFailed)
-        .build_and_open()
-        .unwrap()
+    let send = msg_sender.clone();
+    client.set_on_error(Some(Box::new(move |error| {
+        error!("WS: {:#?}", error);
+        send(Some(Msg::WebSocketFailed));
+    })));
+
+    let send = msg_sender.clone();
+    client.set_on_connection(Some(Box::new(move |client: &EventClient| {
+        log!(format!("{:#?}", client.status));
+        let msg = match *client.status.borrow() {
+            ConnectionStatus::Connecting => {
+                log!("Connecting...");
+                None
+            }
+            ConnectionStatus::Connected => Some(Msg::WebSocketOpened),
+            ConnectionStatus::Error => Some(Msg::WebSocketFailed),
+            ConnectionStatus::Disconnected => {
+                log!("Disconnected");
+                None
+            }
+        };
+        send(msg);
+    })));
+
+    let send = msg_sender.clone();
+    client.set_on_close(Some(Box::new(move |ev| {
+        log!("WS: Connection closed");
+        send(Some(Msg::WebSocketClosed(ev)));
+    })));
+
+    let send = msg_sender.clone();
+    client.set_on_message(Some(Box::new(
+        move |_: &EventClient, msg: wasm_sockets::Message| match msg {
+            wasm_sockets::Message::Text(s) => {
+                error!("received text message from websocket: {:?}", s);
+            }
+            wasm_sockets::Message::Binary(b) => {
+                send(Some(Msg::ReceiveWebSocketMessage(b)));
+            }
+        },
+    )));
+
+    client
 }
 
 // ------ ------
@@ -95,15 +129,13 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 //     Model
 // ------ ------
 
-#[derive(Debug)]
 pub struct GlobalModel {
     document: Document,
     base_url: Url,
-    web_socket: WebSocket,
+    web_socket: EventClient,
     web_socket_reconnector: Option<StreamHandle>,
 }
 
-#[derive(Debug)]
 pub struct Model {
     global: GlobalModel,
     page: Page,
@@ -276,7 +308,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.global.web_socket = create_websocket(orders);
         }
         Msg::SendWebSocketMessage(message) => {
-            if let Err(err) = model.global.web_socket.send_bytes(&message) {
+            if let Err(err) = model.global.web_socket.send_binary(message) {
                 log!("Failed to send websocket message:", err);
             }
         }
@@ -289,7 +321,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     }
                 },
                 Err(err) => {
-                    log!("Failed to decode websocket sync message", err);
+                    log!(format!(
+                        "Failed to decode websocket sync message: {:?}",
+                        err
+                    ));
                 }
             }
             log!("Received ws message");
@@ -304,7 +339,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 orders.send_msg(Msg::SendWebSocketMessage(bytes));
             }
             Err(err) => {
-                log!("Failed to serialize sync message", err);
+                log!(format!("Failed to serialize sync message {:?}", err));
             }
         }
     }
@@ -332,11 +367,11 @@ fn view_titlebar(model: &Model) -> Node<Msg> {
     let account_string = if signed_in { "Account" } else { "Sign in" };
 
     let connection_string = if signed_in {
-        match model.global.web_socket.state() {
-            web_sys::TcpReadyState::Connecting => "Connecting",
-            web_sys::TcpReadyState::Open => "Connected",
-            web_sys::TcpReadyState::Closing | web_sys::TcpReadyState::Closed => "Disconnected",
-            _ => "Unknown",
+        match *model.global.web_socket.status.borrow() {
+            wasm_sockets::ConnectionStatus::Connecting => "Connecting",
+            wasm_sockets::ConnectionStatus::Connected => "Connected",
+            wasm_sockets::ConnectionStatus::Error
+            | wasm_sockets::ConnectionStatus::Disconnected => "Disconnected",
         }
     } else {
         "Sign in before syncing"

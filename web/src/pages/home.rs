@@ -1,9 +1,11 @@
+use gloo_console::log;
 use std::{
     cmp::Ordering,
     collections::{BTreeSet, HashMap, HashSet},
     fmt::Display,
 };
 
+use gloo_storage::{errors::StorageError, LocalStorage, Storage};
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
@@ -20,14 +22,14 @@ const CONTEXTS_STORAGE_KEY: &str = "tasknet-contexts";
 pub fn init() -> Model {
     let filters = match LocalStorage::get(FILTERS_STORAGE_KEY) {
         Ok(filters) => filters,
-        Err(seed::browser::web_storage::WebStorageError::JsonError(err)) => {
+        Err(StorageError::SerdeError(err)) => {
             panic!("failed to parse filters: {:?}", err)
         }
         Err(_) => Filters::default(),
     };
     let contexts = match LocalStorage::get(CONTEXTS_STORAGE_KEY) {
         Ok(contexts) => contexts,
-        Err(seed::browser::web_storage::WebStorageError::JsonError(err)) => {
+        Err(StorageError::SerdeError(err)) => {
             panic!("failed to parse filters: {:?}", err)
         }
         Err(_) => HashMap::new(),
@@ -209,9 +211,8 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<GMsg>) {
             }
         }
     }
-    LocalStorage::insert(FILTERS_STORAGE_KEY, &model.filters)
-        .expect("save filters to LocalStorage");
-    LocalStorage::insert(CONTEXTS_STORAGE_KEY, &model.contexts)
+    LocalStorage::set(FILTERS_STORAGE_KEY, &model.filters).expect("save filters to LocalStorage");
+    LocalStorage::set(CONTEXTS_STORAGE_KEY, &model.contexts)
         .expect("save contexts to LocalStorage");
 }
 

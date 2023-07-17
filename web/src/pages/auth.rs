@@ -2,14 +2,15 @@
 use seed::{prelude::*, *};
 
 use crate::{auth::Provider, GlobalModel, Msg as GMsg};
+use gloo_net::http::Request;
 use sync::providers::Providers;
 
 pub fn init(orders: &mut impl Orders<GMsg>) -> Model {
     let auth_provider = Provider::load_from_session();
 
-    let providers_request = Request::new("/auth/providers");
     orders.perform_cmd(async move {
-        let res = providers_request.fetch().await;
+        let providers_request = Request::get("/auth/providers");
+        let res = providers_request.send().await;
         if let Ok(res) = res {
             if let Ok(providers) = res.json::<Providers>().await {
                 return Some(GMsg::Auth(Msg::FetchedProviders(providers)));

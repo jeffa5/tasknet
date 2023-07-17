@@ -2,10 +2,8 @@ use automerge::sync::SyncDoc;
 use automerge::AutoCommit;
 use autosurgeon::{hydrate, reconcile};
 use base64::Engine;
-use seed::{
-    log,
-    prelude::{LocalStorage, WebStorage},
-};
+use gloo_console::log;
+use gloo_storage::{LocalStorage, Storage};
 
 use crate::task::{Task, TaskId};
 use std::collections::HashMap;
@@ -71,7 +69,7 @@ impl Document {
         let bytes = self.autodoc.save();
         let b64_engine = base64::engine::general_purpose::STANDARD;
         let bytes = b64_engine.encode(bytes);
-        LocalStorage::insert(AUTODOC_STORAGE_KEY, &bytes).expect("save autodoc to LocalStorage");
+        LocalStorage::set(AUTODOC_STORAGE_KEY, &bytes).expect("save autodoc to LocalStorage");
     }
 
     pub fn generate_sync_message(&mut self) -> Option<Vec<u8>> {
@@ -93,12 +91,15 @@ impl Document {
                         self.tasks = hydrate(&self.autodoc).unwrap();
                     }
                     Err(err) => {
-                        log!("Failed to receive sync message from server: ", err);
+                        log!(format!(
+                            "Failed to receive sync message from server: {:?}",
+                            err
+                        ));
                     }
                 }
             }
             Err(err) => {
-                log!("Failed to decode sync message:", err);
+                log!(format!("Failed to decode sync message: {:?}", err));
             }
         }
     }

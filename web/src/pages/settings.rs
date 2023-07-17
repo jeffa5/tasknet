@@ -1,3 +1,4 @@
+use gloo_console::log;
 use std::collections::HashMap;
 
 #[allow(clippy::wildcard_imports)]
@@ -39,7 +40,7 @@ pub fn update(
                     }
                 }
                 Err(e) => {
-                    log!(e);
+                    log!(e.to_string());
                     window()
                         .alert_with_message("Failed to import tasks")
                         .unwrap_or_else(|e| log!(e));
@@ -64,7 +65,7 @@ pub fn update(
                             None
                         });
                 }
-                Err(e) => log!(e),
+                Err(e) => log!(e.to_string()),
             }
         }
     }

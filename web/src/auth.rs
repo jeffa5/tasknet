@@ -1,4 +1,4 @@
-use seed::cookies;
+use cookie::CookieJar;
 use seed::{prelude::*, *};
 
 pub const SESSION_COOKIE: &str = "session";
@@ -39,5 +39,22 @@ impl Provider {
                 attrs! {At::Src => "/assets/btn_google_light_normal_ios.svg"}
             ],
         }
+    }
+}
+
+fn cookies() -> Option<CookieJar> {
+    let cookies_str = html_document().cookie().ok()?;
+    let mut jar = cookie::CookieJar::new();
+
+    for cookie_str in cookies_str.split(';') {
+        let cookie = cookie::Cookie::parse_encoded(cookie_str).ok()?;
+        jar.add(cookie.into_owned());
+    }
+
+    let jar_is_empty = jar.iter().next().is_none();
+    if jar_is_empty {
+        None
+    } else {
+        Some(jar)
     }
 }
