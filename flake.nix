@@ -30,6 +30,9 @@
     packages.${system} =
       flake-utils.lib.filterPackages system nix;
 
+    checks.${system} =
+      flake-utils.lib.filterPackages system nix;
+
     overlays.default = _final: _prev: self.packages.${system};
 
     apps.${system} = {

@@ -6,8 +6,8 @@ on:
     - main
 
 jobs:
-  web-build:
-    name: Build web
+  checks:
+    name: Run checks
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -15,56 +15,5 @@ jobs:
       uses: DeterminateSystems/nix-installer-action@v4
     - name: Run the Magic Nix Cache
       uses: DeterminateSystems/magic-nix-cache-action@v1
-    - name: Build web
-      run: nix build -L .#tasknet-web
-
-  server-build:
-    name: Build server
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install Nix
-      uses: DeterminateSystems/nix-installer-action@v4
-    - name: Run the Magic Nix Cache
-      uses: DeterminateSystems/magic-nix-cache-action@v1
-    - name: Build server
-      run: nix build -L .#tasknet-server
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install Nix
-      uses: DeterminateSystems/nix-installer-action@v4
-    - name: Run the Magic Nix Cache
-      uses: DeterminateSystems/magic-nix-cache-action@v1
-    - name: Run tests
-      run: |
-        nix build -L .#server-test
-
-  format:
-    name: Format
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install Nix
-      uses: DeterminateSystems/nix-installer-action@v4
-    - name: Run the Magic Nix Cache
-      uses: DeterminateSystems/magic-nix-cache-action@v1
-    - name: Check formatting
-      run: nix build -L .#format
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install Nix
-      uses: DeterminateSystems/nix-installer-action@v4
-    - name: Run the Magic Nix Cache
-      uses: DeterminateSystems/magic-nix-cache-action@v1
-    - name: Run clippy
-      run: |
-        nix build -L .#server-clippy
-        nix build -L .#web-clippy
+    - name: Run checks
+      run: nix flake check -L

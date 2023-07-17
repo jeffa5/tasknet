@@ -13,7 +13,6 @@ in rec {
   tasknet-web = self.callPackage ./tasknet-web.nix {inherit craneLibWasm;};
   tasknet-web-github = tasknet-web.override {publicUrl = "/tasknet";};
   tasknet-server = self.callPackage ./tasknet-server.nix {inherit craneLib;};
-  tasknet-server-docker = self.callPackage ./tasknet-server-docker.nix {};
 
   # checks
   format = craneLib.cargoFmt {
