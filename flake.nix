@@ -30,6 +30,9 @@
     packages.${system} =
       flake-utils.lib.filterPackages system nix;
 
+    checks.${system} =
+      flake-utils.lib.filterPackages system nix;
+
     overlays.default = _final: _prev: self.packages.${system};
 
     apps.${system} = {
@@ -41,20 +44,14 @@
     };
 
     formatter.${system} = pkgs.alejandra;
+
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = with pkgs; [
         (rust-bin.stable.latest.default.override {
           extensions = ["rust-src"];
           targets = ["wasm32-unknown-unknown"];
         })
-        cargo-edit
-        cargo-fuzz
-        cargo-make
         trunk
-        cargo-watch
-        wasm-pack
-        pkgconfig
-        openssl
       ];
     };
   };
