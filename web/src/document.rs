@@ -1,3 +1,4 @@
+use automerge::sync::SyncDoc;
 use automerge::AutoCommit;
 use autosurgeon::{hydrate, reconcile};
 use base64::Engine;
@@ -75,6 +76,7 @@ impl Document {
 
     pub fn generate_sync_message(&mut self) -> Option<Vec<u8>> {
         self.autodoc
+            .sync()
             .generate_sync_message(&mut self.server_sync_state)
             .map(automerge::sync::Message::encode)
     }
@@ -82,10 +84,11 @@ impl Document {
     pub fn receive_sync_message(&mut self, message: &[u8]) {
         match automerge::sync::Message::decode(message) {
             Ok(message) => {
-                match self
+                let res = self
                     .autodoc
-                    .receive_sync_message(&mut self.server_sync_state, message)
-                {
+                    .sync()
+                    .receive_sync_message(&mut self.server_sync_state, message);
+                match res {
                     Ok(()) => {
                         self.tasks = hydrate(&self.autodoc).unwrap();
                     }
