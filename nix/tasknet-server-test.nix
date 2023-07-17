@@ -12,7 +12,7 @@
     buildInputs = [pkg-config openssl];
   };
 in
-  craneLib.buildPackage {
+  craneLib.cargoTest {
     inherit pname version src cargoExtraArgs;
     cargoArtifacts = deps;
   }
