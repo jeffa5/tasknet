@@ -4,10 +4,10 @@
 }: let
   pname = "tasknet-web";
   version = "0.1.0";
+  cargoExtraArgs = "--target wasm32-unknown-unknown -p ${pname}";
   deps = craneLibWasm.buildDepsOnly {
-    inherit pname version;
+    inherit pname version cargoExtraArgs;
     src = craneLibWasm.cleanCargoSource ./..;
-    cargoExtraArgs = "--target wasm32-unknown-unknown -p ${pname}";
     doCheck = false;
   };
   indexHTMLFilter = path: _type: builtins.match ".*/web/index.html$" path != null;
@@ -20,8 +20,7 @@
     filter = indexHTMLOrCargo;
   };
 in
-  craneLibWasm.buildTrunkPackage {
-    inherit pname version src;
+  craneLibWasm.cargoClippy {
+    inherit pname version src cargoExtraArgs;
     cargoArtifacts = deps;
-    trunkIndexPath = "web/index.html";
   }
