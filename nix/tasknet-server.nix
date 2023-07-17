@@ -4,13 +4,15 @@
   openssl,
 }: let
   src = craneLib.cleanCargoSource ./..;
-  cargoExtraArgs = "-p tasknet-server";
+  pname = "tasknet-server";
+  version = "0.1.0";
+  cargoExtraArgs = "-p ${pname}";
   deps = craneLib.buildDepsOnly {
-    inherit src cargoExtraArgs;
+    inherit pname version src cargoExtraArgs;
     buildInputs = [pkg-config openssl];
   };
 in
   craneLib.buildPackage {
-    inherit src cargoExtraArgs;
+    inherit pname version src cargoExtraArgs;
     cargoArtifacts = deps;
   }
