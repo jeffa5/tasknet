@@ -4,9 +4,12 @@
   lib,
   wasm-bindgen-cli,
 }: let
+  pname = "tasknet-web";
+  version = "0.1.0";
   deps = craneLibWasm.buildDepsOnly {
+    inherit pname version;
     src = craneLibWasm.cleanCargoSource ./..;
-    cargoExtraArgs = "--target wasm32-unknown-unknown -p tasknet-web";
+    cargoExtraArgs = "--target wasm32-unknown-unknown -p ${pname}";
     doCheck = false;
   };
   indexHTMLFilter = path: _type: builtins.match ".*/web/index.html$" path != null;
@@ -19,14 +22,8 @@
     filter = indexHTMLOrCargo;
   };
 in
-  craneLibWasm.mkCargoDerivation {
-    src = src;
-    buildPhaseCargoCommand = "cd web && trunk build --release";
+  craneLibWasm.buildTrunkPackage {
+    inherit pname version src;
     cargoArtifacts = deps;
-    nativeBuildInputs = [trunk wasm-bindgen-cli];
-    doInstallCargoArtifacts = false;
-    installPhaseCommand = ''
-      mkdir -p $out
-      cp -r dist $out
-    '';
+    trunkIndexPath = "web/index.html";
   }
