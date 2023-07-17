@@ -3,12 +3,12 @@ use google::Google;
 use std::collections::HashMap;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::signal;
+use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
 use tracing::debug;
 use tracing::info;
 
 use axum::{routing::get, Router};
-use axum_extra::routing::SpaRouter;
 use clap::Parser;
 use tokio::sync::Mutex;
 
@@ -51,7 +51,10 @@ async fn main() {
         .route("/auth/google/sign_in", get(google::sign_in_handler))
         .route("/auth/google/sign_out", get(google::sign_out_handler))
         .route("/auth/google/callback", get(google::callback_handler))
-        .merge(SpaRouter::new("/", &config.serve_dir).index_file("index.html"))
+        .nest_service(
+            "/",
+            ServeDir::new(&config.serve_dir).not_found_service(ServeFile::new("index.html")),
+        )
         .with_state(Arc::new(Mutex::new(server::Server {
             documents: HashMap::new(),
             changed,
