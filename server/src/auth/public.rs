@@ -9,7 +9,7 @@ use axum::{
 };
 use reqwest::header::SET_COOKIE;
 use serde::{Deserialize, Serialize};
-use tasknet_shared::cookies::{AUTH_PROVIDER_COOKIE, DOCUMENT_ID_COOKIE, SESSION_COOKIE};
+use tasknet_shared::cookies::{DOCUMENT_ID_COOKIE, SESSION_COOKIE, AUTH_PROVIDER_COOKIE};
 use tokio::sync::Mutex;
 use tracing::debug;
 
