@@ -1,5 +1,4 @@
 use async_session::MemoryStore;
-use google::Google;
 use std::collections::HashMap;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::signal;
@@ -14,7 +13,6 @@ use tokio::sync::Mutex;
 
 mod auth;
 mod config;
-mod google;
 mod server;
 
 #[derive(Debug, clap::Parser)]
@@ -40,7 +38,7 @@ async fn main() {
     let port = config.port;
 
     let google = if let Some(config) = config.google.as_ref() {
-        Some(Google::new(config).await)
+        Some(auth::google::Google::new(config).await)
     } else {
         None
     };
@@ -48,9 +46,11 @@ async fn main() {
     let app = Router::new()
         .route("/sync", get(server::sync_handler))
         .route("/auth/providers", get(auth::providers))
-        .route("/auth/google/sign_in", get(google::sign_in_handler))
-        .route("/auth/google/sign_out", get(google::sign_out_handler))
-        .route("/auth/google/callback", get(google::callback_handler))
+        .route("/auth/google/sign_in", get(auth::google::sign_in_handler))
+        .route("/auth/google/sign_out", get(auth::google::sign_out_handler))
+        .route("/auth/google/callback", get(auth::google::callback_handler))
+        .route("/auth/public/sign_in", get(auth::public::sign_in_handler))
+        .route("/auth/public/sign_out", get(auth::public::sign_out_handler))
         .nest_service(
             "/",
             ServeDir::new(&config.serve_dir).not_found_service(ServeFile::new("index.html")),

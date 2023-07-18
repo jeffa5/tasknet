@@ -2,6 +2,7 @@
 use seed::{prelude::*, *};
 
 use crate::{auth::Provider, GlobalModel, Msg as GMsg};
+use gloo_console::log;
 use gloo_net::http::Request;
 use sync::providers::Providers;
 
@@ -21,6 +22,7 @@ pub fn init(orders: &mut impl Orders<GMsg>) -> Model {
     Model {
         auth_provider,
         providers: None,
+        public_doc_id: String::new(),
     }
 }
 
@@ -28,11 +30,13 @@ pub fn init(orders: &mut impl Orders<GMsg>) -> Model {
 pub struct Model {
     auth_provider: Option<Provider>,
     providers: Option<Providers>,
+    public_doc_id: String,
 }
 
 #[derive(Clone)]
 pub enum Msg {
     FetchedProviders(Providers),
+    PublicDocIdChanged(String),
 }
 
 pub fn update(
@@ -45,10 +49,31 @@ pub fn update(
         Msg::FetchedProviders(providers) => {
             model.providers = Some(providers);
         }
+        Msg::PublicDocIdChanged(new_id) => {
+            model.public_doc_id = new_id;
+        }
     }
 }
 
 pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
+    let public_provider = form![
+        C!["py-1", "px-2", "m-1"],
+        Provider::Public.logo(),
+        "Access a public document",
+        br!(),
+        label!["Document ID"],
+        input![
+            attrs! {
+                At::Value => model.public_doc_id
+            },
+            input_ev(Ev::Input, |s| GMsg::Auth(Msg::PublicDocIdChanged(s)))
+        ],
+        a![
+            C!["bg-gray-200", "py-1", "px-2", "m-1", "hover:bg-gray-300"],
+            attrs! {At::Href => format!("/auth/public/sign_in?doc_id={}", model.public_doc_id) },
+            "Use",
+        ],
+    ];
     div![
         C![
             "flex",
@@ -59,24 +84,42 @@ pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             "border-4",
             "border-gray-200"
         ],
-        if model.providers.is_none() {
-            div!["No auth providers available"]
-        } else {
+        if let Some(providers) = &model.providers {
             if model.auth_provider.is_none() {
-                a![
-                    C!["bg-gray-200", "py-1", "px-2", "m-1", "hover:bg-gray-300"],
-                    attrs! {At::Href => "/auth/google/sign_in"},
-                    Provider::Google.logo(),
-                    "Sign in with Google",
+                log!(format!("providers: {:?}", providers));
+                div![
+                    IF!(providers.google.enabled => a![
+                        C!["bg-gray-200", "py-1", "px-2", "m-1", "hover:bg-gray-300"],
+                        attrs! {At::Href => "/auth/google/sign_in"},
+                        Provider::Google.logo(),
+                        "Sign in with Google",
+                    ]),
+                    IF!(providers.public.enabled => public_provider)
                 ]
             } else {
-                a![
-                    C!["bg-gray-200", "py-1", "px-2", "m-1", "hover:bg-gray-300"],
-                    attrs! {At::Href => "/auth/google/sign_out"},
-                    model.auth_provider.as_ref().unwrap().logo(),
-                    "Sign out with Google",
-                ]
+                let provider = model.auth_provider.as_ref().unwrap();
+                match provider {
+                    Provider::Public => div![a![
+                        C!["bg-gray-200", "py-1", "px-2", "m-1", "hover:bg-gray-300"],
+                        attrs! {At::Href => "/auth/public/sign_out"},
+                        provider.logo(),
+                        "Sign out from Public",
+                    ]],
+                    Provider::Google => {
+                        div![a![
+                            C!["bg-gray-200", "py-1", "px-2", "m-1", "hover:bg-gray-300"],
+                            attrs! {At::Href => "/auth/google/sign_out"},
+                            provider.logo(),
+                            "Sign out with Google",
+                        ],]
+                    }
+                }
             }
+        } else {
+            div![
+                div![C!["py-1", "px-2", "m-1"], "No auth providers available"],
+                public_provider
+            ]
         }
     ]
 }

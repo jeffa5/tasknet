@@ -6,6 +6,9 @@ pub const AUTH_PROVIDER_COOKIE: &str = "auth-provider";
 
 #[derive(Debug)]
 pub enum Provider {
+    /// A public document that requires no sign in, just an id.
+    Public,
+    /// Sign in with a google account to access a private document.
     Google,
 }
 
@@ -24,6 +27,7 @@ impl Provider {
                         .map(ToOwned::to_owned)
                 })
                 .and_then(|provider| match provider.as_str() {
+                    "public" => Some(Self::Public),
                     "google" => Some(Self::Google),
                     _ => None,
                 })
@@ -34,6 +38,7 @@ impl Provider {
 
     pub fn logo(&self) -> Node<crate::Msg> {
         match self {
+            Self::Public => seed::empty!(),
             Self::Google => seed::img![
                 C!["inline", "pr-2"],
                 attrs! {At::Src => "/assets/btn_google_light_normal_ios.svg"}
