@@ -1,4 +1,5 @@
 use reqwest::header::SET_COOKIE;
+use tasknet_shared::cookies::{SESSION_COOKIE, AUTH_PROVIDER_COOKIE};
 use std::sync::Arc;
 
 use async_session::{async_trait, SessionStore};
@@ -21,9 +22,6 @@ use crate::server::Server;
 
 pub mod google;
 pub mod public;
-
-pub const SESSION_COOKIE: &str = "session";
-pub const AUTH_PROVIDER_COOKIE: &str = "auth-provider";
 
 pub async fn providers(State(server): State<Arc<Mutex<Server>>>) -> impl IntoResponse {
     let mut providers = Providers::default();
