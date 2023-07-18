@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sync = {path = "../sync"}
+tasknet-shared = {path = "../shared"}
 
 axum = { version = "0.6.1", features = ["ws", "headers"] }
 axum-extra = { version = "0.6.0", features = ["spa"] }

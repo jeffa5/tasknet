@@ -13,7 +13,7 @@ use axum::{
 };
 use axum::{http::request::Parts, http::StatusCode, RequestPartsExt};
 use serde::{Deserialize, Serialize};
-use sync::providers::{ProviderDefault, Providers};
+use tasknet_shared::providers::{ProviderDefault, Providers};
 use tokio::sync::Mutex;
 use tracing::debug;
 

@@ -4,7 +4,7 @@ use seed::{prelude::*, *};
 use crate::{auth::Provider, GlobalModel, Msg as GMsg};
 use gloo_console::log;
 use gloo_net::http::Request;
-use sync::providers::Providers;
+use tasknet_shared::providers::Providers;
 
 pub fn init(orders: &mut impl Orders<GMsg>) -> Model {
     let auth_provider = Provider::load_from_session();

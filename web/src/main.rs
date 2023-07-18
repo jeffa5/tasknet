@@ -23,7 +23,7 @@ mod urgency;
 use components::{view_button, view_button_str, ButtonOptions};
 use document::Document;
 use filters::Filters;
-use sync::SyncMessage;
+use tasknet_shared::sync::SyncMessage;
 use task::TaskId;
 
 const VIEW_TASK: &str = "view";
