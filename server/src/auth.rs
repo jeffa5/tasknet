@@ -1,5 +1,5 @@
 use reqwest::header::SET_COOKIE;
-use tasknet_shared::cookies::{SESSION_COOKIE, AUTH_PROVIDER_COOKIE};
+use tasknet_shared::cookies::{SESSION_COOKIE, AUTH_PROVIDER_COOKIE, DOCUMENT_ID_COOKIE};
 use std::sync::Arc;
 
 use async_session::{async_trait, SessionStore};
@@ -179,6 +179,7 @@ pub async fn clear_session_cookies(headers: &mut HeaderMap) {
     let cookies = vec![
         format!("{}=; Path=/", SESSION_COOKIE),
         format!("{}=; Path=/", AUTH_PROVIDER_COOKIE),
+        format!("{}=; Path=/", DOCUMENT_ID_COOKIE),
     ];
 
     // Set cookies

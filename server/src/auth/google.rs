@@ -9,12 +9,13 @@ use axum::{
 use openid::{DiscoveredClient, Options, Token};
 use reqwest::header::SET_COOKIE;
 use serde::{Deserialize, Serialize};
+use tasknet_shared::cookies::{SESSION_COOKIE, AUTH_PROVIDER_COOKIE, DOCUMENT_ID_COOKIE};
 use tokio::sync::Mutex;
 use tracing::debug;
 
-use crate::server::Server;
+use crate::{server::Server, auth::UserSessionData};
 
-use super::UserIdFromSession;
+use super::{UserIdFromSession, clear_session_cookies};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GoogleConfig {
@@ -76,7 +77,7 @@ pub async fn sign_out_handler(
 
     let mut headers = HeaderMap::new();
     // clear cookies
-    super::clear_session_cookies(&mut headers).await;
+    clear_session_cookies(&mut headers).await;
 
     (headers, Redirect::to("/"))
 }
@@ -112,7 +113,7 @@ pub async fn callback_handler(
 
             // Create a new session filled with user data
             let mut session = Session::new();
-            let user_data = super::UserSessionData::Google {
+            let user_data = UserSessionData::Google {
                 google_id: payload.sub.clone(),
             };
             session.insert("user_data", &user_data).unwrap();
@@ -129,10 +130,11 @@ pub async fn callback_handler(
             let cookies = vec![
                 format!(
                     "{}={}; SameSite=Lax; Path=/",
-                    super::SESSION_COOKIE,
+                    SESSION_COOKIE,
                     session_cookie
                 ),
-                format!("{}={}; Path=/", super::AUTH_PROVIDER_COOKIE, "google"),
+                format!("{}={}; Path=/", AUTH_PROVIDER_COOKIE, "google"),
+                format!("{}={}; Path=/", DOCUMENT_ID_COOKIE, user_data.doc_id()),
             ];
 
             // Set cookies

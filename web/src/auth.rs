@@ -46,7 +46,7 @@ impl Provider {
     }
 }
 
-fn cookies() -> Option<CookieJar> {
+pub fn cookies() -> Option<CookieJar> {
     let cookies_str = html_document().cookie().ok()?;
     let mut jar = cookie::CookieJar::new();
 

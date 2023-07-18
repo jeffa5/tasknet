@@ -1,10 +1,11 @@
+use crate::auth::cookies;
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
 use crate::{auth::Provider, GlobalModel, Msg as GMsg};
 use gloo_console::log;
 use gloo_net::http::Request;
-use tasknet_shared::providers::Providers;
+use tasknet_shared::{cookies::DOCUMENT_ID_COOKIE, providers::Providers};
 
 pub fn init(orders: &mut impl Orders<GMsg>) -> Model {
     let auth_provider = Provider::load_from_session();
@@ -74,6 +75,13 @@ pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             "Use",
         ],
     ];
+    let doc_id = cookies()
+        .and_then(|cookie_jar| {
+            cookie_jar
+                .get(DOCUMENT_ID_COOKIE)
+                .map(|c| c.value().to_owned())
+        })
+        .unwrap_or_else(|| "NOT FOUND".to_owned());
     div![
         C![
             "flex",
@@ -98,7 +106,7 @@ pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
                 ]
             } else {
                 let provider = model.auth_provider.as_ref().unwrap();
-                match provider {
+                let provider_block = match provider {
                     Provider::Public => div![a![
                         C!["bg-gray-200", "py-1", "px-2", "m-1", "hover:bg-gray-300"],
                         attrs! {At::Href => "/auth/public/sign_out"},
@@ -113,7 +121,14 @@ pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
                             "Sign out with Google",
                         ],]
                     }
-                }
+                };
+                div![
+                    div![
+                        C!["py-1", "px-2", "m-1"],
+                        format!("Current document ID: {}", doc_id)
+                    ],
+                    provider_block,
+                ]
             }
         } else {
             div![

@@ -8,13 +8,11 @@ use axum::{
 };
 use reqwest::header::SET_COOKIE;
 use serde::{Deserialize, Serialize};
+use tasknet_shared::cookies::{DOCUMENT_ID_COOKIE, SESSION_COOKIE, AUTH_PROVIDER_COOKIE};
 use tokio::sync::Mutex;
 use tracing::debug;
 
-use crate::{
-    auth::{UserSessionData, AUTH_PROVIDER_COOKIE, SESSION_COOKIE},
-    server::Server,
-};
+use crate::{auth::UserSessionData, server::Server};
 
 use super::{clear_session_cookies, UserIdFromSession};
 
@@ -58,6 +56,7 @@ pub async fn sign_in_handler(
             SESSION_COOKIE, session_cookie
         ),
         format!("{}={}; Path=/", AUTH_PROVIDER_COOKIE, "public"),
+        format!("{}={}; Path=/", DOCUMENT_ID_COOKIE, user_data.doc_id()),
     ];
 
     // Set cookies
