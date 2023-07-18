@@ -74,6 +74,12 @@ pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
             attrs! {At::Href => format!("/auth/public/sign_in?doc_id={}", model.public_doc_id) },
             "Use",
         ],
+        br!(),
+        a![
+            C!["bg-gray-200", "py-1", "px-2", "m-1", "hover:bg-gray-300"],
+            attrs! {At::Href => "/auth/public/sign_in?doc_id=" },
+            "Create a new public document",
+        ],
     ];
     let doc_id = cookies()
         .and_then(|cookie_jar| {
@@ -125,7 +131,9 @@ pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
                 div![
                     div![
                         C!["py-1", "px-2", "m-1"],
-                        format!("Current document ID: {}", doc_id)
+                        "Current document ID",
+                        br!(),
+                        doc_id
                     ],
                     provider_block,
                 ]
