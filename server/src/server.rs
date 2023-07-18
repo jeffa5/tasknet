@@ -1,9 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{
-    config::ServerConfig,
-    google::{Google, UserSessionData},
-};
+use crate::{auth::google::Google, auth::UserSessionData, config::ServerConfig};
 use async_session::MemoryStore;
 use automerge_persistent_fs::FsPersisterError;
 use axum::{
@@ -109,7 +106,7 @@ async fn sync_read(
                                     let msg = automerge::sync::Message::decode(&bytes).unwrap();
                                     // apply the message to the document
                                     let mut server = server.lock().await;
-                                    match server.load_document(&user.google_id) {
+                                    match server.load_document(user.doc_id()) {
                                         Ok(document) => {
                                             document
                                                 .receive_sync_message(
@@ -127,7 +124,7 @@ async fn sync_read(
                                             debug!("flushed");
                                         }
                                         Err(err) => {
-                                            warn!(id=user.google_id, %err, "Failed to load document, closing connection");
+                                            warn!(id=user.doc_id(), %err, "Failed to load document, closing connection");
                                             break;
                                         }
                                     }
@@ -158,7 +155,7 @@ async fn sync_write(
     debug!("trying to generate initial sync message");
     {
         let mut server = server.lock().await;
-        match server.load_document(&user.google_id) {
+        match server.load_document(user.doc_id()) {
             Ok(document) => {
                 if let Ok(Some(msg)) =
                     document.generate_sync_message(connection_metadata.peer_id.as_bytes().to_vec())
@@ -178,7 +175,7 @@ async fn sync_write(
                 }
             }
             Err(err) => {
-                warn!(id=user.google_id, %err, "Failed to load document");
+                warn!(id=user.doc_id(), %err, "Failed to load document");
                 return;
             }
         }
@@ -192,7 +189,7 @@ async fn sync_write(
     while let Ok(()) = changed.recv().await {
         debug!("notified of change");
         let mut server = server.lock().await;
-        match server.load_document(&user.google_id) {
+        match server.load_document(user.doc_id()) {
             Ok(document) => {
                 if let Ok(Some(msg)) =
                     document.generate_sync_message(connection_metadata.peer_id.as_bytes().to_vec())
@@ -217,7 +214,7 @@ async fn sync_write(
                 }
             }
             Err(err) => {
-                warn!(id=user.google_id, %err, "Failed to load document");
+                warn!(id=user.doc_id(), %err, "Failed to load document");
                 return;
             }
         }

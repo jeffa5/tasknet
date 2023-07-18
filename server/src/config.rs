@@ -6,7 +6,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::google::GoogleConfig;
+use crate::auth::google::GoogleConfig;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerConfig {
