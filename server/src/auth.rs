@@ -1,4 +1,5 @@
 use reqwest::header::SET_COOKIE;
+use tasknet_shared::cookies::{SESSION_COOKIE, AUTH_PROVIDER_COOKIE};
 use std::sync::Arc;
 use tasknet_shared::cookies::{AUTH_PROVIDER_COOKIE, DOCUMENT_ID_COOKIE, SESSION_COOKIE};
 
