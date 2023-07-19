@@ -9,13 +9,13 @@ use axum::{
 use openid::{DiscoveredClient, Options, Token};
 use reqwest::header::SET_COOKIE;
 use serde::{Deserialize, Serialize};
-use tasknet_shared::cookies::{SESSION_COOKIE, AUTH_PROVIDER_COOKIE, DOCUMENT_ID_COOKIE};
+use tasknet_shared::cookies::{AUTH_PROVIDER_COOKIE, DOCUMENT_ID_COOKIE, SESSION_COOKIE};
 use tokio::sync::Mutex;
 use tracing::debug;
 
-use crate::{server::Server, auth::UserSessionData};
+use crate::{auth::UserSessionData, server::Server};
 
-use super::{UserIdFromSession, clear_session_cookies};
+use super::{clear_session_cookies, UserIdFromSession};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GoogleConfig {
@@ -130,8 +130,7 @@ pub async fn callback_handler(
             let cookies = vec![
                 format!(
                     "{}={}; SameSite=Lax; Path=/",
-                    SESSION_COOKIE,
-                    session_cookie
+                    SESSION_COOKIE, session_cookie
                 ),
                 format!("{}={}; Path=/", AUTH_PROVIDER_COOKIE, "google"),
                 format!("{}={}; Path=/", DOCUMENT_ID_COOKIE, user_data.doc_id()),
