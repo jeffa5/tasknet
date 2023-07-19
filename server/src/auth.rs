@@ -1,5 +1,6 @@
 use reqwest::header::SET_COOKIE;
 use std::sync::Arc;
+use tasknet_shared::cookies::{AUTH_PROVIDER_COOKIE, DOCUMENT_ID_COOKIE, SESSION_COOKIE};
 
 use async_session::{async_trait, SessionStore};
 use axum::extract::TypedHeader;
@@ -13,7 +14,7 @@ use axum::{
 };
 use axum::{http::request::Parts, http::StatusCode, RequestPartsExt};
 use serde::{Deserialize, Serialize};
-use sync::providers::{ProviderDefault, Providers};
+use tasknet_shared::providers::{ProviderDefault, Providers};
 use tokio::sync::Mutex;
 use tracing::debug;
 
@@ -21,9 +22,6 @@ use crate::server::Server;
 
 pub mod google;
 pub mod public;
-
-pub const SESSION_COOKIE: &str = "session";
-pub const AUTH_PROVIDER_COOKIE: &str = "auth-provider";
 
 pub async fn providers(State(server): State<Arc<Mutex<Server>>>) -> impl IntoResponse {
     let mut providers = Providers::default();
@@ -181,6 +179,7 @@ pub async fn clear_session_cookies(headers: &mut HeaderMap) {
     let cookies = vec![
         format!("{}=; Path=/", SESSION_COOKIE),
         format!("{}=; Path=/", AUTH_PROVIDER_COOKIE),
+        format!("{}=; Path=/", DOCUMENT_ID_COOKIE),
     ];
 
     // Set cookies

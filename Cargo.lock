@@ -1997,14 +1997,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sync"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "sync_wrapper"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2026,12 +2018,20 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "sync",
+ "tasknet-shared",
  "tokio",
  "tower-http",
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "tasknet-shared"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2052,7 +2052,7 @@ dependencies = [
  "seed",
  "serde",
  "serde_json",
- "sync",
+ "tasknet-shared",
  "uuid",
  "wasm-bindgen-test",
  "wasm-sockets",

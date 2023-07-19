@@ -1,8 +1,7 @@
 use cookie::CookieJar;
 use seed::{prelude::*, *};
-
-pub const SESSION_COOKIE: &str = "session";
-pub const AUTH_PROVIDER_COOKIE: &str = "auth-provider";
+use tasknet_shared::cookies::AUTH_PROVIDER_COOKIE;
+use tasknet_shared::cookies::SESSION_COOKIE;
 
 #[derive(Debug)]
 pub enum Provider {
@@ -47,7 +46,7 @@ impl Provider {
     }
 }
 
-fn cookies() -> Option<CookieJar> {
+pub fn cookies() -> Option<CookieJar> {
     let cookies_str = html_document().cookie().ok()?;
     let mut jar = cookie::CookieJar::new();
 

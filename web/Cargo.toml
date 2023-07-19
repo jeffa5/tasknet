@@ -6,7 +6,7 @@ description = "A task management suite"
 edition = "2018"
 
 [dependencies]
-sync = {path = "../sync"}
+tasknet-shared = {path = "../shared"}
 
 serde = "1.0.168"
 serde_json = "1.0.99"

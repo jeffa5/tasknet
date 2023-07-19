@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_session::{Session, SessionStore};
+use axum::http::StatusCode;
 use axum::{
     extract::{Query, State},
     http::HeaderMap,
@@ -8,13 +9,11 @@ use axum::{
 };
 use reqwest::header::SET_COOKIE;
 use serde::{Deserialize, Serialize};
+use tasknet_shared::cookies::{AUTH_PROVIDER_COOKIE, DOCUMENT_ID_COOKIE, SESSION_COOKIE};
 use tokio::sync::Mutex;
 use tracing::debug;
 
-use crate::{
-    auth::{UserSessionData, AUTH_PROVIDER_COOKIE, SESSION_COOKIE},
-    server::Server,
-};
+use crate::{auth::UserSessionData, server::Server};
 
 use super::{clear_session_cookies, UserIdFromSession};
 
@@ -36,10 +35,22 @@ pub async fn sign_in_handler(
 
     let mut headers = HeaderMap::new();
 
+    let doc_id = if query.doc_id.is_empty() {
+        // generate one
+        uuid::Uuid::new_v4()
+    } else {
+        let Ok(doc_id) = query.doc_id.parse::<uuid::Uuid>() else {
+            // Expected a uuid
+            // TODO: indicate error to user
+            return Err((StatusCode::BAD_REQUEST, Redirect::to("/")));
+        };
+        doc_id
+    };
+
     // Create a new session filled with user data
     let mut session = Session::new();
     let user_data = UserSessionData::Public {
-        doc_id: query.doc_id,
+        doc_id: doc_id.to_string(),
     };
     session.insert("user_data", &user_data).unwrap();
 
@@ -58,6 +69,7 @@ pub async fn sign_in_handler(
             SESSION_COOKIE, session_cookie
         ),
         format!("{}={}; Path=/", AUTH_PROVIDER_COOKIE, "public"),
+        format!("{}={}; Path=/", DOCUMENT_ID_COOKIE, user_data.doc_id()),
     ];
 
     // Set cookies
@@ -65,7 +77,7 @@ pub async fn sign_in_handler(
         headers.append(SET_COOKIE, cookie.parse().unwrap());
     }
 
-    (headers, Redirect::to("/"))
+    Ok((headers, Redirect::to("/")))
 }
 
 pub async fn sign_out_handler(

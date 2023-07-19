@@ -14,7 +14,7 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use sync::SyncMessage;
+use tasknet_shared::sync::SyncMessage;
 use tokio::sync::Mutex;
 use tracing::{debug, info, warn};
 
