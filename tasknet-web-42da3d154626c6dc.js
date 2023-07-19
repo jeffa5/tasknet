@@ -1539,7 +1539,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('tasknet-web-35f926776f1ccc6f_bg.wasm', import.meta.url);
+        input = new URL('tasknet-web-42da3d154626c6dc_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
