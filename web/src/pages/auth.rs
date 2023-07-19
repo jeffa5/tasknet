@@ -139,10 +139,7 @@ pub fn view(_global_model: &GlobalModel, model: &Model) -> Node<GMsg> {
                 ]
             }
         } else {
-            div![
-                div![C!["py-1", "px-2", "m-1"], "No auth providers available"],
-                public_provider
-            ]
+            div![C!["py-1", "px-2", "m-1"], "No auth providers available"],
         }
     ]
 }
