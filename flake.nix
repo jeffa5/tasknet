@@ -35,6 +35,40 @@
 
     overlays.default = _final: _prev: self.packages.${system};
 
+    nixosModules.${system}.tasknet-server = {
+      lib,
+      pkgs,
+      config,
+      ...
+    }: let
+      # the final config for this module
+      cfg = config.services.tasknet-server;
+      cfgFile = pkgs.writeText "tasknet-server-config" (builtins.toJSON cfg.config);
+    in {
+      options.services.tasknet-server = {
+        enable = lib.mkEnableOption "tasknet server";
+        config.port = lib.mkOption {
+          type = lib.types.port;
+          default = 80;
+        };
+        config.serve_dir = lib.mkOption {
+          type = lib.types.pathInStore;
+          default = pkgs.tasknet-web;
+        };
+        config.documents_dir = lib.mkOption {
+          type = lib.types.path;
+          default = "/var/lib/tasknet-server/documents";
+        };
+      };
+
+      config = {
+        systemd.services.tasknet-server = {
+          wantedBy = ["multi-user.target"];
+          serviceConfig.ExecStart = "${pkgs.tasknet-server}/bin/tasknet-server --config-file ${cfgFile}";
+        };
+      };
+    };
+
     apps.${system} = {
       tasknet-server = {
         type = "app";
