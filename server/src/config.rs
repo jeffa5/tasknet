@@ -10,6 +10,7 @@ use crate::auth::google::GoogleConfig;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerConfig {
+    pub address: String,
     pub port: u16,
     pub serve_dir: PathBuf,
     pub documents_dir: PathBuf,
