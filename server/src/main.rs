@@ -1,5 +1,6 @@
 use async_session::MemoryStore;
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::signal;
 use tower_http::services::{ServeDir, ServeFile};
@@ -35,6 +36,7 @@ async fn main() {
 
     let (changed, _) = tokio::sync::broadcast::channel(1);
 
+    let address = config.address.clone();
     let port = config.port;
 
     let google = if let Some(config) = config.google.as_ref() {
@@ -64,8 +66,9 @@ async fn main() {
         })))
         .layer(TraceLayer::new_for_http());
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    info!("Listening on http://localhost:{}", port);
+    let ip = address.parse::<IpAddr>().unwrap();
+    let addr = SocketAddr::from((ip, port));
+    info!("Listening on http://{}:{}", ip, port);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
