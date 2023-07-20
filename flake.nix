@@ -47,13 +47,17 @@
     in {
       options.services.tasknet-server = {
         enable = lib.mkEnableOption "tasknet server";
+        config.address = lib.mkOption {
+          type = lib.types.str;
+          default = "0.0.0.0";
+        };
         config.port = lib.mkOption {
           type = lib.types.port;
           default = 80;
         };
         config.serve_dir = lib.mkOption {
           type = lib.types.pathInStore;
-          default = pkgs.tasknet-web;
+          default = self.packages.${system}.tasknet-web;
         };
         config.documents_dir = lib.mkOption {
           type = lib.types.path;
@@ -61,12 +65,31 @@
         };
       };
 
-      config = {
+      config = lib.mkIf cfg.enable {
         systemd.services.tasknet-server = {
           wantedBy = ["multi-user.target"];
-          serviceConfig.ExecStart = "${pkgs.tasknet-server}/bin/tasknet-server --config-file ${cfgFile}";
+          serviceConfig.Restart = "on-failure";
+          serviceConfig.ExecStart = "${self.packages.${system}.tasknet-server}/bin/tasknet-server --config-file ${cfgFile}";
         };
       };
+    };
+
+    nixosConfigurations.container = nixpkgs.lib.nixosSystem {
+      system = system;
+      modules = [
+        self.nixosModules.${system}.tasknet-server
+        ({pkgs, ...}: {
+          # Only allow this to boot as a container
+          boot.isContainer = true;
+
+          # Allow nginx through the firewall
+          networking.firewall.allowedTCPPorts = [80];
+
+          services.tasknet-server.enable = true;
+
+          system.stateVersion = "23.05";
+        })
+      ];
     };
 
     apps.${system} = {
