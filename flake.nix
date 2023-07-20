@@ -82,7 +82,6 @@
           # Only allow this to boot as a container
           boot.isContainer = true;
 
-          # Allow nginx through the firewall
           networking.firewall.allowedTCPPorts = [80];
 
           services.tasknet-server.enable = true;
