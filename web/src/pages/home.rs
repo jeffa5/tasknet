@@ -19,7 +19,22 @@ use crate::{
 const FILTERS_STORAGE_KEY: &str = "tasknet-filters";
 const CONTEXTS_STORAGE_KEY: &str = "tasknet-contexts";
 
-pub fn init() -> Model {
+pub fn init(orders: &mut impl Orders<GMsg>) -> Model {
+    orders.stream(streams::window_event(Ev::KeyUp, |event| {
+        let active_element = seed::document()
+            .active_element()
+            .map(|e| e.tag_name())
+            .map_or(false, |e| e != "BODY");
+        if active_element {
+            // ignore key presses when we have a focused element
+            return None;
+        }
+        let key_event: web_sys::KeyboardEvent = event.unchecked_into();
+        match key_event.key().as_ref() {
+            "c" | "C" => Some(GMsg::CreateTask),
+            _ => None,
+        }
+    }));
     let filters = match LocalStorage::get(FILTERS_STORAGE_KEY) {
         Ok(filters) => filters,
         Err(StorageError::SerdeError(err)) => {
