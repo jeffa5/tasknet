@@ -130,8 +130,7 @@ pub async fn callback_handler(
             let cookies = vec![
                 format!(
                     "{}={}; SameSite=Lax; Path=/",
-                    SESSION_COOKIE,
-                    session_cookie
+                    SESSION_COOKIE, session_cookie
                 ),
                 format!("{}={}; Path=/", AUTH_PROVIDER_COOKIE, "google"),
                 format!("{}={}; Path=/", DOCUMENT_ID_COOKIE, user_data.doc_id()),
