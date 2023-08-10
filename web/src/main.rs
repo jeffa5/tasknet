@@ -185,24 +185,22 @@ enum Page {
 impl Page {
     fn init(mut url: Url, document: &Document, orders: &mut impl Orders<Msg>) -> Self {
         match url.next_hash_path_part() {
-            Some(VIEW_TASK) => url.next_hash_path_part().map_or_else(
-                || Self::Home(pages::home::init()),
-                |id| {
-                    TaskId::try_from(id).map_or_else(
-                        |_| Self::Home(pages::home::init()),
-                        |id| {
-                            if document.get_task(&id).is_some() {
-                                Self::ViewTask(pages::view_task::init(id, orders))
-                            } else {
-                                Self::Home(pages::home::init())
-                            }
-                        },
-                    )
+            Some(VIEW_TASK) => match url.next_hash_path_part() {
+                Some(id) => match TaskId::try_from(id) {
+                    Ok(id) => {
+                        if document.get_task(&id).is_some() {
+                            Self::ViewTask(pages::view_task::init(id, orders))
+                        } else {
+                            Self::Home(pages::home::init(orders))
+                        }
+                    }
+                    Err(_) => Self::Home(pages::home::init(orders)),
                 },
-            ),
+                None => Self::Home(pages::home::init(orders)),
+            },
             Some(AUTH) => Self::Auth(pages::auth::init(orders)),
             Some(SETTINGS) => Self::Settings(pages::settings::init()),
-            None | Some(_) => Self::Home(pages::home::init()),
+            None | Some(_) => Self::Home(pages::home::init(orders)),
         }
     }
 }
