@@ -12,7 +12,7 @@ clap = { version = "4.0.29", features = ["derive"] }
 futures = "0.3.25"
 tokio = { version = "1.23.0", features = ["rt-multi-thread", "macros", "signal"] }
 uuid = "1.2.2"
-automerge = "0.4.0"
+automerge = "0.5.2"
 automerge-persistent-fs = "0.4.0"
 automerge-persistent = "0.4.0"
 tracing = "0.1.37"
